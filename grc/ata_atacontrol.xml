@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<block>
+  <name>ATA Control</name>
+  <key>ata_atacontrol</key>
+  <category>[ATA]</category>
+  <import>import ata</import>
+  <make>ata.atacontrol($ipaddr, $port, $polling_sec, $verbose)</make>
+  <param>
+    <name>Server IP</name>
+    <key>ipaddr</key>
+    <value>'localhost'</value>
+    <type>string</type>
+  </param>
+  <param>
+    <name>Server Port</name>
+    <key>port</key>
+    <value>4321</value>
+    <type>int</type>
+  </param>
+  <param>
+    <name>Polling Freq (s)</name>
+    <key>polling_sec</key>
+    <value>20</value>
+    <type>int</type>
+  </param>
+  <param>
+    <name>Verbose</name>
+    <key>verbose</key>
+    <value>False</value>
+    <type>bool</type>
+    <option>
+      <name>No</name>
+      <key>False</key>
+    </option>
+    <option>
+      <name>Yes</name>
+      <key>True</key>
+    </option>
+  </param>
+
+  <sink>
+    <name>control</name>
+    <type>message</type>
+    <optional>1</optional>
+  </sink>
+  
+  <source>
+    <name>freq</name>
+    <type>message</type>
+    <optional>1</optional>
+  </source>
+  
+  <source>
+    <name>status</name>
+    <type>message</type>
+    <optional>1</optional>
+  </source>
+</block>
