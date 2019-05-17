@@ -146,6 +146,10 @@
   <block>
     <key>ata_atacontrol</key>
     <param>
+      <key>antenna</key>
+      <value>ant1</value>
+    </param>
+    <param>
       <key>alias</key>
       <value></value>
     </param>
@@ -163,7 +167,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(488, 376)</value>
+      <value>(416, 360)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -187,11 +191,15 @@
     </param>
     <param>
       <key>ipaddr</key>
-      <value>'localhost'</value>
+      <value>127.0.0.1</value>
     </param>
     <param>
       <key>port</key>
-      <value>4321</value>
+      <value>49601</value>
+    </param>
+    <param>
+      <key>tuning</key>
+      <value>a</value>
     </param>
     <param>
       <key>verbose</key>
@@ -344,7 +352,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(656, 480)</value>
+      <value>(1040, 456)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -494,7 +502,7 @@
     </param>
   </block>
   <block>
-    <key>gpredict_doppler</key>
+    <key>filerepeater_MetaToPair</key>
     <param>
       <key>alias</key>
       <value></value>
@@ -513,23 +521,19 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(448, 792)</value>
+      <value>(416, 532)</value>
     </param>
     <param>
       <key>_rotation</key>
-      <value>0</value>
+      <value>180</value>
     </param>
     <param>
       <key>id</key>
-      <value>gpredict_doppler_0</value>
+      <value>filerepeater_MetaToPair_0</value>
     </param>
     <param>
-      <key>gpredict_port</key>
-      <value>7356</value>
-    </param>
-    <param>
-      <key>gpredict_host</key>
-      <value>localhost</value>
+      <key>keyin</key>
+      <value>az</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -540,16 +544,12 @@
       <value>0</value>
     </param>
     <param>
-      <key>target</key>
-      <value>freq</value>
-    </param>
-    <param>
-      <key>verbose</key>
-      <value>False</value>
+      <key>keyout</key>
+      <value>az</value>
     </param>
   </block>
   <block>
-    <key>gpredict_rotor</key>
+    <key>filerepeater_MetaToPair</key>
     <param>
       <key>alias</key>
       <value></value>
@@ -568,39 +568,31 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(448, 680)</value>
+      <value>(408, 652)</value>
     </param>
     <param>
       <key>_rotation</key>
-      <value>0</value>
+      <value>180</value>
     </param>
     <param>
       <key>id</key>
-      <value>gpredict_rotor_0</value>
+      <value>filerepeater_MetaToPair_0_0</value>
     </param>
     <param>
-      <key>gpredict_port</key>
-      <value>4533</value>
-    </param>
-    <param>
-      <key>gpredict_host</key>
-      <value>localhost</value>
+      <key>keyin</key>
+      <value>el</value>
     </param>
     <param>
       <key>maxoutbuf</key>
       <value>0</value>
     </param>
     <param>
-      <key>minEl</key>
-      <value>20.0</value>
-    </param>
-    <param>
       <key>minoutbuf</key>
       <value>0</value>
     </param>
     <param>
-      <key>verbose</key>
-      <value>False</value>
+      <key>keyout</key>
+      <value>el</value>
     </param>
   </block>
   <block>
@@ -710,7 +702,7 @@
     </param>
     <param>
       <key>label</key>
-      <value>Azimuth</value>
+      <value>Target Azimuth</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -757,7 +749,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(168, 568)</value>
+      <value>(160, 696)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -777,7 +769,141 @@
     </param>
     <param>
       <key>label</key>
-      <value>Elevation</value>
+      <value>Target Elevation</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>is_pair</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>is_static</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>float</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>2271e6</value>
+    </param>
+  </block>
+  <block>
+    <key>qtgui_edit_box_msg</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(160, 840)</value>
+    </param>
+    <param>
+      <key>gui_hint</key>
+      <value>2,1,1,1</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>qtgui_edit_box_msg_0_0_0_0</value>
+    </param>
+    <param>
+      <key>key</key>
+      <value>el</value>
+    </param>
+    <param>
+      <key>label</key>
+      <value>Current Elevation</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>is_pair</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>is_static</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>float</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>2271e6</value>
+    </param>
+  </block>
+  <block>
+    <key>qtgui_edit_box_msg</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(168, 552)</value>
+    </param>
+    <param>
+      <key>gui_hint</key>
+      <value>2,0,1,1</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>qtgui_edit_box_msg_0_0_1</value>
+    </param>
+    <param>
+      <key>key</key>
+      <value>az</value>
+    </param>
+    <param>
+      <key>label</key>
+      <value>Current Azimuth</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -856,7 +982,7 @@
     </param>
     <param>
       <key>gui_hint</key>
-      <value>2,0,2,2</value>
+      <value>3,0,2,2</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -1122,6 +1248,18 @@
     <sink_key>print</sink_key>
   </connection>
   <connection>
+    <source_block_id>ata_atacontrol_0</source_block_id>
+    <sink_block_id>filerepeater_MetaToPair_0</sink_block_id>
+    <source_key>status</source_key>
+    <sink_key>inmeta</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ata_atacontrol_0</source_block_id>
+    <sink_block_id>filerepeater_MetaToPair_0_0</sink_block_id>
+    <source_key>status</source_key>
+    <sink_key>inmeta</sink_key>
+  </connection>
+  <connection>
     <source_block_id>baz_udp_source_0</source_block_id>
     <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
     <source_key>0</source_key>
@@ -1144,6 +1282,18 @@
     <sink_block_id>filerepeater_AdvFileSink_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>filerepeater_MetaToPair_0</source_block_id>
+    <sink_block_id>qtgui_edit_box_msg_0_0_1</sink_block_id>
+    <source_key>outpair</source_key>
+    <sink_key>val</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>filerepeater_MetaToPair_0_0</source_block_id>
+    <sink_block_id>qtgui_edit_box_msg_0_0_0_0</sink_block_id>
+    <source_key>outpair</source_key>
+    <sink_key>val</sink_key>
   </connection>
   <connection>
     <source_block_id>qtgui_edit_box_msg_0</source_block_id>

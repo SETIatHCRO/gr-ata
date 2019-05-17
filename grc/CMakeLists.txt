@@ -19,5 +19,6 @@
 # Boston, MA 02110-1301, USA.
 
 install(FILES
-    ata_atacontrol.xml DESTINATION share/gnuradio/grc/blocks
+    ata_atacontrol.xml
+    ata_ata_stream.xml DESTINATION share/gnuradio/grc/blocks
 )

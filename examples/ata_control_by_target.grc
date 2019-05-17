@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <?grc format='1' created='3.7.13'?>
 <flow_graph>
-  <timestamp>Tue May 14 15:48:37 2019</timestamp>
+  <timestamp>Tue May 14 18:24:23 2019</timestamp>
   <block>
     <key>options</key>
     <param>
@@ -46,7 +46,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>ata_record_data</value>
+      <value>ata_control_by_name</value>
     </param>
     <param>
       <key>max_nouts</key>
@@ -101,7 +101,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(504, 12)</value>
+      <value>(216, 12)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -109,38 +109,11 @@
     </param>
     <param>
       <key>id</key>
-      <value>local_listener_ip</value>
+      <value>samp_rate</value>
     </param>
     <param>
       <key>value</key>
-      <value>'0.0.0.0'</value>
-    </param>
-  </block>
-  <block>
-    <key>variable</key>
-    <param>
-      <key>comment</key>
-      <value>MB/s on network</value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(352, 12)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>network_byte_rate</value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>samp_rate*2</value>
+      <value>25e6</value>
     </param>
   </block>
   <block>
@@ -155,7 +128,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(216, 12)</value>
+      <value>(368, 12)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -163,15 +136,15 @@
     </param>
     <param>
       <key>id</key>
-      <value>samp_rate</value>
+      <value>throttle_rate</value>
     </param>
     <param>
       <key>value</key>
-      <value>104e6</value>
+      <value>samp_rate*2</value>
     </param>
   </block>
   <block>
-    <key>ata_ata_stream</key>
+    <key>ata_atacontrol</key>
     <param>
       <key>alias</key>
       <value></value>
@@ -190,19 +163,15 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(248, 332)</value>
+      <value>(488, 376)</value>
     </param>
     <param>
       <key>_rotation</key>
       <value>0</value>
     </param>
     <param>
-      <key>ata_header</key>
-      <value>1</value>
-    </param>
-    <param>
       <key>id</key>
-      <value>ata_ata_stream_0</value>
+      <value>ata_atacontrol_0</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -213,12 +182,16 @@
       <value>0</value>
     </param>
     <param>
-      <key>payloadsize</key>
-      <value>4096</value>
+      <key>polling_sec</key>
+      <value>20</value>
     </param>
     <param>
-      <key>udpport</key>
-      <value>50000</value>
+      <key>ipaddr</key>
+      <value>'localhost'</value>
+    </param>
+    <param>
+      <key>port</key>
+      <value>4321</value>
     </param>
     <param>
       <key>verbose</key>
@@ -227,10 +200,6 @@
   </block>
   <block>
     <key>baz_udp_source</key>
-    <param>
-      <key>ata_new_header</key>
-      <value>True</value>
-    </param>
     <param>
       <key>alias</key>
       <value></value>
@@ -253,11 +222,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(320, 168)</value>
+      <value>(464, 128)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -269,7 +238,7 @@
     </param>
     <param>
       <key>ipaddr</key>
-      <value>local_listener_ip</value>
+      <value>127.0.0.1</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -293,11 +262,11 @@
     </param>
     <param>
       <key>psize</key>
-      <value>4160</value>
+      <value>1472</value>
     </param>
     <param>
       <key>port</key>
-      <value>50000</value>
+      <value>1234</value>
     </param>
     <param>
       <key>vlen</key>
@@ -332,7 +301,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(528, 348)</value>
+      <value>(760, 332)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -356,6 +325,37 @@
     </param>
   </block>
   <block>
+    <key>blocks_message_debug</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(656, 480)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>blocks_message_debug_0</value>
+    </param>
+  </block>
+  <block>
     <key>blocks_throttle</key>
     <param>
       <key>alias</key>
@@ -375,7 +375,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(648, 436)</value>
+      <value>(744, 156)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -383,7 +383,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>blocks_throttle_0</value>
+      <value>blocks_throttle_0_0</value>
     </param>
     <param>
       <key>ignoretag</key>
@@ -399,11 +399,11 @@
     </param>
     <param>
       <key>samples_per_second</key>
-      <value>samp_rate</value>
+      <value>throttle_rate</value>
     </param>
     <param>
       <key>type</key>
-      <value>complex</value>
+      <value>byte</value>
     </param>
     <param>
       <key>vlen</key>
@@ -418,7 +418,7 @@
     </param>
     <param>
       <key>basedir</key>
-      <value>/opt/tmp/Recordings/ATA</value>
+      <value>/media/mpiscopo/536B035F2CBB251C/Recordings/ATA</value>
     </param>
     <param>
       <key>basefile</key>
@@ -454,7 +454,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 204)</value>
+      <value>(1024, 92)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -491,6 +491,140 @@
     <param>
       <key>vlen</key>
       <value>1</value>
+    </param>
+  </block>
+  <block>
+    <key>qtgui_edit_box_msg</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(168, 256)</value>
+    </param>
+    <param>
+      <key>gui_hint</key>
+      <value>0,0,1,1</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>qtgui_edit_box_msg_0</value>
+    </param>
+    <param>
+      <key>key</key>
+      <value>freq</value>
+    </param>
+    <param>
+      <key>label</key>
+      <value>Frequency</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>is_pair</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>is_static</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>float</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>2271e6</value>
+    </param>
+  </block>
+  <block>
+    <key>qtgui_edit_box_msg</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(168, 424)</value>
+    </param>
+    <param>
+      <key>gui_hint</key>
+      <value>0,1,1,1</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>qtgui_edit_box_msg_0_0</value>
+    </param>
+    <param>
+      <key>key</key>
+      <value>az</value>
+    </param>
+    <param>
+      <key>label</key>
+      <value>Target</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>is_pair</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>is_static</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>string</value>
+    </param>
+    <param>
+      <key>value</key>
+      <value>Some Object</value>
     </param>
   </block>
   <block>
@@ -541,11 +675,11 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 436)</value>
+      <value>(1024, 324)</value>
     </param>
     <param>
       <key>gui_hint</key>
-      <value></value>
+      <value>3,0,2,2</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -793,10 +927,22 @@
     </param>
   </block>
   <connection>
-    <source_block_id>ata_ata_stream_0</source_block_id>
-    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
+    <source_block_id>ata_atacontrol_0</source_block_id>
+    <sink_block_id>blocks_message_debug_0</sink_block_id>
+    <source_key>freq</source_key>
+    <sink_key>print</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ata_atacontrol_0</source_block_id>
+    <sink_block_id>qtgui_freq_sink_x_0</sink_block_id>
+    <source_key>freq</source_key>
+    <sink_key>freq</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ata_atacontrol_0</source_block_id>
+    <sink_block_id>blocks_message_debug_0</sink_block_id>
+    <source_key>status</source_key>
+    <sink_key>print</sink_key>
   </connection>
   <connection>
     <source_block_id>baz_udp_source_0</source_block_id>
@@ -806,20 +952,38 @@
   </connection>
   <connection>
     <source_block_id>baz_udp_source_0</source_block_id>
-    <sink_block_id>filerepeater_AdvFileSink_0</sink_block_id>
+    <sink_block_id>blocks_throttle_0_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
   <connection>
     <source_block_id>blocks_interleaved_char_to_complex_0</source_block_id>
-    <sink_block_id>blocks_throttle_0</sink_block_id>
+    <sink_block_id>qtgui_freq_sink_x_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>blocks_throttle_0</source_block_id>
-    <sink_block_id>qtgui_freq_sink_x_0</sink_block_id>
+    <source_block_id>blocks_throttle_0_0</source_block_id>
+    <sink_block_id>filerepeater_AdvFileSink_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>qtgui_edit_box_msg_0</source_block_id>
+    <sink_block_id>ata_atacontrol_0</sink_block_id>
+    <source_key>msg</source_key>
+    <sink_key>control</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>qtgui_edit_box_msg_0</source_block_id>
+    <sink_block_id>blocks_message_debug_0</sink_block_id>
+    <source_key>msg</source_key>
+    <sink_key>print</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>qtgui_edit_box_msg_0_0</source_block_id>
+    <sink_block_id>blocks_message_debug_0</sink_block_id>
+    <source_key>msg</source_key>
+    <sink_key>print</sink_key>
   </connection>
 </flow_graph>

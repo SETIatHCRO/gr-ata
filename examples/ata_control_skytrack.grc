@@ -146,6 +146,10 @@
   <block>
     <key>ata_atacontrol</key>
     <param>
+      <key>antenna</key>
+      <value>ant1</value>
+    </param>
+    <param>
       <key>alias</key>
       <value></value>
     </param>
@@ -163,7 +167,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(488, 376)</value>
+      <value>(488, 288)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -192,6 +196,10 @@
     <param>
       <key>port</key>
       <value>4321</value>
+    </param>
+    <param>
+      <key>tuning</key>
+      <value>a</value>
     </param>
     <param>
       <key>verbose</key>
@@ -513,7 +521,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(152, 488)</value>
+      <value>(160, 524)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -538,10 +546,6 @@
     <param>
       <key>minoutbuf</key>
       <value>0</value>
-    </param>
-    <param>
-      <key>target</key>
-      <value>freq</value>
     </param>
     <param>
       <key>verbose</key>

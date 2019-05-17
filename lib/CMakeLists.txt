@@ -27,6 +27,7 @@ include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 
 list(APPEND ata_sources
+    ata_stream_impl.cc
 )
 
 set(ata_sources "${ata_sources}" PARENT_SCOPE)
