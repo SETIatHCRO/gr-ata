@@ -190,7 +190,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(248, 332)</value>
+      <value>(280, 248)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -223,93 +223,6 @@
     <param>
       <key>verbose</key>
       <value>False</value>
-    </param>
-  </block>
-  <block>
-    <key>baz_udp_source</key>
-    <param>
-      <key>ata_new_header</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>borip</key>
-      <value>False</value>
-    </param>
-    <param>
-      <key>buf_size</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(320, 168)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>baz_udp_source_0</value>
-    </param>
-    <param>
-      <key>ipaddr</key>
-      <value>local_listener_ip</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>mode</key>
-      <value>2</value>
-    </param>
-    <param>
-      <key>eof</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>type</key>
-      <value>byte</value>
-    </param>
-    <param>
-      <key>psize</key>
-      <value>4160</value>
-    </param>
-    <param>
-      <key>port</key>
-      <value>50000</value>
-    </param>
-    <param>
-      <key>vlen</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>verbose</key>
-      <value>False</value>
-    </param>
-    <param>
-      <key>wait</key>
-      <value>True</value>
     </param>
   </block>
   <block>
@@ -799,13 +712,7 @@
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>baz_udp_source_0</source_block_id>
-    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>baz_udp_source_0</source_block_id>
+    <source_block_id>ata_ata_stream_0</source_block_id>
     <sink_block_id>filerepeater_AdvFileSink_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
