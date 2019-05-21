@@ -197,8 +197,8 @@
       <value>0</value>
     </param>
     <param>
-      <key>ata_header</key>
-      <value>1</value>
+      <key>header</key>
+      <value>4</value>
     </param>
     <param>
       <key>id</key>
@@ -213,16 +213,16 @@
       <value>0</value>
     </param>
     <param>
-      <key>payloadsize</key>
-      <value>4096</value>
-    </param>
-    <param>
-      <key>udpport</key>
-      <value>50000</value>
-    </param>
-    <param>
-      <key>verbose</key>
+      <key>notifyMissed</key>
       <value>False</value>
+    </param>
+    <param>
+      <key>payloadsize</key>
+      <value>4160</value>
+    </param>
+    <param>
+      <key>port</key>
+      <value>50000</value>
     </param>
   </block>
   <block>
