@@ -113,7 +113,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>25e6</value>
+      <value>104.8576</value>
     </param>
   </block>
   <block>
@@ -141,6 +141,61 @@
     <param>
       <key>value</key>
       <value>samp_rate*2</value>
+    </param>
+  </block>
+  <block>
+    <key>ata_ata_stream</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(464, 136)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>header</key>
+      <value>4</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>ata_ata_stream_0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>notifyMissed</key>
+      <value>False</value>
+    </param>
+    <param>
+      <key>payloadsize</key>
+      <value>4160</value>
+    </param>
+    <param>
+      <key>port</key>
+      <value>50000</value>
     </param>
   </block>
   <block>
@@ -204,89 +259,6 @@
     <param>
       <key>verbose</key>
       <value>False</value>
-    </param>
-  </block>
-  <block>
-    <key>baz_udp_source</key>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>borip</key>
-      <value>False</value>
-    </param>
-    <param>
-      <key>buf_size</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(464, 128)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>baz_udp_source_0</value>
-    </param>
-    <param>
-      <key>ipaddr</key>
-      <value>127.0.0.1</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>mode</key>
-      <value>2</value>
-    </param>
-    <param>
-      <key>eof</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>type</key>
-      <value>byte</value>
-    </param>
-    <param>
-      <key>psize</key>
-      <value>1472</value>
-    </param>
-    <param>
-      <key>port</key>
-      <value>1234</value>
-    </param>
-    <param>
-      <key>vlen</key>
-      <value>1</value>
-    </param>
-    <param>
-      <key>verbose</key>
-      <value>False</value>
-    </param>
-    <param>
-      <key>wait</key>
-      <value>True</value>
     </param>
   </block>
   <block>
@@ -371,7 +343,7 @@
     </param>
     <param>
       <key>comment</key>
-      <value></value>
+      <value>Rate is 104.8576 CMSPS, Byte rate is 2x</value>
     </param>
     <param>
       <key>affinity</key>
@@ -426,7 +398,7 @@
     </param>
     <param>
       <key>basedir</key>
-      <value>/media/mpiscopo/536B035F2CBB251C/Recordings/ATA</value>
+      <value>/opt/tmp/Recordings/ATA</value>
     </param>
     <param>
       <key>basefile</key>
@@ -1230,6 +1202,18 @@
     </param>
   </block>
   <connection>
+    <source_block_id>ata_ata_stream_0</source_block_id>
+    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>ata_ata_stream_0</source_block_id>
+    <sink_block_id>blocks_throttle_0_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
     <source_block_id>ata_atacontrol_0</source_block_id>
     <sink_block_id>blocks_message_debug_0</sink_block_id>
     <source_key>freq</source_key>
@@ -1258,18 +1242,6 @@
     <sink_block_id>filerepeater_MetaToPair_0_0</sink_block_id>
     <source_key>status</source_key>
     <sink_key>inmeta</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>baz_udp_source_0</source_block_id>
-    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>baz_udp_source_0</source_block_id>
-    <sink_block_id>blocks_throttle_0_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
   </connection>
   <connection>
     <source_block_id>blocks_interleaved_char_to_complex_0</source_block_id>
