@@ -351,49 +351,6 @@
     </param>
   </block>
   <block>
-    <key>blocks_interleaved_char_to_complex</key>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(480, 156)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>blocks_interleaved_char_to_complex_0</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>vector_input</key>
-      <value>False</value>
-    </param>
-  </block>
-  <block>
     <key>blocks_stream_to_vector</key>
     <param>
       <key>alias</key>
@@ -460,7 +417,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>freq</key>
@@ -492,7 +449,7 @@
     </param>
     <param>
       <key>syncTime</key>
-      <value>2</value>
+      <value>4</value>
     </param>
     <param>
       <key>gain</key>
@@ -563,6 +520,45 @@
     </param>
   </block>
   <block>
+    <key>grnet_Signed8ToComplex</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(464, 160)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>grnet_Signed8ToComplex_0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+  </block>
+  <block>
     <key>lfast_nlog10volk</key>
     <param>
       <key>alias</key>
@@ -614,6 +610,57 @@
     </param>
   </block>
   <block>
+    <key>lfast_nlog10volk</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(672, 604)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>lfast_nlog10volk_1</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>vlen</key>
+      <value>fftsize</value>
+    </param>
+    <param>
+      <key>k</key>
+      <value>-30</value>
+    </param>
+    <param>
+      <key>n</key>
+      <value>10</value>
+    </param>
+  </block>
+  <block>
     <key>mesa_LongTermIntegrator</key>
     <param>
       <key>alias</key>
@@ -633,7 +680,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(640, 632)</value>
+      <value>(416, 648)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -1344,7 +1391,7 @@
   </connection>
   <connection>
     <source_block_id>blocks_file_source_0</source_block_id>
-    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
+    <sink_block_id>grnet_Signed8ToComplex_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -1355,8 +1402,8 @@
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>blocks_interleaved_char_to_complex_0</source_block_id>
-    <sink_block_id>correctiq_correctiq_auto_0</sink_block_id>
+    <source_block_id>blocks_integrate_xx_0</source_block_id>
+    <sink_block_id>mesa_LongTermIntegrator_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -1379,8 +1426,8 @@
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>lfast_nlog10volk_0</source_block_id>
-    <sink_block_id>mesa_LongTermIntegrator_0</sink_block_id>
+    <source_block_id>grnet_Signed8ToComplex_0</source_block_id>
+    <sink_block_id>correctiq_correctiq_auto_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -1391,8 +1438,14 @@
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>mesa_LongTermIntegrator_0</source_block_id>
+    <source_block_id>lfast_nlog10volk_1</source_block_id>
     <sink_block_id>qtgui_vector_sink_f_0_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>mesa_LongTermIntegrator_0</source_block_id>
+    <sink_block_id>lfast_nlog10volk_1</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
