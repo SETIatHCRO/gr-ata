@@ -46,7 +46,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>integrate_voyager</value>
+      <value>integrate_voyager2</value>
     </param>
     <param>
       <key>max_nouts</key>
@@ -140,7 +140,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>65536</value>
+      <value>65536/2</value>
     </param>
   </block>
   <block>
@@ -155,7 +155,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(632, 12)</value>
+      <value>(304, 12)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -182,33 +182,6 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(304, 12)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>if_center_freq</value>
-    </param>
-    <param>
-      <key>value</key>
-      <value>629.1456e6</value>
-    </param>
-  </block>
-  <block>
-    <key>variable</key>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
       <value>(184, 12)</value>
     </param>
     <param>
@@ -221,7 +194,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>104.8576e6</value>
+      <value>2929687.5</value>
     </param>
   </block>
   <block>
@@ -263,7 +236,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(512, 76)</value>
+      <value>(184, 76)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -325,7 +298,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(648, 308)</value>
+      <value>(664, 308)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -360,7 +333,7 @@
     </param>
     <param>
       <key>comment</key>
-      <value></value>
+      <value>http://blpd0.ssl.berkeley.edu/SigMF_data/</value>
     </param>
     <param>
       <key>affinity</key>
@@ -372,7 +345,7 @@
     </param>
     <param>
       <key>file</key>
-      <value>/media/mpiscopo/18d6f16c-02e7-4056-9f85-042e4c546179/Recordings/Voyager/voyager-58620.311555.16ic</value>
+      <value>/media/mpiscopo/18d6f16c-02e7-4056-9f85-042e4c546179/Recordings/Voyager/blc07_guppi_57650_67573_Voyager1_pol1.sigmf-data</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -396,7 +369,7 @@
     </param>
     <param>
       <key>type</key>
-      <value>short</value>
+      <value>byte</value>
     </param>
     <param>
       <key>repeat</key>
@@ -431,7 +404,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(88, 436)</value>
+      <value>(296, 396)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -459,7 +432,7 @@
     </param>
   </block>
   <block>
-    <key>blocks_interleaved_short_to_complex</key>
+    <key>blocks_interleaved_char_to_complex</key>
     <param>
       <key>alias</key>
       <value></value>
@@ -478,7 +451,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(352, 212)</value>
+      <value>(248, 212)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -486,7 +459,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>blocks_interleaved_short_to_complex_0</value>
+      <value>blocks_interleaved_char_to_complex_0</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -497,12 +470,51 @@
       <value>0</value>
     </param>
     <param>
-      <key>swap</key>
-      <value>False</value>
-    </param>
-    <param>
       <key>vector_input</key>
       <value>False</value>
+    </param>
+  </block>
+  <block>
+    <key>blocks_rotator_cc</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value>spectrally flipped</value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>1</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(448, 212)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>blocks_rotator_cc_0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>phase_inc</key>
+      <value>-1*(2*math.pi*(voyager_freq-freq)/samp_rate)</value>
     </param>
   </block>
   <block>
@@ -525,7 +537,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(976, 212)</value>
+      <value>(1016, 212)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -584,7 +596,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(904, 280)</value>
+      <value>(1016, 264)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -635,7 +647,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(968, 12)</value>
+      <value>(640, 12)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -670,7 +682,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(336, 436)</value>
+      <value>(568, 404)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -824,7 +836,7 @@ So shift up 20 from the -30 scale.</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(616, 192)</value>
+      <value>(720, 192)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -962,7 +974,7 @@ So shift up 20 from the -30 scale.</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(888, 428)</value>
+      <value>(976, 420)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1484,7 +1496,7 @@ So shift up 20 from the -30 scale.</value>
   </connection>
   <connection>
     <source_block_id>blocks_file_source_0_0</source_block_id>
-    <sink_block_id>blocks_interleaved_short_to_complex_0</sink_block_id>
+    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -1501,7 +1513,13 @@ So shift up 20 from the -30 scale.</value>
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>blocks_interleaved_short_to_complex_0</source_block_id>
+    <source_block_id>blocks_interleaved_char_to_complex_0</source_block_id>
+    <sink_block_id>blocks_rotator_cc_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>blocks_rotator_cc_0</source_block_id>
     <sink_block_id>pfb_decimator_ccf_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
