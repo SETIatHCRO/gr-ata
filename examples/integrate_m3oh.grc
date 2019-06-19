@@ -140,7 +140,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>2048*4</value>
+      <value>65536</value>
     </param>
   </block>
   <block>
@@ -455,7 +455,7 @@
     </param>
     <param>
       <key>decim</key>
-      <value>1000</value>
+      <value>100</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -488,6 +488,49 @@
     <param>
       <key>vlen</key>
       <value>fftsize</value>
+    </param>
+  </block>
+  <block>
+    <key>blocks_interleaved_char_to_complex</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(448, 164)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>blocks_interleaved_char_to_complex_0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>vector_input</key>
+      <value>False</value>
     </param>
   </block>
   <block>
@@ -657,45 +700,6 @@
     <param>
       <key>window</key>
       <value>window.blackmanharris(fftsize)</value>
-    </param>
-  </block>
-  <block>
-    <key>grnet_Signed8ToComplex</key>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(448, 160)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>grnet_Signed8ToComplex_0</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
     </param>
   </block>
   <block>
@@ -1497,7 +1501,7 @@ So shift up 20 from the -30 scale.</value>
     </param>
     <param>
       <key>name</key>
-      <value>Vector Integration</value>
+      <value>Signal Integration</value>
     </param>
     <param>
       <key>nconnections</key>
@@ -1830,14 +1834,8 @@ So shift up 20 from the -30 scale.</value>
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>blocks_file_source_0</source_block_id>
-    <sink_block_id>grnet_Signed8ToComplex_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
     <source_block_id>blocks_file_source_0_0</source_block_id>
-    <sink_block_id>grnet_Signed8ToComplex_0</sink_block_id>
+    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -1850,6 +1848,12 @@ So shift up 20 from the -30 scale.</value>
   <connection>
     <source_block_id>blocks_integrate_xx_0</source_block_id>
     <sink_block_id>mesa_LongTermIntegrator_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>blocks_interleaved_char_to_complex_0</source_block_id>
+    <sink_block_id>pfb_decimator_ccf_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -1874,12 +1878,6 @@ So shift up 20 from the -30 scale.</value>
   <connection>
     <source_block_id>fft_vxx_0</source_block_id>
     <sink_block_id>blocks_complex_to_mag_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>grnet_Signed8ToComplex_0</source_block_id>
-    <sink_block_id>pfb_decimator_ccf_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
