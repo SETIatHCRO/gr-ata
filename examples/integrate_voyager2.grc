@@ -432,49 +432,6 @@
     </param>
   </block>
   <block>
-    <key>blocks_interleaved_char_to_complex</key>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(248, 212)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>blocks_interleaved_char_to_complex_0</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>vector_input</key>
-      <value>False</value>
-    </param>
-  </block>
-  <block>
     <key>blocks_rotator_cc</key>
     <param>
       <key>alias</key>
@@ -482,7 +439,7 @@
     </param>
     <param>
       <key>comment</key>
-      <value>spectrally flipped</value>
+      <value></value>
     </param>
     <param>
       <key>affinity</key>
@@ -494,7 +451,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(448, 212)</value>
+      <value>(552, 212)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -629,6 +586,45 @@
     <param>
       <key>window</key>
       <value>window.blackmanharris(fftsize)</value>
+    </param>
+  </block>
+  <block>
+    <key>grnet_Signed8ToComplex</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(264, 216)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>grnet_Signed8ToComplex_0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
     </param>
   </block>
   <block>
@@ -836,7 +832,7 @@ So shift up 20 from the -30 scale.</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(720, 192)</value>
+      <value>(776, 192)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -1496,7 +1492,7 @@ So shift up 20 from the -30 scale.</value>
   </connection>
   <connection>
     <source_block_id>blocks_file_source_0_0</source_block_id>
-    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
+    <sink_block_id>grnet_Signed8ToComplex_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -1509,12 +1505,6 @@ So shift up 20 from the -30 scale.</value>
   <connection>
     <source_block_id>blocks_integrate_xx_0</source_block_id>
     <sink_block_id>mesa_LongTermIntegrator_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>blocks_interleaved_char_to_complex_0</source_block_id>
-    <sink_block_id>blocks_rotator_cc_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -1533,6 +1523,12 @@ So shift up 20 from the -30 scale.</value>
   <connection>
     <source_block_id>fft_vxx_0</source_block_id>
     <sink_block_id>blocks_complex_to_mag_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>grnet_Signed8ToComplex_0</source_block_id>
+    <sink_block_id>blocks_rotator_cc_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>

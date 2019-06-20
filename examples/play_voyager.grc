@@ -656,49 +656,6 @@ TX: 0-47 in 1 dB steps</value>
     </param>
   </block>
   <block>
-    <key>blocks_interleaved_char_to_complex</key>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(280, 324)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>blocks_interleaved_char_to_complex_0</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>vector_input</key>
-      <value>False</value>
-    </param>
-  </block>
-  <block>
     <key>blocks_multiply_const_vxx</key>
     <param>
       <key>alias</key>
@@ -722,7 +679,7 @@ TX: 0-47 in 1 dB steps</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(672, 324)</value>
+      <value>(704, 324)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -773,7 +730,7 @@ TX: 0-47 in 1 dB steps</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(848, 324)</value>
+      <value>(872, 324)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -966,7 +923,7 @@ where it should be</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(456, 324)</value>
+      <value>(488, 324)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -1270,6 +1227,45 @@ http://blpd0.ssl.berkeley.edu/SigMF_data/</value>
     </param>
     <param>
       <key>repeat_delay</key>
+      <value>0</value>
+    </param>
+  </block>
+  <block>
+    <key>grnet_Signed8ToComplex</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(256, 336)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>grnet_Signed8ToComplex_0</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
       <value>0</value>
     </param>
   </block>
@@ -3182,12 +3178,6 @@ http://blpd0.ssl.berkeley.edu/SigMF_data/</value>
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>blocks_interleaved_char_to_complex_0</source_block_id>
-    <sink_block_id>blocks_rotator_cc_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
     <source_block_id>blocks_multiply_const_vxx_0</source_block_id>
     <sink_block_id>blocks_multiply_const_vxx_0_0</sink_block_id>
     <source_key>0</source_key>
@@ -3267,7 +3257,13 @@ http://blpd0.ssl.berkeley.edu/SigMF_data/</value>
   </connection>
   <connection>
     <source_block_id>filerepeater_file_repeater_ex_0_0</source_block_id>
-    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
+    <sink_block_id>grnet_Signed8ToComplex_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>grnet_Signed8ToComplex_0</source_block_id>
+    <sink_block_id>blocks_rotator_cc_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
