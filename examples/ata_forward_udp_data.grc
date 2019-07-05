@@ -271,7 +271,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(216, 160)</value>
+      <value>(72, 160)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -326,7 +326,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(216, 328)</value>
+      <value>(72, 328)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -359,6 +359,92 @@
     <param>
       <key>port</key>
       <value>50001</value>
+    </param>
+  </block>
+  <block>
+    <key>correctiq_SwapIQ</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(336, 184)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>correctiq_SwapIQ_0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>byte</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+  </block>
+  <block>
+    <key>correctiq_SwapIQ</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(304, 352)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>correctiq_SwapIQ_0_0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>byte</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
     </param>
   </block>
   <block>
@@ -936,12 +1022,24 @@
   </block>
   <connection>
     <source_block_id>ata_ata_stream_0</source_block_id>
-    <sink_block_id>grnet_ByteComplexDecimator_0</sink_block_id>
+    <sink_block_id>correctiq_SwapIQ_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
   <connection>
     <source_block_id>ata_ata_stream_0_0</source_block_id>
+    <sink_block_id>correctiq_SwapIQ_0_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>correctiq_SwapIQ_0</source_block_id>
+    <sink_block_id>grnet_ByteComplexDecimator_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>correctiq_SwapIQ_0_0</source_block_id>
     <sink_block_id>grnet_ByteComplexDecimator_0_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
