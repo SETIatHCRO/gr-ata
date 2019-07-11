@@ -225,49 +225,6 @@
     </param>
   </block>
   <block>
-    <key>blocks_interleaved_char_to_complex</key>
-    <param>
-      <key>alias</key>
-      <value></value>
-    </param>
-    <param>
-      <key>comment</key>
-      <value></value>
-    </param>
-    <param>
-      <key>affinity</key>
-      <value></value>
-    </param>
-    <param>
-      <key>_enabled</key>
-      <value>True</value>
-    </param>
-    <param>
-      <key>_coordinate</key>
-      <value>(408, 428)</value>
-    </param>
-    <param>
-      <key>_rotation</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>id</key>
-      <value>blocks_interleaved_char_to_complex_0</value>
-    </param>
-    <param>
-      <key>maxoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>minoutbuf</key>
-      <value>0</value>
-    </param>
-    <param>
-      <key>vector_input</key>
-      <value>False</value>
-    </param>
-  </block>
-  <block>
     <key>blocks_message_debug</key>
     <param>
       <key>alias</key>
@@ -287,7 +244,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1072, 312)</value>
+      <value>(1136, 312)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -318,7 +275,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(816, 336)</value>
+      <value>(904, 300)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -373,7 +330,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(656, 468)</value>
+      <value>(712, 468)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -428,7 +385,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(288, 400)</value>
+      <value>(288, 312)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -441,6 +398,45 @@
     <param>
       <key>type</key>
       <value>byte</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+  </block>
+  <block>
+    <key>grnet_Signed8ToComplex</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(432, 312)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>grnet_Signed8ToComplex_0</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -475,7 +471,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(72, 392)</value>
+      <value>(32, 272)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -516,6 +512,99 @@
     <param>
       <key>payloadsize</key>
       <value>4160</value>
+    </param>
+  </block>
+  <block>
+    <key>note</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(248, 404)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>note_0</value>
+    </param>
+    <param>
+      <key>note</key>
+      <value>Requires CorrectIQ</value>
+    </param>
+  </block>
+  <block>
+    <key>note</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(464, 404)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>note_0_0</value>
+    </param>
+    <param>
+      <key>note</key>
+      <value>Block in gr-grnet</value>
+    </param>
+  </block>
+  <block>
+    <key>note</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(48, 404)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>note_0_0_0</value>
+    </param>
+    <param>
+      <key>note</key>
+      <value>Block in gr-grnet</value>
     </param>
   </block>
   <block>
@@ -566,7 +655,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(896, 440)</value>
+      <value>(1064, 452)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1176,12 +1265,6 @@
     </param>
   </block>
   <connection>
-    <source_block_id>blocks_interleaved_char_to_complex_0</source_block_id>
-    <sink_block_id>blocks_throttle_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
     <source_block_id>blocks_probe_rate_0</source_block_id>
     <sink_block_id>blocks_message_debug_0</sink_block_id>
     <source_key>rate</source_key>
@@ -1207,7 +1290,13 @@
   </connection>
   <connection>
     <source_block_id>correctiq_SwapIQ_0</source_block_id>
-    <sink_block_id>blocks_interleaved_char_to_complex_0</sink_block_id>
+    <sink_block_id>grnet_Signed8ToComplex_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>grnet_Signed8ToComplex_0</source_block_id>
+    <sink_block_id>blocks_throttle_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>

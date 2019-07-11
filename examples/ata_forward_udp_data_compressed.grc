@@ -217,7 +217,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(216, 160)</value>
+      <value>(104, 160)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -272,7 +272,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(216, 328)</value>
+      <value>(96, 328)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -316,6 +316,10 @@
     <param>
       <key>alias</key>
       <value></value>
+    </param>
+    <param>
+      <key>blocksize</key>
+      <value>64000</value>
     </param>
     <param>
       <key>comment</key>
@@ -373,6 +377,10 @@
       <value></value>
     </param>
     <param>
+      <key>blocksize</key>
+      <value>64000</value>
+    </param>
+    <param>
       <key>comment</key>
       <value></value>
     </param>
@@ -418,6 +426,92 @@
     </param>
   </block>
   <block>
+    <key>correctiq_SwapIQ</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(648, 352)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>correctiq_SwapIQ_0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>byte</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+  </block>
+  <block>
+    <key>correctiq_SwapIQ</key>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(640, 184)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>correctiq_SwapIQ_0_0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>byte</value>
+    </param>
+    <param>
+      <key>maxoutbuf</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>minoutbuf</key>
+      <value>0</value>
+    </param>
+  </block>
+  <block>
     <key>grnet_ByteComplexDecimator</key>
     <param>
       <key>alias</key>
@@ -441,7 +535,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(488, 180)</value>
+      <value>(360, 180)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -484,7 +578,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(448, 348)</value>
+      <value>(368, 348)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -983,26 +1077,38 @@
     <sink_key>in</sink_key>
   </connection>
   <connection>
-    <source_block_id>grnet_ByteComplexDecimator_0</source_block_id>
-    <sink_block_id>compress_compress_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>grnet_ByteComplexDecimator_0</source_block_id>
-    <sink_block_id>grnet_Signed8ToComplex_0</sink_block_id>
-    <source_key>0</source_key>
-    <sink_key>0</sink_key>
-  </connection>
-  <connection>
-    <source_block_id>grnet_ByteComplexDecimator_0_0</source_block_id>
+    <source_block_id>correctiq_SwapIQ_0</source_block_id>
     <sink_block_id>compress_compress_0_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
   <connection>
-    <source_block_id>grnet_ByteComplexDecimator_0_0</source_block_id>
+    <source_block_id>correctiq_SwapIQ_0</source_block_id>
     <sink_block_id>grnet_Signed8ToComplex_0_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>correctiq_SwapIQ_0_0</source_block_id>
+    <sink_block_id>compress_compress_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>correctiq_SwapIQ_0_0</source_block_id>
+    <sink_block_id>grnet_Signed8ToComplex_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>grnet_ByteComplexDecimator_0</source_block_id>
+    <sink_block_id>correctiq_SwapIQ_0_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>grnet_ByteComplexDecimator_0_0</source_block_id>
+    <sink_block_id>correctiq_SwapIQ_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
