@@ -542,7 +542,7 @@
     </param>
     <param>
       <key>basefile</key>
-      <value>ata_x</value>
+      <value>ata_y</value>
     </param>
     <param>
       <key>bits_per_sample</key>
