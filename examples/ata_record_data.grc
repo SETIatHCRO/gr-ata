@@ -519,7 +519,7 @@
     </param>
     <param>
       <key>recordOnStart</key>
-      <value>False</value>
+      <value>True</value>
     </param>
     <param>
       <key>sampleRate</key>
@@ -602,7 +602,7 @@
     </param>
     <param>
       <key>recordOnStart</key>
-      <value>False</value>
+      <value>True</value>
     </param>
     <param>
       <key>sampleRate</key>
