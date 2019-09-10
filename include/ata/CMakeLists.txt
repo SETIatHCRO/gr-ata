@@ -23,5 +23,5 @@
 ########################################################################
 install(FILES
     api.h
-    ata_stream.h DESTINATION include/ata
+    DESTINATION include/ata
 )

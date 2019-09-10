@@ -26,9 +26,9 @@
 #include <gnuradio/attributes.h>
 
 #ifdef gnuradio_ata_EXPORTS
-#  define ATA_API __GR_ATTR_EXPORT
+#define ATA_API __GR_ATTR_EXPORT
 #else
-#  define ATA_API __GR_ATTR_IMPORT
+#define ATA_API __GR_ATTR_IMPORT
 #endif
 
 #endif /* INCLUDED_ATA_API_H */

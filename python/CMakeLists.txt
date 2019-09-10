@@ -32,7 +32,8 @@ endif()
 GR_PYTHON_INSTALL(
     FILES
     __init__.py
-    atacontrol.py DESTINATION ${GR_PYTHON_DIR}/ata
+    atacontrol.py
+    DESTINATION ${GR_PYTHON_DIR}/ata
 )
 
 ########################################################################

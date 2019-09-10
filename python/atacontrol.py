@@ -47,7 +47,7 @@ class ata_poller(threading.Thread):
       try:
         freq = self.rpcclient.call('get_sky_freq',self.tuning)
       except Exception as e:
-        print "[ATA Control] Error getting frequency: %s" % str(e)
+        print("[ATA Control] Error getting frequency: %s" % str(e))
           
       # This is the thread sleep code.
       # breaking it down prevents the thread from seemingly 'hanging' on stopThread signal until sleep period expires.
@@ -78,7 +78,7 @@ class atacontrol(gr.basic_block):
       params={'use_bin_type':True}
       self.client = RPCClient(host, port, pack_params=params)
     except Exception as e:
-      print "[ATA Control] Error starting RPC client: %s" % str(e)
+      print("[ATA Control] Error starting RPC client: %s" % str(e))
       sys.exit(1)
     
     # Init thread
@@ -127,13 +127,13 @@ class atacontrol(gr.basic_block):
     try:
       freq = self.rpcclient.call('set_sky_freq',[self.tuning,freq])
     except Exception as e:
-      print "[ATA Control] Error setting frequency: %s" % str(e)
+      print("[ATA Control] Error setting frequency: %s" % str(e))
       
   def setAzEl(self,antennaname,az,el):
     try:
       freq = self.rpcclient.call('set_sky_freq',[antennaname,az,el])
     except Exception as e:
-      print "[ATA Control] Error setting frequency: %s" % str(e)
+      print("[ATA Control] Error setting frequency: %s" % str(e))
       
   def sendFreq(self,freq):
     p = pmt.from_float(freq)
