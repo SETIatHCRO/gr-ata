@@ -31,7 +31,7 @@ outputs:
 
 templates:
     imports: import grnet
-    make: grnet.udp_source(gr.sizeof_char, 1, ${port},${header},${payloadsize},${notifyMissed},False)
+    make: grnet.udp_source(gr.sizeof_char, 1, ${port},${header},${payloadsize},1048576,${notifyMissed},False)
 
 documentation: |-
     This block is a convenience wrapper for a gr-grnet UDP source block specific to ATA data streams.  Data streams come in on two UDP ports: 50000 for x polarization and 50001 for y polarization.  The new packet format has a 4160 payload (4096 + a 64-bit header).
