@@ -19,78 +19,100 @@
 # Boston, MA 02110-1301, USA.
 #
 
+''' This script contains the functionality necessary to
+    create a GNU Radio block to control subsets of the
+    Allen Telescope Array.
 
+    Ellie White 2 July 2020.
+'''
+
+import time
 import numpy
 from gnuradio import gr
 import pmt
 from ATATools import ata_control as ac
-import time
-
 
 class control(gr.basic_block):
     """
-    This block contains the necessary functions to initialize 
-    observations with the ATA, and point and track a subset of 
-    the antennas on a given source if commanded to do so. 
+    This block contains the necessary functions to initialize
+    observations with the ATA, and point and track a subset of
+    the antennas on a given source if commanded to do so.
     """
     def __init__(self, cfreq, ant_list, src_list, dur_list):
         gr.basic_block.__init__(self,
-            name="control",
-            in_sig=None,
-            out_sig=None)
-            
+                                name="control",
+                                in_sig=None,
+                                out_sig=None)
+
         self.cfreq = cfreq #center frequency
-        self.ant_list = ant_list #list of antennas to observe with
-        self.src_list = src_list #list of source names
+        self.ant_list = [a.strip() for a in ant_list.split(',')] #list of antennas to observe with
+        self.src_list = [s.strip() for s in src_list.split(',')] #list of source names
         self.dur_list = dur_list #list of scan durations, in seconds
-        
+
         #try to reserve the antennas you want to observe with;
-        #if it doesn't work you need to release the antennas, 
+        #if it doesn't work you need to release the antennas,
         #then re-reserve them.
         try:
             ac.reserve_antennas(self.ant_list)
-            
-        except:
+
+        except RuntimeError:
+            print("Antennas not released after last run. Releasing and reserving.")
             ac.release_antennas(self.ant_list)
             ac.reserve_antennas(self.ant_list)
-            
+
         #check if the LNAs are on -- if not, turn them on
         ac.try_on_lnas(self.ant_list)
-       
+
         #run setup with Autotune
-        ac.autotune(self.ant_list)    
-       
+        ac.autotune(self.ant_list)
+
         #set the center frequency
-        ac.set_freq(self.cfreq, self.ant_list) 
-       
+        ac.set_freq(self.cfreq, self.ant_list)
+        
+        self.run()
+        print("All done!")
+
     def point_and_track(self, src, dur):
-        
+
         ''' Tells the antenna to point and track on a given target '''
-        
+
         #create ephemeris file that tells the antenna
         #where it should be pointing at each timestamp
         ac.make_and_track_ephems(src, self.ant_list)
-        
+
         #stay on source for given duration
         time.sleep(dur)
-        
-    def setFreq(self, new_freq):
-    
+
+    def set_freq(self, new_freq):
+
         '''reset the center frequency '''
-        
+
         ac. set_freq(new_freq, self.ant_list)
-        
-    def getEqCoords(self):
-    
+
+    def get_eq_coords(self):
+
         ''' return current RA and Dec coordinates '''
         curr_radec = ac.getRaDec(self.ant_list)
         return curr_radec
-        
-    def endSession(self):
-    
+
+    def end_session(self):
+
         ''' release antennas at the end of a session '''
-    
+
         ac.release_antennas(self.ant_list, True)
+
+    def run(self):
+
+        num = len(self.src_list)
+        ra_dec = self.get_eq_coords()
+        print(ra_dec)
+
+        for i in range(num):
+            self.point_and_track(self.src_list[i], self.dur_list[i])
+            print(ra_dec)
+
+        self.end_session()
+
 
     def forecast(self, noutput_items, ninput_items_required):
         #setup size of input_items[i] for work call
@@ -98,6 +120,7 @@ class control(gr.basic_block):
             ninput_items_required[i] = noutput_items
 
     def general_work(self, input_items, output_items):
-        output_items[0][:] = input_items[0]
-        consume(0, len(input_items[0]))        #self.consume_each(len(input_items[0]))
-        return len(output_items[0])
+        print("in work function")
+        #output_items[0][:] = input_items[0]
+        #consume(0, len(input_items[0]))        #self.consume_each(len(input_items[0]))
+        #return len(output_items[0])
