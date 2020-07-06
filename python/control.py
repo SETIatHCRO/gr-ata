@@ -27,9 +27,9 @@
 '''
 
 import time
-import numpy
+#import numpy
 from gnuradio import gr
-import pmt
+#import pmt
 from ATATools import ata_control as ac
 
 class control(gr.basic_block):
@@ -68,7 +68,7 @@ class control(gr.basic_block):
 
         #set the center frequency
         ac.set_freq(self.cfreq, self.ant_list)
-        
+
         self.run()
         print("All done!")
 
@@ -102,6 +102,8 @@ class control(gr.basic_block):
         ac.release_antennas(self.ant_list, True)
 
     def run(self):
+
+        ''' this function runs the control script '''
 
         num = len(self.src_list)
         ra_dec = self.get_eq_coords()
