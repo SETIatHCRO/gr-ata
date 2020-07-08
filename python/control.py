@@ -29,8 +29,10 @@
 import time
 #import numpy
 from gnuradio import gr
-#import pmt
+import pmt
 from ATATools import ata_control as ac
+
+obs_info = []
 
 class control(gr.basic_block):
     """
@@ -38,25 +40,30 @@ class control(gr.basic_block):
     observations with the ATA, and point and track a subset of
     the antennas on a given source if commanded to do so.
     """
-    def __init__(self, cfreq, ant_list, src_list, dur_list):
+    def __init__(self):
         gr.basic_block.__init__(self,
                                 name="control",
                                 in_sig=None,
                                 out_sig=None)
 
-        self.cfreq = cfreq #center frequency
+        '''self.cfreq = cfreq #center frequency
         self.ant_list = [a.strip() for a in ant_list.split(',')] #list of antennas to observe with
         self.src_list = [s.strip() for s in src_list.split(',')] #list of source names
-        self.dur_list = dur_list #list of scan durations, in seconds
+        self.dur_list = dur_list #list of scan durations, in seconds'''
+        
+        self.message_port_register_in(pmt.intern("command"))
+        self.set_msg_handler(pmt.intern("command"), self.handle_msg)
+        
+        print(obs_info)
 
         #try to reserve the antennas you want to observe with;
         #if it doesn't work you need to release the antennas,
         #then re-reserve them.
-        try:
+        '''try:
             ac.reserve_antennas(self.ant_list)
 
         except RuntimeError:
-            print("Antennas not released after last run. Releasing and reserving.")
+            print("Antennas were not released after last run. Releasing and reserving.")
             ac.release_antennas(self.ant_list)
             ac.reserve_antennas(self.ant_list)
 
@@ -70,12 +77,15 @@ class control(gr.basic_block):
         ac.set_freq(self.cfreq, self.ant_list)
 
         self.run()
-        print("All done!")
+        print("All done!")'''
+        
+    def handle_msg(self, msg):
+        ''' message handler function'''
+        global obs_info
+        obs_info = pmt.dict_items(msg)
 
     def point_and_track(self, src, dur):
-
         ''' Tells the antenna to point and track on a given target '''
-
         #create ephemeris file that tells the antenna
         #where it should be pointing at each timestamp
         ac.make_and_track_ephems(src, self.ant_list)
@@ -84,27 +94,20 @@ class control(gr.basic_block):
         time.sleep(dur)
 
     def set_freq(self, new_freq):
-
         '''reset the center frequency '''
-
         ac. set_freq(new_freq, self.ant_list)
 
     def get_eq_coords(self):
-
         ''' return current RA and Dec coordinates '''
         curr_radec = ac.getRaDec(self.ant_list)
         return curr_radec
 
-    def end_session(self):
-
-        ''' release antennas at the end of a session '''
-
-        ac.release_antennas(self.ant_list, True)
+    #def end_session(self):
+        #''' release antennas at the end of a session '''
+        #ac.release_antennas(self.ant_list, True)
 
     def run(self):
-
         ''' this function runs the control script '''
-
         num = len(self.src_list)
         ra_dec = self.get_eq_coords()
         print(ra_dec)
@@ -113,7 +116,7 @@ class control(gr.basic_block):
             self.point_and_track(self.src_list[i], self.dur_list[i])
             print(ra_dec)
 
-        self.end_session()
+        #self.end_session()
 
 
     def forecast(self, noutput_items, ninput_items_required):
@@ -126,3 +129,8 @@ class control(gr.basic_block):
         #output_items[0][:] = input_items[0]
         #consume(0, len(input_items[0]))        #self.consume_each(len(input_items[0]))
         #return len(output_items[0])
+        
+    #def __del__(self):
+        ''' run this function to cleanly exit the session '''
+        #ac.release_antennas(self.ant_list, True)
+        #print("Antennas have been released. Session complete.")

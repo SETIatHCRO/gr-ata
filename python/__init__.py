@@ -33,4 +33,6 @@ except ImportError:
 
 # import any pure python here
 from .control import control
+
+from .trackscan import trackscan
 #

@@ -1,36 +1,39 @@
-id: ata_control
-label: ATA Control
+id: ata_trackscan
+label: ATA Track Scan
 category: '[ATA]'
 
 templates:
   imports: import ata
-  make: ata.control()
+  make: ata.trackscan()
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
 #     * id (makes the value accessible as \$keyname, e.g. in the make entry)
 #     * label (label shown in the GUI)
 #     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-#parameters:
-#- id: cfreq
-#  label: Center frequency
-#  dtype: float
-#  default: 0.0
+
+parameters:
+
+- id: cfreq
+  label: Center frequency
+  dtype: float
+  default: 0.0
   
-#- id: ant_list
-#  label: List of antennas
-#  dtype: string
-#  default: "Ex: ant1, ant2, ant3, ..."
+- id: ant_list
+  label: List of antennas
+  dtype: string
+  default: "Ex: ant1, ant2, ant3, ..."
 
-#- id: src_list
-#  label: List of sources
-#  dtype: string
-#  default: "Ex; src1, src2, src3, ..."
+- id: src_list
+  label: List of sources
+  dtype: string
+  default: "Ex; src1, src2, src3, ..."
 
-#- id: dur_list
-#  label: Scan durations (seconds)
-#  dtype: float_vector
-#  default: 30, 60
+- id: dur_list
+  label: Scan durations (seconds)
+  dtype: float_vector
+  default: 30, 60
+
 
 #  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
 #  Keys include:
@@ -39,24 +42,22 @@ templates:
 #      * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
 #      * vlen (optional - data stream vector length. Default is 1)
 #      * optional (optional - set to 1 for optional inputs. Default is 0)
-
-
-inputs:
-- label: command
-  domain: message
-  optional: false
-
-#outputs:
+#inputs:
 #- label: ...
 #  domain: ...
 #  dtype: ...
 #  vlen: ...
 #  optional: ...
 
+outputs:
+- label: command
+  domain: message
+  optional: false
+
 templates:
     imports: import ata
-    make: ata.control() #${cfreq}, ${ant_list}, ${src_list}, ${dur_list})
-    
+    make: ata.control(${cfreq}, ${ant_list}, ${src_list}, ${dur_list})
+
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.
 file_format: 1
