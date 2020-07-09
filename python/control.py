@@ -56,25 +56,39 @@ class control(gr.basic_block):
         
         '''print("obs_info: ", obs_info)
         
-        self.cfreq = obs_info['freq']
-        self.ant_list = [a.strip() for a in obs_info['antennas_list'].split(',')]
-        self.src_list = [s.strip() for s in obs_info["source_list"].split(',')] #
-        self.dur_list = obs_info["durations_list"] #list of scan durations, in seconds
-        
         print("Frequency: ", self.cfreq)
         print("Antennas: ", self.ant_list)
         print("Sources: ", self.src_list)
         print("Durations: ", self.dur_list)
         
+        
+        self.run()
+        print("All done!")'''
+        
+    def handle_msg(self, msg):
+        ''' message handler function'''
+        print("in message handler")
+        obs_info = pmt.to_python(msg)
+        
+        self.cfreq = obs_info['freq']
+        self.ant_list = [a.strip() for a in obs_info['antennas_list'].split(',')]
+        self.src_list = [s.strip() for s in obs_info["source_list"].split(',')] #
+        self.dur_list = obs_info["durations_list"] #list of scan durations, in seconds
+
+        self.begin()
+        self.run()
+        
+    def begin(self):
+        ''' initialize the observation '''
         #try to reserve the antennas you want to observe with;
         #if it doesn't work you need to release the antennas,
-        #then re-reserve them.'''
-        '''try:
+        #then re-reserve them.
+        try:
             ac.reserve_antennas(self.ant_list)
 
         except RuntimeError:
             print("Antennas were not released after last run. Releasing and reserving.")
-            ac.release_antennas(self.ant_list)
+            ac.release_antennas(self.ant_list, False)
             ac.reserve_antennas(self.ant_list)
 
         #check if the LNAs are on -- if not, turn them on
@@ -85,26 +99,7 @@ class control(gr.basic_block):
 
         #set the center frequency
         ac.set_freq(self.cfreq, self.ant_list)
-
-        self.run()
-        print("All done!")'''
         
-    def handle_msg(self, msg):
-        ''' message handler function'''
-        print("in message handler")
-        global obs_info
-        obs_info = pmt.to_python(msg)
-        print(obs_info)
-        
-    def start(self):
-        global obs_info
-
-        if bool(obs_info): #make sure obs_info isn't empty
-            print("**start obs_info** ", obs_info)
-            return super().start()
-        else:
-            print("empty")
-        return super().start()
 
     def point_and_track(self, src, dur):
         ''' Tells the antenna to point and track on a given target '''
@@ -124,9 +119,9 @@ class control(gr.basic_block):
         curr_radec = ac.getRaDec(self.ant_list)
         return curr_radec
 
-    #def end_session(self):
-        #''' release antennas at the end of a session '''
-        #ac.release_antennas(self.ant_list, True)
+    def end_session(self):
+        ''' release antennas at the end of a session '''
+        ac.release_antennas(self.ant_list, True)
 
     def run(self):
         ''' this function runs the control script '''
@@ -138,7 +133,7 @@ class control(gr.basic_block):
             self.point_and_track(self.src_list[i], self.dur_list[i])
             print(ra_dec)
 
-        #self.end_session()
+        self.end_session()
 
 
     def forecast(self, noutput_items, ninput_items_required):
@@ -152,7 +147,7 @@ class control(gr.basic_block):
         #consume(0, len(input_items[0]))        #self.consume_each(len(input_items[0]))
         #return len(output_items[0])
         
-    #def __del__(self):
-        ''' run this function to cleanly exit the session '''
-        #ac.release_antennas(self.ant_list, True)
-        #print("Antennas have been released. Session complete.")
+    '''def __del__(self):
+        run this function to cleanly exit the session
+        ac.release_antennas(self.ant_list, True)
+        print("Antennas have been released. Session complete.")'''
