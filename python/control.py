@@ -32,7 +32,7 @@ from gnuradio import gr
 import pmt
 from ATATools import ata_control as ac
 
-obs_info = []
+obs_info = {}
 
 class control(gr.basic_block):
     """
@@ -52,11 +52,23 @@ class control(gr.basic_block):
         self.dur_list = dur_list #list of scan durations, in seconds'''
         
         self.message_port_register_in(pmt.intern("command"))
-        self.set_msg_handler(pmt.intern("command"), self.handle_msg)
-
+        self.set_msg_handler(pmt.intern("command"), self.handle_msg)      
+        
+        '''print("obs_info: ", obs_info)
+        
+        self.cfreq = obs_info['freq']
+        self.ant_list = [a.strip() for a in obs_info['antennas_list'].split(',')]
+        self.src_list = [s.strip() for s in obs_info["source_list"].split(',')] #
+        self.dur_list = obs_info["durations_list"] #list of scan durations, in seconds
+        
+        print("Frequency: ", self.cfreq)
+        print("Antennas: ", self.ant_list)
+        print("Sources: ", self.src_list)
+        print("Durations: ", self.dur_list)
+        
         #try to reserve the antennas you want to observe with;
         #if it doesn't work you need to release the antennas,
-        #then re-reserve them.
+        #then re-reserve them.'''
         '''try:
             ac.reserve_antennas(self.ant_list)
 
@@ -79,9 +91,20 @@ class control(gr.basic_block):
         
     def handle_msg(self, msg):
         ''' message handler function'''
+        print("in message handler")
         global obs_info
-        obs_info = pmt.dict_items(msg)
+        obs_info = pmt.to_python(msg)
         print(obs_info)
+        
+    def start(self):
+        global obs_info
+
+        if bool(obs_info): #make sure obs_info isn't empty
+            print("**start obs_info** ", obs_info)
+            return super().start()
+        else:
+            print("empty")
+        return super().start()
 
     def point_and_track(self, src, dur):
         ''' Tells the antenna to point and track on a given target '''

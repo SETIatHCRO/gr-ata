@@ -24,6 +24,8 @@ import numpy
 from gnuradio import gr
 import pmt
 
+command = pmt.make_dict()
+
 class trackscan(gr.sync_block):
     """
     This block provides necessary parameters to the
@@ -31,6 +33,9 @@ class trackscan(gr.sync_block):
     scans.
     """
     def __init__(self, cfreq, ant_list, src_list, dur_list):
+    
+        global command
+    
         gr.sync_block.__init__(self,
                                name="trackscan",
                                in_sig=None,
@@ -58,18 +63,16 @@ class trackscan(gr.sync_block):
         dur_key = pmt.intern("durations_list")
         dur_val = pmt.to_pmt(self.dur_list)
 
-        command = pmt.make_dict()
+        #command = pmt.make_dict()
         command = pmt.dict_add(command, ant_key, ant_val)
         command = pmt.dict_add(command, freq_key, freq_val)
         command = pmt.dict_add(command, src_key, src_val)
         command = pmt.dict_add(command, dur_key, dur_val)
-
+        
+        #print(command)
+        
+    def start(self):
+    
+        global command
         self.message_port_pub(pmt.intern("command"), command)
-
-    def work(self, input_items, output_items):
-        in0 = input_items[0]
-        out = output_items[0]
-        # <+signal processing here+>
-        out[:] = in0
-        return len(output_items[0])
-
+        return super().start()
