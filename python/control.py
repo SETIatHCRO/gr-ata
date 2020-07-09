@@ -53,8 +53,6 @@ class control(gr.basic_block):
         
         self.message_port_register_in(pmt.intern("command"))
         self.set_msg_handler(pmt.intern("command"), self.handle_msg)
-        
-        print(obs_info)
 
         #try to reserve the antennas you want to observe with;
         #if it doesn't work you need to release the antennas,
@@ -83,6 +81,7 @@ class control(gr.basic_block):
         ''' message handler function'''
         global obs_info
         obs_info = pmt.dict_items(msg)
+        print(obs_info)
 
     def point_and_track(self, src, dur):
         ''' Tells the antenna to point and track on a given target '''

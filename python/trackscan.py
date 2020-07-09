@@ -37,8 +37,8 @@ class trackscan(gr.sync_block):
                                out_sig=None)
                                
         self.cfreq = cfreq #center frequency
-        self.ant_list = [a.strip() for a in ant_list.split(',')] #antennas to observe with
-        self.src_list = [s.strip() for s in src_list.split(',')] #list of source names
+        self.ant_list = ant_list #antennas to observe with
+        self.src_list = src_list #list of source names
         self.dur_list = dur_list #list of scan durations, in seconds
         
         self.message_port_register_out(pmt.intern("command"))
