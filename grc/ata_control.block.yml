@@ -2,19 +2,16 @@ id: ata_control
 label: ATA Control
 category: '[ATA]'
 
-templates:
-  imports: import ata
-  make: ata.control()
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
 #     * id (makes the value accessible as \$keyname, e.g. in the make entry)
 #     * label (label shown in the GUI)
 #     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-#parameters:
-#- id: cfreq
-#  label: Center frequency
-#  dtype: float
+parameters:
+- id: username
+  label: Username
+  dtype: string
 #  default: 0.0
   
 #- id: ant_list
@@ -55,7 +52,7 @@ inputs:
 
 templates:
     imports: import ata
-    make: ata.control() #${cfreq}, ${ant_list}, ${src_list}, ${dur_list})
+    make: ata.control(${username}) #, ${ant_list}, ${src_list}, ${dur_list})
     
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.

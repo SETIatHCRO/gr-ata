@@ -40,43 +40,38 @@ class control(gr.basic_block):
     observations with the ATA, and point and track a subset of
     the antennas on a given source if commanded to do so.
     """
-    def __init__(self):
+    def __init__(self, username):
         gr.basic_block.__init__(self,
                                 name="control",
                                 in_sig=None,
                                 out_sig=None)
+        
+        self.username = username
+        alarm = ac.get_alarm()
+        
+        if alarm['user'] == self.username:
+            self.message_port_register_in(pmt.intern("command"))
+            self.set_msg_handler(pmt.intern("command"), self.handle_msg)
+            
+        else:
+            raise Exception("Wrong username, you do not have permission to observe")
 
-        '''self.cfreq = cfreq #center frequency
-        self.ant_list = [a.strip() for a in ant_list.split(',')] #list of antennas to observe with
-        self.src_list = [s.strip() for s in src_list.split(',')] #list of source names
-        self.dur_list = dur_list #list of scan durations, in seconds'''
-        
-        self.message_port_register_in(pmt.intern("command"))
-        self.set_msg_handler(pmt.intern("command"), self.handle_msg)      
-        
-        '''print("obs_info: ", obs_info)
-        
-        print("Frequency: ", self.cfreq)
-        print("Antennas: ", self.ant_list)
-        print("Sources: ", self.src_list)
-        print("Durations: ", self.dur_list)
-        
-        
-        self.run()
-        print("All done!")'''
         
     def handle_msg(self, msg):
         ''' message handler function'''
         print("in message handler")
-        obs_info = pmt.to_python(msg)
+        self.obs_info = pmt.to_python(msg)
         
-        self.cfreq = obs_info['freq']
-        self.ant_list = [a.strip() for a in obs_info['antennas_list'].split(',')]
-        self.src_list = [s.strip() for s in obs_info["source_list"].split(',')] #
-        self.dur_list = obs_info["durations_list"] #list of scan durations, in seconds
-
+        self.cfreq = self.obs_info['freq']
+        self.ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
+        self.src_list = [s.strip() for s in self.obs_info["source_list"].split(',')] #
+        self.dur_list = self.obs_info["durations_list"] #list of scan durations, in seconds
+        self.obs_type = self.obs_info["obs_type"]
+        
         self.begin()
         self.run()
+        self.end_session()
+        self.work()
         
     def begin(self):
         ''' initialize the observation '''
@@ -94,60 +89,92 @@ class control(gr.basic_block):
         #check if the LNAs are on -- if not, turn them on
         ac.try_on_lnas(self.ant_list)
 
-        #run setup with Autotune
-        ac.autotune(self.ant_list)
-
         #set the center frequency
         ac.set_freq(self.cfreq, self.ant_list)
         
+        
+    def run(self):
+        ''' this function runs the control script '''
+        
+        if self.obs_type == "track":
+            self.track()
+        
+        elif self.obs_type == "onoff":
+            print("On-Off hasn't been implemented yet")
+            
+        else:
+            print("Sorry, you didn't select an observation type. Ending session.")
+        
+    def track(self):
+    
+        ''' run a sequence of tracking observations '''
+    
+        self.coord_type = self.obs_info["coord_type"]
 
-    def point_and_track(self, src, dur):
-        ''' Tells the antenna to point and track on a given target '''
-        #create ephemeris file that tells the antenna
-        #where it should be pointing at each timestamp
-        ac.make_and_track_ephems(src, self.ant_list)
+        #point at first source and autotune
+        if self.coord_type == "id":
+            ac.make_and_track_ephems(self.src_list[0], self.ant_list)
+            
+        elif self.coord_type == "azel":
+            #insert call to ata control fn
+            print("az-el not yet implemented")
+            
+        elif self.coord_type == "radec":
+            #insert fn call
+            print("radec not yet implemented")
+            
+        else:
+            print("No coordinate type specified!")
+            return
+            
+        #run setup with Autotune
+        ac.autotune(self.ant_list)
+        
+        #track on the first source for a given duration
+        time.sleep(self.dur_list[0])
+        print("Done tracking on {0}".format(self.src_list[0]))
+        
+        #track on remaining sources
+        
+        num = len(self.src_list) - 1
 
-        #stay on source for given duration
-        time.sleep(dur)
+        for i in range(num):
+        
+            if self.coord_type == "id":
+                ac.make_and_track_ephems(self.src_list[i+1], self.ant_list)
+            
+            elif self.coord_type == "azel":
+                #insert call to ata control fn
+                print("azel not yet implemented")
+            
+            elif self.coord_type == "radec":
+                #insert fn call
+                print("radec not implemented")
+            
+            else:
+                print("No coordinate type specified!")
+                return
+                
+            time.sleep(self.dur_list[i+1])
+            print("Done tracking on {0}".format(self.src_list[i+1]))
 
     def set_freq(self, new_freq):
         '''reset the center frequency '''
-        ac. set_freq(new_freq, self.ant_list)
+        ac.set_freq(new_freq, self.ant_list)
 
     def get_eq_coords(self):
         ''' return current RA and Dec coordinates '''
         curr_radec = ac.getRaDec(self.ant_list)
         return curr_radec
-
+        
     def end_session(self):
         ''' release antennas at the end of a session '''
         ac.release_antennas(self.ant_list, True)
-
-    def run(self):
-        ''' this function runs the control script '''
-        num = len(self.src_list)
-        ra_dec = self.get_eq_coords()
-        print(ra_dec)
-
-        for i in range(num):
-            self.point_and_track(self.src_list[i], self.dur_list[i])
-            print(ra_dec)
-
-        self.end_session()
+        print("Antennas have been released and stowed.")
 
 
-    def forecast(self, noutput_items, ninput_items_required):
-        #setup size of input_items[i] for work call
-        for i in range(len(ninput_items_required)):
-            ninput_items_required[i] = noutput_items
-
-    def general_work(self, input_items, output_items):
-        print("in work function")
-        #output_items[0][:] = input_items[0]
-        #consume(0, len(input_items[0]))        #self.consume_each(len(input_items[0]))
-        #return len(output_items[0])
+    def work(self):
+        '''run this function to cleanly exit the session'''
         
-    '''def __del__(self):
-        run this function to cleanly exit the session
-        ac.release_antennas(self.ant_list, True)
-        print("Antennas have been released. Session complete.")'''
+        print("Exiting session")
+        return -1

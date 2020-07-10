@@ -32,7 +32,7 @@ class trackscan(gr.sync_block):
     ATA control block to run a sequence of simple track
     scans.
     """
-    def __init__(self, cfreq, ant_list, src_list, dur_list):
+    def __init__(self, cfreq, ant_list, src_list, dur_list, coord_type):
     
         global command
     
@@ -45,6 +45,7 @@ class trackscan(gr.sync_block):
         self.ant_list = ant_list #antennas to observe with
         self.src_list = src_list #list of source names
         self.dur_list = dur_list #list of scan durations, in seconds
+        self.coord_type = coord_type #how coordinate of source is specified
         
         self.message_port_register_out(pmt.intern("command"))
         
@@ -62,17 +63,25 @@ class trackscan(gr.sync_block):
 
         dur_key = pmt.intern("durations_list")
         dur_val = pmt.to_pmt(self.dur_list)
+        
+        coord_key = pmt.intern("coord_type")
+        coord_val = pmt.intern(self.coord_type)
+        
+        obs_key = pmt.intern("obs_type")
+        obs_val = pmt.intern("track")
 
         #command = pmt.make_dict()
         command = pmt.dict_add(command, ant_key, ant_val)
         command = pmt.dict_add(command, freq_key, freq_val)
         command = pmt.dict_add(command, src_key, src_val)
         command = pmt.dict_add(command, dur_key, dur_val)
+        command = pmt.dict_add(command, obs_key, obs_val)
+        command = pmt.dict_add(command, coord_key, coord_val)
         
         #print(command)
         
     def start(self):
-    
+        ''' publish the observation info to the output message port '''
         global command
         self.message_port_pub(pmt.intern("command"), command)
         return super().start()
