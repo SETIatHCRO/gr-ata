@@ -35,4 +35,5 @@ except ImportError:
 from .control import control
 
 from .trackscan import trackscan
+from .onoff import onoff
 #

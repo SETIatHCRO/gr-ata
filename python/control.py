@@ -30,7 +30,13 @@ import time
 #import numpy
 from gnuradio import gr
 import pmt
+from astropy import units as u
+from astropy.coordinates import EarthLocation
+from astropy.coordinates import AltAz
+from astropy.coordinates import SkyCoord
+from astropy.time import Time as astrotime
 from ATATools import ata_control as ac
+from ATATools import ata_positions as ap
 
 obs_info = {}
 
@@ -46,6 +52,8 @@ class control(gr.basic_block):
                                 in_sig=None,
                                 out_sig=None)
         
+        self.hat_creek = EarthLocation(lat='40d49.05m', lon='-121d28.40m', height=986.0*u.m)
+        self.pos = ap.ATAPositions()
         self.username = username
         alarm = ac.get_alarm()
         
@@ -64,21 +72,22 @@ class control(gr.basic_block):
         
         self.cfreq = self.obs_info['freq']
         self.ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
-        self.src_list = self.obs_info["source_list"] #[s.strip() for s in self.obs_info["source_list"].split(',')]
-        self.ra = self.obs_info["ra"]
+        self.coord_type = self.obs_info['coord_type']
+        self.src_list = self.obs_info["source_list"] #this should be moved to track fn --[s.strip() for s in self.obs_info["source_list"].split(',')]
+        '''self.ra = self.obs_info["ra"]
         self.dec = self.obs_info["dec"]
         self.az = self.obs_info["az"]
-        self.el = self.obs_info["el"]
-        self.dur_list = self.obs_info["durations_list"] #list of scan durations, in seconds
+        self.el = self.obs_info["el"]'''
+        self.dur_list = self.obs_info["durations_list"] # this should be moved to track fn --list of scan durations, in seconds
         self.obs_type = self.obs_info["obs_type"]
         
-        print("Source ID: {0}".format(self.src_list))
+        '''print("Source ID: {0}".format(self.src_list))
         print("RA: {0}, Dec: {1}".format(self.ra, self.dec))
-        print("Az: {0}, El: {1}".format(self.az, self.el))
+        print("Az: {0}, El: {1}".format(self.az, self.el))'''
         
-        #self.begin()
-        #self.run()
-        #self.end_session()
+        self.begin()
+        self.run()
+        self.end_session()
         #self.work()
         
     def begin(self):
@@ -110,29 +119,73 @@ class control(gr.basic_block):
             self.track()
         
         elif self.obs_type == "onoff":
-            print("On-Off hasn't been implemented yet")
+            self.on_off()
             
         else:
             print("Sorry, you didn't select an observation type. Ending session.")
+            return
+            
+    def on_off(self):
+        
+        ''' run on-off observation '''
+        
+        self.az_off = self.obs_info["az_off"]
+        self.el_off = self.obs_info["el_off"]
+        now = time.now()
+        
+        if self.coord_type == "id":
+            self.src_list = [s.strip() for s in self.obs_info["source_list"].split(',')]
+            if self.pos.isUp(self.src_list[0], now):
+                ac.create_ephems2(self.src_list[0], self.az_off, self.el_off)
+                ac.point_ants2(self.src_list[0], 'on', self.ant_list)
+            else:
+                print("Source {0} is not up yet. Update source list and try again.".format(self.src_list[0]))
+                return
+               
+        else:
+            print("Coordinates other than source ID haven't been implemented for track scan yet.")
+            return
+           
+        ac.autotune(self.ant_list)
+       
+        time.sleep(self.dur_list[0])
+        print("Done tracking on-source. Moving off-source...")
+       
+        ac.point_ants2(self.src_list[0], 'off', self.ant_list)
+       
+        time.sleep(self.dur_list[1])
+        print("Done tracking off-source.")
         
     def track(self):
     
         ''' run a sequence of tracking observations '''
-    
-        self.coord_type = self.obs_info["coord_type"]
 
         #point at first source and autotune
         if self.coord_type == "id":
             self.src_list = [s.strip() for s in self.obs_info["source_list"].split(',')]
-            ac.make_and_track_source(self.src_list[0], self.ant_list)
+            if self.pos.isUp(self.src_list[0]):
+                ac.make_and_track_source(self.src_list[0], self.ant_list)
+            else: 
+                raise Exception("{0} is not up yet. Adjust your source list and try again.")
             
         elif self.coord_type == "azel":
             #insert call to ata control fn
-            ac.set_az_el(self.ant_list, self.az, self.el)
+            if self.el > 23.0: #this is the min. elevation indicated in ata_positions
+                ac.set_az_el(self.ant_list, self.az, self.el)
+            else:
+                raise Exception("Az: {0} and El: {1} is not up yet. Adjust your source list and try again.".format(self.az, self.el))
             
         elif self.coord_type == "radec":
-            ac.make_and_track_ra_dec(self.ra, self.dec, self.ant_list)
-  
+            now = astrotime.now()
+            hcro_azel = AltAz(location=self.hat_creek, time=now)
+            src = SkyCoord(ra=self.ra*u.deg, dec=self.dec*u.deg, frame='icrs')
+            src_el = src.transform_to(hcro_azel).alt
+            
+            if src_el > 23.0:
+                ac.make_and_track_ra_dec(self.ra, self.dec, self.ant_list)
+            else:
+                raise Exception("RA: {0} and Dec: {1} is not up yet. Adjust your source list and try again.".format(self.ra, self.dec))
+             
         else:
             print("No coordinate type specified!")
             return

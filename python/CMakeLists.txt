@@ -33,7 +33,8 @@ GR_PYTHON_INSTALL(
     FILES
     __init__.py
     control.py
-    trackscan.py DESTINATION ${GR_PYTHON_DIR}/ata
+    trackscan.py
+    onoff.py DESTINATION ${GR_PYTHON_DIR}/ata
 )
 
 ########################################################################
@@ -45,3 +46,4 @@ set(GR_TEST_TARGET_DEPS gnuradio-ata)
 set(GR_TEST_PYTHON_DIRS ${CMAKE_BINARY_DIR}/swig)
 GR_ADD_TEST(qa_control ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_control.py)
 GR_ADD_TEST(qa_trackscan ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_trackscan.py)
+GR_ADD_TEST(qa_onoff ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_onoff.py)
