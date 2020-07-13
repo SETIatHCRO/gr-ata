@@ -64,14 +64,22 @@ class control(gr.basic_block):
         
         self.cfreq = self.obs_info['freq']
         self.ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
-        self.src_list = [s.strip() for s in self.obs_info["source_list"].split(',')] #
+        self.src_list = self.obs_info["source_list"] #[s.strip() for s in self.obs_info["source_list"].split(',')]
+        self.ra = self.obs_info["ra"]
+        self.dec = self.obs_info["dec"]
+        self.az = self.obs_info["az"]
+        self.el = self.obs_info["el"]
         self.dur_list = self.obs_info["durations_list"] #list of scan durations, in seconds
         self.obs_type = self.obs_info["obs_type"]
         
-        self.begin()
-        self.run()
-        self.end_session()
-        self.work()
+        print("Source ID: {0}".format(self.src_list))
+        print("RA: {0}, Dec: {1}".format(self.ra, self.dec))
+        print("Az: {0}, El: {1}".format(self.az, self.el))
+        
+        #self.begin()
+        #self.run()
+        #self.end_session()
+        #self.work()
         
     def begin(self):
         ''' initialize the observation '''
@@ -94,7 +102,9 @@ class control(gr.basic_block):
         
         
     def run(self):
-        ''' this function runs the control script '''
+        ''' this function identifies what observation
+            you are running and calls the appropriate
+            observing function '''
         
         if self.obs_type == "track":
             self.track()
@@ -113,16 +123,16 @@ class control(gr.basic_block):
 
         #point at first source and autotune
         if self.coord_type == "id":
-            ac.make_and_track_ephems(self.src_list[0], self.ant_list)
+            self.src_list = [s.strip() for s in self.obs_info["source_list"].split(',')]
+            ac.make_and_track_source(self.src_list[0], self.ant_list)
             
         elif self.coord_type == "azel":
             #insert call to ata control fn
-            print("az-el not yet implemented")
+            ac.set_az_el(self.ant_list, self.az, self.el)
             
         elif self.coord_type == "radec":
-            #insert fn call
-            print("radec not yet implemented")
-            
+            ac.make_and_track_ra_dec(self.ra, self.dec, self.ant_list)
+  
         else:
             print("No coordinate type specified!")
             return
