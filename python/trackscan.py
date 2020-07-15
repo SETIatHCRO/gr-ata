@@ -32,7 +32,7 @@ class trackscan(gr.sync_block):
     ATA control block to run a sequence of simple track
     scans.
     """
-    def __init__(self, cfreq, ant_list, coord_type, dur_list): #src_list="no source", ra=14.00, dec=67.00, az=0.00, el=18.00):
+    def __init__(self, cfreq, ant_list, coord_type, dur): #src_list="no source", ra=14.00, dec=67.00, az=0.00, el=18.00):
     
         global command
     
@@ -44,7 +44,7 @@ class trackscan(gr.sync_block):
         self.cfreq = cfreq #center frequency
         self.ant_list = ant_list #antennas to observe with
         #self.src_list = src_list #list of source names
-        self.dur_list = dur_list #list of scan durations, in seconds
+        self.dur = dur #scan duration, in seconds
         self.coord_type = coord_type #how coordinate of source is specified
         '''self.ra = ra
         self.dec = dec
@@ -68,15 +68,35 @@ class trackscan(gr.sync_block):
         coord_key = pmt.intern("coord_type")
         coord_val = pmt.intern(self.coord_type)
         
-        dur_key = pmt.intern("durations_list")
-        dur_val = pmt.to_pmt(self.dur_list)
-
+        dur_key = pmt.intern("dur")
+        dur_val = pmt.from_double(self.dur)
+        
+        '''src_key = pmt.intern("source_list")
+        src_val = pmt.intern(self.src_list)
+        
+        ra_key = pmt.intern("ra")
+        ra_val = pmt.from_double(self.ra)
+            
+        dec_key = pmt.intern("dec")
+        dec_val = pmt.from_double(self.dec)
+        
+        az_key = pmt.intern("az")
+        az_val = pmt.from_double(self.az)
+            
+        el_key = pmt.intern("el")
+        el_val = pmt.from_double(self.el)'''
+        
         command = pmt.make_dict()
         command = pmt.dict_add(command, ant_key, ant_val)
         command = pmt.dict_add(command, freq_key, freq_val)
         command = pmt.dict_add(command, dur_key, dur_val)
         command = pmt.dict_add(command, obs_key, obs_val)
         command = pmt.dict_add(command, coord_key, coord_val)
+        '''command = pmt.dict_add(command, src_key, src_val)
+        command = pmt.dict_add(command, ra_key, ra_val)
+        command = pmt.dict_add(command, dec_key, dec_val)
+        command = pmt.dict_add(command, az_key, az_val)
+        command = pmt.dict_add(command, el_key, el_val)'''
         
         self.command = command
         

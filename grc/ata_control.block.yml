@@ -54,6 +54,15 @@ templates:
     imports: import ata
     make: ata.control(${username}) #, ${ant_list}, ${src_list}, ${dur_list})
     
+documentation: |-
+    This block sends commands to the Allen Telescope Array and takes 
+    orders from blocks like ATA Track Scan and ATA On-Off to point
+    antennas in the array at target sources indicated by the user.
+    
+    The username field allows the block to perform a check that you 
+    have locked out the array, and terminates your observation if 
+    not to avoid conflicts with other observers.
+    
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.
 file_format: 1

@@ -27,6 +27,7 @@
 '''
 
 import time
+from datetime import datetime
 #import numpy
 from gnuradio import gr
 import pmt
@@ -73,12 +74,7 @@ class control(gr.basic_block):
         self.cfreq = self.obs_info['freq']
         self.ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
         self.coord_type = self.obs_info['coord_type']
-        self.src_list = self.obs_info["source_list"] #this should be moved to track fn --[s.strip() for s in self.obs_info["source_list"].split(',')]
-        '''self.ra = self.obs_info["ra"]
-        self.dec = self.obs_info["dec"]
-        self.az = self.obs_info["az"]
-        self.el = self.obs_info["el"]'''
-        self.dur_list = self.obs_info["durations_list"] # this should be moved to track fn --list of scan durations, in seconds
+         # this should be moved to track fn --list of scan durations, in seconds
         self.obs_type = self.obs_info["obs_type"]
         
         '''print("Source ID: {0}".format(self.src_list))
@@ -129,21 +125,26 @@ class control(gr.basic_block):
         
         ''' run on-off observation '''
         
-        self.az_off = self.obs_info["az_off"]
+        self.az_off = self.obs_info["az_off"]       
         self.el_off = self.obs_info["el_off"]
-        now = time.now()
+        
+        self.dur_list = self.obs_info["durations_list"]
+        self.src = self.obs_info["source_list"]
+        
+        now = datetime.now()
         
         if self.coord_type == "id":
-            self.src_list = [s.strip() for s in self.obs_info["source_list"].split(',')]
-            if self.pos.isUp(self.src_list[0], now):
-                ac.create_ephems2(self.src_list[0], self.az_off, self.el_off)
-                ac.point_ants2(self.src_list[0], 'on', self.ant_list)
+            src_ra, src_dec = ac.get_source_ra_dec(self.src)
+                        
+            if self.pos.isUp('radec', now, src_ra, src_dec):
+                ac.create_ephems2(self.src, self.az_off, self.el_off)
+                ac.point_ants2(self.src, 'on', self.ant_list)
             else:
-                print("Source {0} is not up yet. Update source list and try again.".format(self.src_list[0]))
+                print("Source {0} is not up yet. Update source list and try again.".format(self.src))
                 return
                
         else:
-            print("Coordinates other than source ID haven't been implemented for track scan yet.")
+            print("Coordinates other than source ID haven't been implemented for on-off observations yet.")
             return
            
         ac.autotune(self.ant_list)
@@ -151,7 +152,7 @@ class control(gr.basic_block):
         time.sleep(self.dur_list[0])
         print("Done tracking on-source. Moving off-source...")
        
-        ac.point_ants2(self.src_list[0], 'off', self.ant_list)
+        ac.point_ants2(self.src, 'off', self.ant_list)
        
         time.sleep(self.dur_list[1])
         print("Done tracking off-source.")
@@ -159,23 +160,44 @@ class control(gr.basic_block):
     def track(self):
     
         ''' run a sequence of tracking observations '''
+        
+        #self.src = self.obs_info["source_list"] #this should be moved to track fn --[s.strip() for s in self.obs_info["source_list"].split(',')]
+        '''self.ra = self.obs_info["ra"]
+        self.dec = self.obs_info["dec"]
+        self.az = self.obs_info["az"]
+        self.el = self.obs_info["el"]'''
+        self.dur_list = self.obs_info["durations_list"]
+        
+        dt_now = datetime.now()
 
         #point at first source and autotune
         if self.coord_type == "id":
-            self.src_list = [s.strip() for s in self.obs_info["source_list"].split(',')]
-            if self.pos.isUp(self.src_list[0]):
-                ac.make_and_track_source(self.src_list[0], self.ant_list)
+        
+            self.src = self.obs_info["source_list"]
+            src_ra, src_dec = ac.get_source_ra_dec(self.src)
+            if self.pos.isUp('radec', dt_now, src_ra, src_dec):
+                ac.make_and_track_source(self.src, self.ant_list)
             else: 
-                raise Exception("{0} is not up yet. Adjust your source list and try again.")
+                print("{0} is not up yet. Adjust your source list and try again.".format(self.src))
+                return
             
         elif self.coord_type == "azel":
+        
+            self.az = self.obs_info["az"]
+            self.el = self.obs_info["el"]
+        
             #insert call to ata control fn
             if self.el > 23.0: #this is the min. elevation indicated in ata_positions
                 ac.set_az_el(self.ant_list, self.az, self.el)
             else:
-                raise Exception("Az: {0} and El: {1} is not up yet. Adjust your source list and try again.".format(self.az, self.el))
-            
+                print("Az: {0} and El: {1} is not up yet. Adjust your source list and try again.".format(self.az, self.el))
+                return
+                
         elif self.coord_type == "radec":
+        
+            self.ra = self.obs_info["ra"]
+            self.dec = self.obs_info["dec"]
+        
             now = astrotime.now()
             hcro_azel = AltAz(location=self.hat_creek, time=now)
             src = SkyCoord(ra=self.ra*u.deg, dec=self.dec*u.deg, frame='icrs')
@@ -184,7 +206,8 @@ class control(gr.basic_block):
             if src_el > 23.0:
                 ac.make_and_track_ra_dec(self.ra, self.dec, self.ant_list)
             else:
-                raise Exception("RA: {0} and Dec: {1} is not up yet. Adjust your source list and try again.".format(self.ra, self.dec))
+                print("RA: {0} and Dec: {1} is not up yet. Adjust your source list and try again.".format(self.ra, self.dec))
+                return
              
         else:
             print("No coordinate type specified!")
@@ -199,7 +222,7 @@ class control(gr.basic_block):
         
         #track on remaining sources
         
-        num = len(self.src_list) - 1
+        '''num = len(self.src_list) - 1
 
         for i in range(num):
         
@@ -219,7 +242,7 @@ class control(gr.basic_block):
                 return
                 
             time.sleep(self.dur_list[i+1])
-            print("Done tracking on {0}".format(self.src_list[i+1]))
+            print("Done tracking on {0}".format(self.src_list[i+1]))'''
 
     def set_freq(self, new_freq):
         '''reset the center frequency '''

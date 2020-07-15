@@ -28,9 +28,9 @@ parameters:
   option_labels: [Catalog Identifier, RA / Dec, Az / El]
   
 - id: src_list
-  label: List of source IDs
+  label: Source ID
   dtype: string
-  default: "Ex; src1, src2, src3, ..."
+  default: casa
   hide: ${ ('none' if coord_type.startswith('id') else 'all') }
   
 - id: ra
@@ -57,10 +57,10 @@ parameters:
   default: 18.00
   hide: ${ ('none' if coord_type.startswith('azel') else 'all') }
 
-- id: dur_list
-  label: Scan durations (seconds)
-  dtype: float_vector
-  default: 30, 60
+- id: dur
+  label: Scan duration (seconds)
+  dtype: float
+  default: 30
   
 #  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
 #  Keys include:
@@ -83,11 +83,11 @@ outputs:
 
 templates:
     imports: import ata
-    make: ata.trackscan(${cfreq}, ${ant_list}, ${coord_type}, ${dur_list}) 
+    make: ata.trackscan(${cfreq}, ${ant_list}, ${coord_type}, ${dur}) 
     callbacks: 
-    -   set_sources(${src_list})
-    -   set_src_radec(14.00, 67.00)       
-    -   set_src_azel(0.00, 18.00)
+    - self.set_sources(${src_list})
+    - self.set_src_radec(${ra}, ${dec})       
+    - self.set_src_azel(${az}, ${el})
           
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.
