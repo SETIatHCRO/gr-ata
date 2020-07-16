@@ -49,7 +49,7 @@ class control(gr.basic_block):
     """
     def __init__(self, username):
         gr.basic_block.__init__(self,
-                                name="control",
+                                name="ATA Control",
                                 in_sig=None,
                                 out_sig=None)
         
@@ -128,7 +128,7 @@ class control(gr.basic_block):
         self.az_off = self.obs_info["az_off"]       
         self.el_off = self.obs_info["el_off"]
         
-        self.dur_list = self.obs_info["durations_list"]
+        self.dur_list = self.obs_info["dur"]
         self.src = self.obs_info["source_list"]
         
         now = datetime.now()
@@ -149,12 +149,12 @@ class control(gr.basic_block):
            
         ac.autotune(self.ant_list)
        
-        time.sleep(self.dur_list[0])
+        time.sleep(self.dur)
         print("Done tracking on-source. Moving off-source...")
        
         ac.point_ants2(self.src, 'off', self.ant_list)
        
-        time.sleep(self.dur_list[1])
+        time.sleep(self.dur)
         print("Done tracking off-source.")
         
     def track(self):
@@ -263,4 +263,9 @@ class control(gr.basic_block):
         '''run this function to cleanly exit the session'''
         
         print("Exiting session")
+        return -1
+        
+    def stop(self):
+        print("The session has ended. Releasing and stowing antennas.")
+        ac.release_antennas(self.ant_list, True)
         return -1

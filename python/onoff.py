@@ -29,7 +29,7 @@ class onoff(gr.sync_block):
     docstring for block onoff
     """
     
-    def __init__(self, cfreq, ant_list, coord_type, src_list, dur_list, az_off, el_off): #src_list="no source", ra=14.00, dec=67.00, az=0.00, el=18.00):
+    def __init__(self, cfreq, ant_list, coord_type, dur, az_off, el_off): #src_list="no source", ra=14.00, dec=67.00, az=0.00, el=18.00):
     
         global command
     
@@ -40,8 +40,8 @@ class onoff(gr.sync_block):
                                
         self.cfreq = cfreq #center frequency
         self.ant_list = ant_list #antennas to observe with
-        self.src_list = src_list #list of source names
-        self.dur_list = dur_list #list of scan durations, in seconds
+        #self.src_list = src_list #list of source names
+        self.dur = dur #list of scan durations, in seconds
         self.coord_type = coord_type #how coordinate of source is specified
         self.az_off = az_off
         self.el_off = el_off
@@ -63,11 +63,8 @@ class onoff(gr.sync_block):
         coord_key = pmt.intern("coord_type")
         coord_val = pmt.intern(self.coord_type)
         
-        dur_key = pmt.intern("durations_list")
-        dur_val = pmt.to_pmt(self.dur_list)
-        
-        src_key = pmt.intern("source_list")
-        src_val = pmt.intern(self.src_list)
+        dur_key = pmt.intern("dur")
+        dur_val = pmt.to_pmt(self.dur)
         
         azoff_key = pmt.intern("az_off")
         azoff_val = pmt.from_double(self.az_off)
@@ -81,12 +78,53 @@ class onoff(gr.sync_block):
         command = pmt.dict_add(command, dur_key, dur_val)
         command = pmt.dict_add(command, obs_key, obs_val)
         command = pmt.dict_add(command, coord_key, coord_val)
-        command = pmt.dict_add(command, src_key, src_val)
         command = pmt.dict_add(command, azoff_key, azoff_val)
         command = pmt.dict_add(command, eloff_key, eloff_val)
         
         self.command = command
         
+    def set_sources(self, src_list):
+
+        ''' This function sets the source's 
+            identifier string '''
+        print('in set sources')
+        src_key = pmt.intern("source_list")
+        src_val = pmt.intern(src_list)
+        self.command = pmt.dict_add(self.command, src_key, src_val)
+        
+        self.message_port_pub(pmt.intern("command"), self.command)
+            
+    def set_src_radec(self, ra, dec):
+    
+        ''' This function sets the target source's 
+            right ascension and declination '''
+    
+        ra_key = pmt.intern("ra")
+        ra_val = pmt.from_double(ra)
+            
+        dec_key = pmt.intern("dec")
+        dec_val = pmt.from_double(dec)
+            
+        self.command = pmt.dict_add(self.command, ra_key, ra_val)
+        self.command = pmt.dict_add(self.command, dec_key, dec_val)
+        self.message_port_pub(pmt.intern("command"), self.command)
+        
+    def set_src_azel(self, az, el):
+    
+        ''' This function sets the target source's 
+            azimuth and elevation '''
+    
+        az_key = pmt.intern("az")
+        az_val = pmt.from_double(az)
+            
+        el_key = pmt.intern("el")
+        el_val = pmt.from_double(el)
+            
+        self.command = pmt.dict_add(self.command, az_key, az_val)
+        self.command = pmt.dict_add(self.command, el_key, el_val)
+        self.message_port_pub(pmt.intern("command"), self.command)
+        #print(command)
+            
     def start(self):
         ''' publish the observation info to the output message port '''
         #global command
