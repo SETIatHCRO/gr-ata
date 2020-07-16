@@ -100,14 +100,35 @@ class trackscan(gr.sync_block):
         
         self.command = command
         
+        if self.coord_type == 'id':
+            print("coord_val is id")
+            self.set_sources(src_list)
+            
+        elif self.coord_type == 'radec':
+            self.set_src_radec(ra, dec)
+            
+        elif self.coord_type == 'azel':
+            self.set_src_azel(az, el)
+            
+        else:
+            print("Error -- you did not specify an accepted coordinate type")
+        
     def set_sources(self, src_list):
 
+        ''' This function sets the source's 
+            identifier string '''
+        print('in set sources')
         src_key = pmt.intern("source_list")
         src_val = pmt.intern(self.src_list)
         self.command = pmt.dict_add(self.command, src_key, src_val)
-        print(command)
+        
+        self.message_port_pub(pmt.intern("command"), self.command)
             
     def set_src_radec(self, ra, dec):
+    
+        ''' This function sets the target source's 
+            right ascension and declination '''
+    
         ra_key = pmt.intern("ra")
         ra_val = pmt.from_double(self.ra)
             
@@ -116,8 +137,13 @@ class trackscan(gr.sync_block):
             
         self.command = pmt.dict_add(self.command, ra_key, ra_val)
         self.command = pmt.dict_add(self.command, dec_key, dec_val)
+        self.message_port_pub(pmt.intern("command"), self.command)
         
     def set_src_azel(self, az, el):
+    
+        ''' This function sets the target source's 
+            azimuth and elevation '''
+    
         az_key = pmt.intern("az")
         az_val = pmt.from_double(self.az)
             
@@ -126,8 +152,11 @@ class trackscan(gr.sync_block):
             
         self.command = pmt.dict_add(self.command, az_key, az_val)
         self.command = pmt.dict_add(self.command, el_key, el_val)
-        
+        self.message_port_pub(pmt.intern("command"), self.command)
         #print(command)
+        
+    def stop(self):
+        return True
         
     def start(self):
         ''' publish the observation info to the output message port '''
