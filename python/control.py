@@ -55,56 +55,201 @@ class control(gr.basic_block):
         
         self.hat_creek = EarthLocation(lat='40d49.05m', lon='-121d28.40m', height=986.0*u.m)
         self.pos = ap.ATAPositions()
-        self.username = username
+        #self.reserved_antennas = 
+        
         alarm = ac.get_alarm()
         
         if alarm['user'] == self.username:
-            self.message_port_register_in(pmt.intern("command"))
-            self.set_msg_handler(pmt.intern("command"), self.handle_msg)
-            
+            self.is_user = True
+                        
         else:
-            raise Exception("Wrong username, you do not have permission to observe")
-
+            self.is_user = False
+            print("Another user, {1}, has the array locked out. \
+                   \nYou do not have permission to change the LO \
+                   frequency.".format(alarm['user'])
+        
+        self.message_port_register_in(pmt.intern("command"))
+        self.set_msg_handler(pmt.intern("command"), self.handle_msg)
         
     def handle_msg(self, msg):
+    
         ''' message handler function'''
-        print("in message handler")
+        
         self.obs_info = pmt.to_python(msg)
         
-        self.cfreq = self.obs_info['freq']
-        self.ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
+        cfreq = self.obs_info['freq']
+        ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
+        
+        ## Reserve your antennas ##
+        
+        if ant_list:
+            my_ants = self.reserve(ant_list)
+        else:
+            print("No antennas specified. Provide an antenna list and try again.")
+            
+        ## Set the center frequency (if you have permission), and/or  ##
+        ## set the feed focus frequency, and turn on the LNAs         ##
+        
+        if cfreq and my_ants:
+            if self.is_user:
+                ac.try_on_lnas(my_ants)
+                ac.set_freq(cfreq, my_ants)
+            else:
+                ac.try_on_lnas(my_ants)
+                ac.set_freq_focus(cfreq, my_ants)
+                
+        elif cfreq and not my_ants:
+            print('No antenna list specified. You must specify \
+                   one or more antennas in order to observe.')
+                   
+        elif my_ants and not cfreq:
+            print('No center frequency specified. You must specify \
+                   a center frequency in order to observe.')
+                
+        else:
+            print("You have not specified an antennas list or \
+                   a frequency setting. Please specify an antennas \
+                   list and the center frequency, then try again.")
+                   
+        ## Run observation ##
+        
+        if self.obs_info['id']:
+            #First, check if this is an off-source scan
+            if (self.obs_info['az_off'] and self.obs_info['el_off']):
+                self.point_src_id(self.obs_info['id'], ant_list, True,  
+                                  self.obs_info['az_off'], self.obs_info['el_off'])
+            #if not, observe on-source
+            else:
+                self.point_src_id(self.obs_info['id'], ant_list)
+            
+        elif self.obs_info['ra'] and self.obs_info['dec']:
+            #run ra / dec observation
+            #First, check if this is an off-source scan
+            if (self.obs_info['az_off'] and self.obs_info['el_off']):
+                self.point_src_id(self.obs_info['ra'], self.obs_info['dec'], 
+                                  ant_list, True, self.obs_info['az_off'],  
+                                  self.obs_info['el_off'])
+            #if not, observe on-source
+            else:
+                self.point_src_id(self.obs_info['ra'], self.obs_info['dec'], ant_list)
+            
+        elif self.obs_info['az'] and self.obs_info['el']:
+            #run az / el observation
+            #First, check if this is an off-source scan
+            if (self.obs_info['az_off'] and self.obs_info['el_off']):
+                self.point_src_id(self.obs_info['az'], self.obs_info['el'], 
+                                  ant_list, True, self.obs_info['az_off'], 
+                                  self.obs_info['el_off'])
+            #if not, observe on-source
+            else:
+                self.point_src_id(self.obs_info['az'], self.obs_info['el'], ant_list)
+            
+        else:
+            print("You have not specified a source location. \
+                   Please specify a target source and try again.")
+        
         self.coord_type = self.obs_info['coord_type']
-         # this should be moved to track fn --list of scan durations, in seconds
         self.obs_type = self.obs_info["obs_type"]
         
-        '''print("Source ID: {0}".format(self.src_list))
-        print("RA: {0}, Dec: {1}".format(self.ra, self.dec))
-        print("Az: {0}, El: {1}".format(self.az, self.el))'''
-        
-        self.begin()
         self.run()
         self.end_session()
-        #self.work()
         
-    def begin(self):
-        ''' initialize the observation '''
-        #try to reserve the antennas you want to observe with;
-        #if it doesn't work you need to release the antennas,
-        #then re-reserve them.
-        try:
-            ac.reserve_antennas(self.ant_list)
-
-        except RuntimeError:
-            print("Antennas were not released after last run. Releasing and reserving.")
-            ac.release_antennas(self.ant_list, False)
-            ac.reserve_antennas(self.ant_list)
-
-        #check if the LNAs are on -- if not, turn them on
-        ac.try_on_lnas(self.ant_list)
-
-        #set the center frequency
-        ac.set_freq(self.cfreq, self.ant_list)
+    def reserve(self, ant_list, force=False):
+    
+        ''' This function checks if the antennas you have requested are 
+            available, and reserves them if so. If you set force=True, 
+            (not recommended) then it releases and reserves antennas 
+            without first checking that they are not reserved by someone
+            else. '''
+    
+        if not force:
+            my_ants = list(set(ant_list) & set(ac.list_released_antennas()))
         
+            if my_ants:
+                ac.reserve_antennas(my_ants)
+                print("Antennas: {0} have been reserved.".format(my_ants))
+                return my_ants
+            else: 
+                print("None of the antennas you requested are available. \
+                   Please request non-reserved antennas and try again.") 
+                   return my_ants
+                   
+        else:
+            try:
+                ac.reserve_antennas(ant_list) 
+                return ant_list              
+            except RuntimeError:
+                print("Antennas were not released after last run. Releasing and reserving.")
+                ac.release_antennas(self.ant_list, False)
+                ac.reserve_antennas(self.ant_list)
+                return ant_list
+                
+    def point_src_id(self, src_id, ant_list, offsource=False, az_off=0, el_off=0):
+    
+        ''' This function points the antenna at the source
+            designated by the given ID from the ATA catalog. '''
+    
+        now = datetime.now()
+        
+        src_ra, src_dec = ac.get_source_ra_dec(self.src)
+                        
+        if self.pos.isUp('radec', now, src_ra, src_dec):
+            ac.create_ephems2(src_id, az_off, el_off)
+            if not offsource:
+                ac.point_ants2('on', ant_list)          
+            else:
+                ac.point_ants2('off', ant_list)
+        else:
+            print("Source {0} is not up yet. Update source list \
+                 and try again.".format(src_id))
+            return
+
+    def point_src_radec(self, ra, dec, ant_list, offsource=False, az_off=0, el_off=0):
+    
+        ''' This function points the antenna at the source
+            designated by the right ascension and declination
+            provided by the user. '''
+    
+        now = datetime.now()
+                                
+        if self.pos.isUp('radec', now, ra, dec):
+            ac.create_ephems2(src_id, az_off, el_off)
+            if not offsource:
+                ac.point_ants2('on', ant_list)          
+            else:
+                ac.point_ants2('off', ant_list)
+        else:
+            print("Source {0} is not up yet. Update source list \
+                 and try again.".format(src_id))
+            return
+                   
+    def stop(self):
+        print("The session has ended. Releasing and stowing antennas.")
+        ac.release_antennas(self.ant_list, True)
+        return -1 
+        
+    def point_src_azel(self, az, el, ant_list, offsource=False, az_off=0, el_off=0):
+    
+        ''' This function points the antenna at the source
+            designated by the azimuth and elevation specified
+            by the user. '''
+                                
+        if el > ap.MIN_ELEV:
+            ac.create_ephems2(src_id, az_off, el_off)
+            if not offsource:
+                ac.point_ants2('on', ant_list)          
+            else:
+                ac.point_ants2('off', ant_list)
+        else:
+            print("Source {0} is not up yet. Update source list \
+                 and try again.".format(src_id))
+            return
+                   
+    def stop(self):
+        print("The session has ended. Releasing and stowing antennas.")
+        ac.release_antennas(self.ant_list, True)
+        return -1                    
+    #### Old functions ####    
         
     def run(self):
         ''' this function identifies what observation
@@ -128,8 +273,8 @@ class control(gr.basic_block):
         self.az_off = self.obs_info["az_off"]       
         self.el_off = self.obs_info["el_off"]
         
-        self.dur_list = self.obs_info["dur"]
-        self.src = self.obs_info["source_list"]
+        self.dur = self.obs_info["dur"]
+        self.src = self.obs_info["source_id"]
         
         now = datetime.now()
         
@@ -166,14 +311,14 @@ class control(gr.basic_block):
         self.dec = self.obs_info["dec"]
         self.az = self.obs_info["az"]
         self.el = self.obs_info["el"]'''
-        self.dur_list = self.obs_info["durations_list"]
+        self.dur = self.obs_info["dur"]
         
         dt_now = datetime.now()
 
         #point at first source and autotune
         if self.coord_type == "id":
         
-            self.src = self.obs_info["source_list"]
+            self.src = self.obs_info["source_id"]
             src_ra, src_dec = ac.get_source_ra_dec(self.src)
             if self.pos.isUp('radec', dt_now, src_ra, src_dec):
                 ac.make_and_track_source(self.src, self.ant_list)
@@ -217,7 +362,7 @@ class control(gr.basic_block):
         ac.autotune(self.ant_list)
         
         #track on the first source for a given duration
-        time.sleep(self.dur_list[0])
+        time.sleep(self.dur)
         print("Done tracking on {0}".format(self.src_list[0]))
         
         #track on remaining sources
@@ -265,7 +410,4 @@ class control(gr.basic_block):
         print("Exiting session")
         return -1
         
-    def stop(self):
-        print("The session has ended. Releasing and stowing antennas.")
-        ac.release_antennas(self.ant_list, True)
-        return -1
+

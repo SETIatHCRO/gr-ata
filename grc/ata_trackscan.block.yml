@@ -27,7 +27,7 @@ parameters:
   options: [id, radec, azel]
   option_labels: [Catalog Identifier, RA / Dec, Az / El]
   
-- id: src_list
+- id: src
   label: Source ID
   dtype: string
   default: casa
@@ -83,13 +83,13 @@ templates:
         % if context.get('coord_type')() == "azel":
         self.${id}.set_src_azel(${az}, ${el})
         % elif context.get('coord_type')() == "id":
-        self.${id}.set_sources(${src_list})
+        self.${id}.set_source(${src})
         % elif context.get('coord_type')() == "radec":
         self.${id}.set_src_radec(${ra}, ${dec})
         % endif
 
     callbacks: 
-    - self.${id}.set_sources(${src_list})
+    - self.${id}.set_source(${src})
     - self.${id}.set_src_radec(${ra}, ${dec})       
     - self.${id}.set_src_azel(${az}, ${el})
           

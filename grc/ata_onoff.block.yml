@@ -25,10 +25,10 @@ parameters:
   options: [id, radec, azel]
   option_labels: [Catalog Identifier, RA / Dec, Az / El]
   
-- id: src_list
-  label: List of source IDs
+- id: src
+  label: Source ID
   dtype: string
-  default: "Ex; src1, src2, src3, ..."
+  default: "casa"
   hide: ${ ('none' if coord_type.startswith('id') else 'all') }
   
 - id: ra
@@ -89,13 +89,13 @@ templates:
         % if context.get('coord_type')() == "azel":
         self.${id}.set_src_azel(${az}, ${el})
         % elif context.get('coord_type')() == "id":
-        self.${id}.set_sources(${src_list})
+        self.${id}.set_source(${src})
         % elif context.get('coord_type')() == "radec":
         self.${id}.set_src_radec(${ra}, ${dec})
         % endif
 
     callbacks: 
-    - self.${id}.set_sources(${src_list})
+    - self.${id}.set_source(${src})
     - self.${id}.set_src_radec(${ra}, ${dec})       
     - self.${id}.set_src_azel(${az}, ${el})
 #  'file_format' specifies the version of the GRC yml format used in the file

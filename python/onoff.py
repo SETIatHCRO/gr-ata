@@ -22,6 +22,7 @@
 
 import numpy
 import pmt
+import time
 from gnuradio import gr
 
 class onoff(gr.sync_block):
@@ -37,16 +38,11 @@ class onoff(gr.sync_block):
                                name="onoff",
                                in_sig=None,
                                out_sig=None)
-                               
-        self.cfreq = cfreq #center frequency
-        self.ant_list = ant_list #antennas to observe with
-        #self.src_list = src_list #list of source names
-        self.dur = dur #list of scan durations, in seconds
-        self.coord_type = coord_type #how coordinate of source is specified
-        self.az_off = az_off
-        self.el_off = el_off
         
         self.message_port_register_out(pmt.intern("command"))
+        self.dur = dur
+        self.az_off = az_off
+        self.el_off = el_off
         
         #set up dictionary of observing info which will be sent through
         #the message port  
@@ -55,22 +51,22 @@ class onoff(gr.sync_block):
         obs_val = pmt.intern("onoff")
                 
         ant_key = pmt.intern("antennas_list")
-        ant_val = pmt.intern(self.ant_list)
+        ant_val = pmt.intern(ant_list)
 
         freq_key = pmt.intern("freq")
-        freq_val = pmt.from_double(self.cfreq)
+        freq_val = pmt.from_double(cfreq)
         
         coord_key = pmt.intern("coord_type")
-        coord_val = pmt.intern(self.coord_type)
+        coord_val = pmt.intern(coord_type)
         
         dur_key = pmt.intern("dur")
-        dur_val = pmt.to_pmt(self.dur)
+        dur_val = pmt.to_pmt(dur)
         
         azoff_key = pmt.intern("az_off")
-        azoff_val = pmt.from_double(self.az_off)
+        azoff_val = pmt.from_double(az_off)
         
         eloff_key = pmt.intern("el_off")
-        eloff_val = pmt.from_double(self.el_off)
+        eloff_val = pmt.from_double(el_off)
 
         command = pmt.make_dict()
         command = pmt.dict_add(command, ant_key, ant_val)
@@ -78,21 +74,17 @@ class onoff(gr.sync_block):
         command = pmt.dict_add(command, dur_key, dur_val)
         command = pmt.dict_add(command, obs_key, obs_val)
         command = pmt.dict_add(command, coord_key, coord_val)
-        command = pmt.dict_add(command, azoff_key, azoff_val)
-        command = pmt.dict_add(command, eloff_key, eloff_val)
         
         self.command = command
         
-    def set_sources(self, src_list):
+    def set_source(self, src):
 
         ''' This function sets the source's 
             identifier string '''
-        print('in set sources')
-        src_key = pmt.intern("source_list")
-        src_val = pmt.intern(src_list)
+
+        src_key = pmt.intern("source_id")
+        src_val = pmt.intern(src)
         self.command = pmt.dict_add(self.command, src_key, src_val)
-        
-        self.message_port_pub(pmt.intern("command"), self.command)
             
     def set_src_radec(self, ra, dec):
     
@@ -107,7 +99,6 @@ class onoff(gr.sync_block):
             
         self.command = pmt.dict_add(self.command, ra_key, ra_val)
         self.command = pmt.dict_add(self.command, dec_key, dec_val)
-        self.message_port_pub(pmt.intern("command"), self.command)
         
     def set_src_azel(self, az, el):
     
@@ -122,11 +113,21 @@ class onoff(gr.sync_block):
             
         self.command = pmt.dict_add(self.command, az_key, az_val)
         self.command = pmt.dict_add(self.command, el_key, el_val)
-        self.message_port_pub(pmt.intern("command"), self.command)
-        #print(command)
             
     def start(self):
         ''' publish the observation info to the output message port '''
-        #global command
+        
+        #this command tells the control block to point
+        # on-source for the given duration
         self.message_port_pub(pmt.intern("command"), self.command)
+        
+        time.sleep(self.dur)
+        
+        #this command will instruct the command block to point off 
+        #source by the given offsets
+        self.command = pmt.dict_add(self.command, azoff_key, azoff_val)
+        self.command = pmt.dict_add(self.command, eloff_key, eloff_val)
+        
+        self.message_port_pub(pmt.intern("command"), self.command)
+        
         return super().start()
