@@ -60,20 +60,28 @@ class control(gr.basic_block):
         
         #run the flowgraph either online or offline
         if mode == 'online':
-            alarm = ac.get_alarm()
         
-            if alarm['user'] == self.username:
-                self.is_user = True
+            if socket.gethostname() == 'gnuradio1':
+                alarm = ac.get_alarm()
+        
+                if alarm['user'] == self.username:
+                    self.is_user = True
                         
+                else:
+                    self.is_user = False
+                    print("Another user, {1}, has the array locked out. \
+                           \nYou do not have permission to change the LO \
+                           frequency.".format(alarm['user']))
+        
+                self.message_port_register_in(pmt.intern("command"))
+                self.set_msg_handler(pmt.intern("command"), self.handle_msg)
+                
             else:
-                self.is_user = False
-                print("Another user, {1}, has the array locked out. \
-                       \nYou do not have permission to change the LO \
-                       frequency.".format(alarm['user']))
-        
-            self.message_port_register_in(pmt.intern("command"))
-            self.set_msg_handler(pmt.intern("command"), self.handle_msg)
-        
+                print("Sorry, you must run this flowgraph on the ATA machine \
+                gnuradio1 if you want to observe. If you want to test the \
+                code on your local computer without observing, switch to \
+                Offline Mode.")
+                
         elif mode == 'offline':
             self.message_port_register_in(pmt.intern("command"))
             self.set_msg_handler(pmt.intern("command"), self.handle_msg_offline)
@@ -203,8 +211,8 @@ class control(gr.basic_block):
             #First, check if this is an off-source scan
             if ('az_off' and 'el_off') in self.obs_info:
                 print("Slewing off source {0} by offsets: \
-                       az_off = {1} and el_off = {2}.".format(self.obs_info['source_id'], 
-                       self.obs_info['az_off'], self.obs_info['el_off']))
+                az_off = {1} and el_off = {2}.".format(self.obs_info['source_id'], 
+                self.obs_info['az_off'], self.obs_info['el_off']))
                 
             #if not, observe on-source
             else:
@@ -311,11 +319,6 @@ class control(gr.basic_block):
             print("Source {0} is not up yet. Update source list \
                  and try again.".format(src_id))
             return
-                   
-    def stop(self):
-        print("The session has ended. Releasing and stowing antennas.")
-        ac.release_antennas(self.ant_list, True)
-        #return -1 
         
     def point_src_azel(self, az, el, ant_list, offsource=False, az_off=0, el_off=0):
     
@@ -338,7 +341,7 @@ class control(gr.basic_block):
         print("The session has ended. Releasing and stowing antennas.")
         if self.mode == 'online':
             ac.release_antennas(self.ant_list, True)
-        return -1 
+        return True
                            
     #### Old functions ####    
         

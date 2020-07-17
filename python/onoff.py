@@ -62,11 +62,11 @@ class onoff(gr.sync_block):
         dur_key = pmt.intern("dur")
         dur_val = pmt.to_pmt(dur)
         
-        azoff_key = pmt.intern("az_off")
-        azoff_val = pmt.from_double(az_off)
+        self.azoff_key = pmt.intern("az_off")
+        self.azoff_val = pmt.from_double(az_off)
         
-        eloff_key = pmt.intern("el_off")
-        eloff_val = pmt.from_double(el_off)
+        self.eloff_key = pmt.intern("el_off")
+        self.eloff_val = pmt.from_double(el_off)
 
         command = pmt.make_dict()
         command = pmt.dict_add(command, ant_key, ant_val)
@@ -113,7 +113,8 @@ class onoff(gr.sync_block):
             
         self.command = pmt.dict_add(self.command, az_key, az_val)
         self.command = pmt.dict_add(self.command, el_key, el_val)
-            
+        #self.message_port_pub(pmt.intern("command"), self.command)
+           
     def start(self):
         ''' publish the observation info to the output message port '''
         
@@ -125,8 +126,8 @@ class onoff(gr.sync_block):
         
         #this command will instruct the command block to point off 
         #source by the given offsets
-        self.command = pmt.dict_add(self.command, azoff_key, azoff_val)
-        self.command = pmt.dict_add(self.command, eloff_key, eloff_val)
+        self.command = pmt.dict_add(self.command, self.azoff_key, self.azoff_val)
+        self.command = pmt.dict_add(self.command, self.eloff_key, self.eloff_val)
         
         self.message_port_pub(pmt.intern("command"), self.command)
         
