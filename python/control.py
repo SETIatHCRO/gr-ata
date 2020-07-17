@@ -38,6 +38,7 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time as astrotime
 from ATATools import ata_control as ac
 from ATATools import ata_positions as ap
+import socket
 
 obs_info = {}
 
@@ -47,7 +48,7 @@ class control(gr.basic_block):
     observations with the ATA, and point and track a subset of
     the antennas on a given source if commanded to do so.
     """
-    def __init__(self, username):
+    def __init__(self, username, mode):
         gr.basic_block.__init__(self,
                                 name="ATA Control",
                                 in_sig=None,
@@ -55,21 +56,30 @@ class control(gr.basic_block):
         
         self.hat_creek = EarthLocation(lat='40d49.05m', lon='-121d28.40m', height=986.0*u.m)
         self.pos = ap.ATAPositions()
-        #self.reserved_antennas = 
+        self.mode = mode
         
-        alarm = ac.get_alarm()
+        #run the flowgraph either online or offline
+        if mode == 'online':
+            alarm = ac.get_alarm()
         
-        if alarm['user'] == self.username:
-            self.is_user = True
+            if alarm['user'] == self.username:
+                self.is_user = True
                         
-        else:
-            self.is_user = False
-            print("Another user, {1}, has the array locked out. \
-                   \nYou do not have permission to change the LO \
-                   frequency.".format(alarm['user'])
+            else:
+                self.is_user = False
+                print("Another user, {1}, has the array locked out. \
+                       \nYou do not have permission to change the LO \
+                       frequency.".format(alarm['user']))
         
-        self.message_port_register_in(pmt.intern("command"))
-        self.set_msg_handler(pmt.intern("command"), self.handle_msg)
+            self.message_port_register_in(pmt.intern("command"))
+            self.set_msg_handler(pmt.intern("command"), self.handle_msg)
+        
+        elif mode == 'offline':
+            self.message_port_register_in(pmt.intern("command"))
+            self.set_msg_handler(pmt.intern("command"), self.handle_msg_offline)
+        else:
+            print("Error: No Control Block Mode specified! Select mode and try again.")  
+        
         
     def handle_msg(self, msg):
     
@@ -113,14 +123,14 @@ class control(gr.basic_block):
                    
         ## Run observation ##
         
-        if self.obs_info['id']:
+        if self.obs_info['source_id']:
             #First, check if this is an off-source scan
             if (self.obs_info['az_off'] and self.obs_info['el_off']):
-                self.point_src_id(self.obs_info['id'], ant_list, True,  
+                self.point_src_id(self.obs_info['source_id'], ant_list, True,  
                                   self.obs_info['az_off'], self.obs_info['el_off'])
             #if not, observe on-source
             else:
-                self.point_src_id(self.obs_info['id'], ant_list)
+                self.point_src_id(self.obs_info['source_id'], ant_list)
             
         elif self.obs_info['ra'] and self.obs_info['dec']:
             #run ra / dec observation
@@ -148,11 +158,90 @@ class control(gr.basic_block):
             print("You have not specified a source location. \
                    Please specify a target source and try again.")
         
-        self.coord_type = self.obs_info['coord_type']
-        self.obs_type = self.obs_info["obs_type"]
-        
-        self.run()
+        #self.run()
         self.end_session()
+        
+    def handle_msg_offline(self, msg):
+    
+        ''' offline message handler function'''
+        
+        self.obs_info = pmt.to_python(msg)
+
+        cfreq = self.obs_info['freq']
+        ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
+        
+        ## Reserve your antennas ##
+        
+        if ant_list:
+            print("Antennas: {0} have been reserved".format(ant_list))
+        else:
+            print("No antennas specified. Provide an antenna list and try again.")
+            
+        ## Set the center frequency (if you have permission), and/or  ##
+        ## set the feed focus frequency, and turn on the LNAs         ##
+        
+        if cfreq and ant_list:
+            print("LNAs have been turned on.")
+            print("LO and focus frequency has been set to {0}".format(cfreq))
+                
+        elif cfreq and not ant_list:
+            print('No antenna list specified. You must specify \
+                   one or more antennas in order to observe.')
+                   
+        elif ant_list and not cfreq:
+            print('No center frequency specified. You must specify \
+                   a center frequency in order to observe.')
+                
+        else:
+            print("You have not specified an antennas list or \
+                   a frequency setting. Please specify an antennas \
+                   list and the center frequency, then try again.")
+                   
+        ## Run dummy observation ##
+        
+        if 'source_id' in self.obs_info:
+            #First, check if this is an off-source scan
+            if ('az_off' and 'el_off') in self.obs_info:
+                print("Slewing off source {0} by offsets: \
+                       az_off = {1} and el_off = {2}.".format(self.obs_info['source_id'], 
+                       self.obs_info['az_off'], self.obs_info['el_off']))
+                
+            #if not, observe on-source
+            else:
+                print("Slewing on-source to {0}.".format(self.obs_info['source_id']))
+            
+        elif ('ra' and 'dec') in self.obs_info:
+            #run ra / dec observation
+            #First, check if this is an off-source scan
+            if ('az_off' and 'el_off') in self.obs_info:      
+                print("Slewing off source RA: {0}\tDec: {1} by offsets: \
+                       az_off = {2} and el_off = {3}.".format(self.obs_info['ra'], 
+                       self.obs_info['dec'], self.obs_info['az_off'],
+                       self.obs_info['el_off']))
+            #if not, observe on-source
+            else:
+                print("Slewing on-source to RA: {0}\tDec: {1}.".format(
+                       self.obs_info['ra'], self.obs_info['dec']))
+            
+        elif ('az' and 'el') in self.obs_info:
+            #run az / el observation
+            #First, check if this is an off-source scan
+            if ('az_off' and 'el_off') in self.obs_info:
+                print("Slewing off source Az: {0}\tEl: {1} by offsets: \
+                       az_off = {2} and el_off = {3}.".format(self.obs_info['az'], 
+                       self.obs_info['el'], self.obs_info['az_off'],
+                       self.obs_info['el_off']))
+            #if not, observe on-source
+            else:
+                print("Slewing on-source to Az: {0}\tEl: {1}.".format(
+                       self.obs_info['az'], self.obs_info['el']))
+            
+        else:
+            print("You have not specified a source location. \
+                   Please specify a target source and try again.")
+        
+        print("Observing complete")
+        return
         
     def reserve(self, ant_list, force=False):
     
@@ -171,8 +260,8 @@ class control(gr.basic_block):
                 return my_ants
             else: 
                 print("None of the antennas you requested are available. \
-                   Please request non-reserved antennas and try again.") 
-                   return my_ants
+                       Please request non-reserved antennas and try again.") 
+                return my_ants
                    
         else:
             try:
@@ -226,7 +315,7 @@ class control(gr.basic_block):
     def stop(self):
         print("The session has ended. Releasing and stowing antennas.")
         ac.release_antennas(self.ant_list, True)
-        return -1 
+        #return -1 
         
     def point_src_azel(self, az, el, ant_list, offsource=False, az_off=0, el_off=0):
     
@@ -247,8 +336,10 @@ class control(gr.basic_block):
                    
     def stop(self):
         print("The session has ended. Releasing and stowing antennas.")
-        ac.release_antennas(self.ant_list, True)
-        return -1                    
+        if self.mode == 'online':
+            ac.release_antennas(self.ant_list, True)
+        return -1 
+                           
     #### Old functions ####    
         
     def run(self):
