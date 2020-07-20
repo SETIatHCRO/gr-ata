@@ -156,12 +156,12 @@ class control(gr.basic_block):
             #run az / el observation
             #First, check if this is an off-source scan
             if (self.obs_info['az_off'] and self.obs_info['el_off']):
-                self.point_src_id(self.obs_info['az'], self.obs_info['el'], 
+                self.point_src_azel(self.obs_info['az'], self.obs_info['el'], 
                                   ant_list, True, self.obs_info['az_off'], 
                                   self.obs_info['el_off'])
             #if not, observe on-source
             else:
-                self.point_src_id(self.obs_info['az'], self.obs_info['el'], ant_list)
+                self.point_src_azel(self.obs_info['az'], self.obs_info['el'], ant_list)
             
         else:
             print("You have not specified a source location. \
@@ -321,18 +321,15 @@ class control(gr.basic_block):
                  and try again.".format(src_id))
             return
         
-    def point_src_azel(self, az, el, ant_list, offsource=False, az_off=0, el_off=0):
+    def point_src_azel(self, az, el, ant_list, az_off=0, el_off=0):
     
         ''' This function points the antenna at the source
             designated by the azimuth and elevation specified
             by the user. '''
                                 
         if el > ap.MIN_ELEV:
-            ac.create_ephems2(src_id, az_off, el_off)
-            if not offsource:
-                ac.point_ants2('on', ant_list)          
-            else:
-                ac.point_ants2('off', ant_list)
+            ac.set_az_el(ant_list, az+az_off, el+el_off)
+            return
         else:
             print("Source {0} is not up yet. Update source list \
                  and try again.".format(src_id))

@@ -98,6 +98,20 @@ templates:
     - self.${id}.set_source(${src})
     - self.${id}.set_src_radec(${ra}, ${dec})       
     - self.${id}.set_src_azel(${az}, ${el})
+    
+documentation: |-
+    This block contains instructions to run an on-off observation -- in which
+    the antennas are instructed to point, first, at a target source for a given 
+    duration, and then at an offset point at a given angle from the target 
+    source. 
+
+    To run an on-off observation, input your desired source location either in 
+    RA / Dec, Az / El, or source identifier format, the list of antennas you want
+    to observe with, the on-source duration (in seconds), the azimuth and elevation 
+    offset values for your off-source scan, and the center frequency you want to
+    observe at. Make sure you connect this block to the ATA Control block in order
+    to run an observation (or an offline test). 
+    
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.
 file_format: 1

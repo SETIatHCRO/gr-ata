@@ -27,7 +27,8 @@ from gnuradio import gr
 
 class onoff(gr.sync_block):
     """
-    docstring for block onoff
+    This block accepts input from the user in order to
+    run an on-off observation with the Allen Array.
     """
     
     def __init__(self, cfreq, ant_list, coord_type, dur, az_off, el_off): #src_list="no source", ra=14.00, dec=67.00, az=0.00, el=18.00):
