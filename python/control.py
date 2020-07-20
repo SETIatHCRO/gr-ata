@@ -77,10 +77,11 @@ class control(gr.basic_block):
                 self.set_msg_handler(pmt.intern("command"), self.handle_msg)
                 
             else:
-                print("Sorry, you must run this flowgraph on the ATA machine \
-                gnuradio1 if you want to observe. If you want to test the \
-                code on your local computer without observing, switch to \
-                Offline Mode.")
+                exception_msg = '''Sorry, you must run this flowgraph on the ATA machine
+                gnuradio1 if you want to observe. If you want to test the
+                code on your local computer without observing, switch to
+                Offline Mode.'''
+                raise Exception(exception_msg)
                 
         elif mode == 'offline':
             self.message_port_register_in(pmt.intern("command"))
