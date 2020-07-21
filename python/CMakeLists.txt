@@ -34,7 +34,8 @@ GR_PYTHON_INSTALL(
     __init__.py
     control.py
     trackscan.py
-    onoff.py DESTINATION ${GR_PYTHON_DIR}/ata
+    onoff.py
+    ifswitch.py DESTINATION ${GR_PYTHON_DIR}/ata
 )
 
 ########################################################################
@@ -47,3 +48,4 @@ set(GR_TEST_PYTHON_DIRS ${CMAKE_BINARY_DIR}/swig)
 GR_ADD_TEST(qa_control ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_control.py)
 GR_ADD_TEST(qa_trackscan ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_trackscan.py)
 GR_ADD_TEST(qa_onoff ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_onoff.py)
+GR_ADD_TEST(qa_ifswitch ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_ifswitch.py)

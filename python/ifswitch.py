@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright 2020 ewhite42.
+#
+# This is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+#
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this software; see the file COPYING.  If not, write to
+# the Free Software Foundation, Inc., 51 Franklin Street,
+# Boston, MA 02110-1301, USA.
+#
+
+
+import numpy
+from gnuradio import gr
+
+class ifswitch(gr.sync_block):
+    """
+    This block connects the antenna(s) specified to the
+proper switch(es), then sets the appropriate attenuation
+value(s) for the given antenna(s).
+    """
+    def __init__(self, ant1, ant2, ant3):
+        gr.sync_block.__init__(self,
+            name="IF Switch",
+            in_sig=None,
+            out_sig=None)
+            
+        self.ant1 = ant1
+        self.ant2 = ant2
+        self.ant3 = ant3
+
+    def set_db1(self, db1):
+        self.db1 = db1
+        
+    def set_ant2(self, db2):
+        self.db2 = db2
+        
+    def set_ant3(self, db3):
+        self.db3 = db3
+        
+    def start(self):
+        ant_list = []
+        ant_pol_list = []
+        db_list = []
+        
+        if self.ant1 != 'none':
+            ant_list.append(self.ant1)
+            ant1x = self.ant1+'x'
+            ant1y = self.ant1+'y'
+            ant_pol_list.append([ant1x, ant1y])
+            db_list.append([self.db1, self.db1])
+            
+        if self.ant2 != 'none': 
+            ant_list.append(ant2)
+            ant2x = self.ant2+'x'
+            ant2y = self.ant2+'y'
+            ant_pol_list.append([ant2x, ant2y])
+            db_list.append([self.db2, self.db2])
+            
+        if self.ant3 != 'none': 
+            ant_list.append(ant3)
+            ant3x = self.ant3+'x'
+            ant3y = self.ant3+'y'
+            ant_pol_list.append([ant3x, ant3y])
+            db_list.append([self.db3, self.db3])
+            
+        if not (self.ant1 or self.ant2 or self.ant3):
+            print("No antennas specified. Please select one or more antennas and try again.")
+            
+        set_rf_switch_thread(ant_list)
+        
+        set_atten_thread(ant_pol_list, db_list)

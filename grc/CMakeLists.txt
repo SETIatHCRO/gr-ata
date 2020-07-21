@@ -20,5 +20,6 @@
 install(FILES
     ata_control.block.yml
     ata_trackscan.block.yml
-    ata_onoff.block.yml DESTINATION share/gnuradio/grc/blocks
+    ata_onoff.block.yml
+    ata_ifswitch.block.yml DESTINATION share/gnuradio/grc/blocks
 )

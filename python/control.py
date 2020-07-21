@@ -64,7 +64,7 @@ class control(gr.basic_block):
             if socket.gethostname() == 'gnuradio1':
                 alarm = ac.get_alarm()
         
-                if alarm['user'] == self.username:
+                if alarm['user'] == username:
                     self.is_user = True
                         
                 else:

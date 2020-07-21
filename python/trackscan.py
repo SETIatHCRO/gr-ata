@@ -42,8 +42,8 @@ class trackscan(gr.sync_block):
                                out_sig=None)
                                
         self.message_port_register_out(pmt.intern("command"))
-        self.message_port_register_in(pmt.intern("msg_in"))
-        self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)
+        #self.message_port_register_in(pmt.intern("msg_in"))
+        #self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)
 
         #set up dictionary of observing info which will be sent through
         #the message port  
@@ -69,7 +69,7 @@ class trackscan(gr.sync_block):
         self.command = command
         
     def handle_msg(self, msg):
-        
+        self.input = pmt.symbol_to_string(msg)
 
     def set_source(self, src):
 

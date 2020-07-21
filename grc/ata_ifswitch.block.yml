@@ -1,0 +1,68 @@
+id: ata_ifswitch
+label: ATA IF Switch
+category: '[ATA]'
+
+#  Make one 'parameters' list entry for every parameter you want settable from the GUI.
+#     Keys include:
+#     * id (makes the value accessible as \$keyname, e.g. in the make entry)
+#     * label (label shown in the GUI)
+#     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
+parameters:
+- id: ant1
+  label: Switch 1 Antennas
+  dtype: string
+  options: [none, 1a, 1b, 1c, 1d, 1e, 1f, 1g, 1k, 2a, 2b, 2c, 2d, 2e, 2f, 2g, 2h]
+  
+- id: ant2
+  label: Switch 2 Antennas
+  dtype: string
+  options: [none, 2j, 2k, 2l, 3c, 3e, 3j, 3l, 4g]
+  
+- id: ant3 
+  label: Switch 3 Antennas
+  dtype: string
+  options: [none, 4j, 4k, 4l, 5b, 5c, 5e, 5g, 5h]
+  
+- id: db1
+  label: Gain for Switch 1 (dB)
+  dtype: float
+  hide: ${ ('all' if ant1.startswith('none') else 'none') }
+  
+- id: db2
+  label: Gain for Switch 2 (dB)
+  dtype: float
+  hide: ${ ('all' if ant2.startswith('none') else 'none') }
+  
+- id: db3
+  label: Gain for Switch 3 (dB)
+  dtype: float
+  hide: ${ ('all' if ant3.startswith('none') else 'none') }
+
+#  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
+#  Keys include:
+#      * label (an identifier for the GUI)
+#      * domain (optional - stream or message. Default is stream)
+#      * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
+#      * vlen (optional - data stream vector length. Default is 1)
+#      * optional (optional - set to 1 for optional inputs. Default is 0)
+
+templates:
+    imports: import ata
+    make: |
+        ata.ifswitch(${ant1}, ${ant2}, ${ant3}) 
+        % if context.get('ant1')() != "none":
+        self.${id}.set_db1(${db1})
+        % elif context.get('ant2')() != "none":
+        self.${id}.set_db2(${db2})
+        % elif context.get('ant3')() != "none":
+        self.${id}.set_db3(${db3})
+        % endif
+
+    callbacks: 
+    - self.${id}.set_db1(${db1})
+    - self.${id}.set_db2(${db2})       
+    - self.${id}.set_db3(${db3})
+
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1
