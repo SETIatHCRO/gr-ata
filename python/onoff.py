@@ -42,6 +42,7 @@ class onoff(gr.sync_block):
                                out_sig=None)
         
         self.message_port_register_out(pmt.intern("command"))
+        #self.message_port_register_in(pmt.intern("msg_in"), self.handle_msg)
         self.dur = dur
         self.az_off = az_off
         self.el_off = el_off
@@ -78,6 +79,9 @@ class onoff(gr.sync_block):
         command = pmt.dict_add(command, coord_key, coord_val)
         
         self.command = command
+
+    def handle_msg(self, msg):
+        self.msg = pmt.symbol_to_string(msg)
         
     def set_source(self, src):
 
@@ -115,7 +119,6 @@ class onoff(gr.sync_block):
             
         self.command = pmt.dict_add(self.command, az_key, az_val)
         self.command = pmt.dict_add(self.command, el_key, el_val)
-        #self.message_port_pub(pmt.intern("command"), self.command)
 
     def wait_duration(self):
 
