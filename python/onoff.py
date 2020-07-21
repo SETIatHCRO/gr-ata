@@ -23,6 +23,7 @@
 import numpy
 import pmt
 import time
+import threading as thr
 from gnuradio import gr
 
 class onoff(gr.sync_block):
@@ -115,21 +116,25 @@ class onoff(gr.sync_block):
         self.command = pmt.dict_add(self.command, az_key, az_val)
         self.command = pmt.dict_add(self.command, el_key, el_val)
         #self.message_port_pub(pmt.intern("command"), self.command)
-           
-    def start(self):
-        ''' publish the observation info to the output message port '''
-        
+
+    def wait_duration(self):
+
         #this command tells the control block to point
         # on-source for the given duration
         self.message_port_pub(pmt.intern("command"), self.command)
-        
+
         time.sleep(self.dur)
-        
+
         #this command will instruct the command block to point off 
         #source by the given offsets
         self.command = pmt.dict_add(self.command, self.azoff_key, self.azoff_val)
         self.command = pmt.dict_add(self.command, self.eloff_key, self.eloff_val)
-        
+
         self.message_port_pub(pmt.intern("command"), self.command)
+           
+    def start(self):
+        ''' publish the observation info to the output message port '''
+        
+        thr.Thread(target=self.wait_duration).start()
         
         return super().start()
