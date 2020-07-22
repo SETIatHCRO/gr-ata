@@ -296,7 +296,7 @@ class control(gr.basic_block):
     
         now = datetime.now()
         
-        src_ra, src_dec = ac.get_source_ra_dec(self.src)
+        src_ra, src_dec = ac.get_source_ra_dec(src_id)
                         
         if self.pos.isUp('radec', now, src_ra, src_dec):
             ac.create_ephems2(src_id, az_off, el_off)
