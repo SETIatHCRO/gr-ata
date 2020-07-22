@@ -62,16 +62,22 @@ class control(gr.basic_block):
         if mode == 'online':
         
             if socket.gethostname() == 'gnuradio1':
-                alarm = ac.get_alarm()
+                try: 
+                    alarm = ac.get_alarm()
         
-                if alarm['user'] == username:
-                    self.is_user = True
+                    if alarm['user'] == username:
+                        self.is_user = True
                         
-                else:
+                    else:
+                        self.is_user = False
+                        print("Another user, {0}, has the array locked out. \
+                               \nYou do not have permission to change the LO \
+                               frequency.".format(alarm['user']))
+                except KeyError:
                     self.is_user = False
-                    print("Another user, {1}, has the array locked out. \
-                           \nYou do not have permission to change the LO \
-                           frequency.".format(alarm['user']))
+                    print("The array is not locked out under your username.\
+                           \n You do not have permission to change the LO \
+                           frequency.")
         
                 self.message_port_register_in(pmt.intern("command"))
                 self.set_msg_handler(pmt.intern("command"), self.handle_msg)
@@ -98,6 +104,7 @@ class control(gr.basic_block):
         
         cfreq = self.obs_info['freq']
         ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
+        self.ant_list = ant_list
         
         ## Reserve your antennas ##
         
@@ -252,7 +259,7 @@ class control(gr.basic_block):
         print("Observing complete")
         return
         
-    def reserve(self, ant_list, force=False):
+    def reserve(self, ant_list, force=True):
     
         ''' This function checks if the antennas you have requested are 
             available, and reserves them if so. If you set force=True, 
@@ -278,8 +285,8 @@ class control(gr.basic_block):
                 return ant_list              
             except RuntimeError:
                 print("Antennas were not released after last run. Releasing and reserving.")
-                ac.release_antennas(self.ant_list, False)
-                ac.reserve_antennas(self.ant_list)
+                ac.release_antennas(ant_list, False)
+                ac.reserve_antennas(ant_list)
                 return ant_list
                 
     def point_src_id(self, src_id, ant_list, offsource=False, az_off=0, el_off=0):
@@ -336,9 +343,10 @@ class control(gr.basic_block):
             return
                    
     def stop(self):
-        print("The session has ended. Releasing and stowing antennas.")
+        print("The session has ended.")
         if self.mode == 'online':
             ac.release_antennas(self.ant_list, True)
+            print("Releasing and stowing antennas.")
         return True
                            
     #### Old functions ####    
