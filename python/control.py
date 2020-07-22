@@ -139,19 +139,19 @@ class control(gr.basic_block):
                    
         ## Run observation ##
         
-        if self.obs_info['source_id']:
+        if 'source_id' in self.obs_info:
             #First, check if this is an off-source scan
-            if (self.obs_info['az_off'] and self.obs_info['el_off']):
+            if ('az_off' and 'el_off') in self.obs_info:
                 self.point_src_id(self.obs_info['source_id'], ant_list, True,  
                                   self.obs_info['az_off'], self.obs_info['el_off'])
             #if not, observe on-source
             else:
                 self.point_src_id(self.obs_info['source_id'], ant_list)
             
-        elif self.obs_info['ra'] and self.obs_info['dec']:
+        elif ('ra' and 'dec') in self.obs_info:
             #run ra / dec observation
             #First, check if this is an off-source scan
-            if (self.obs_info['az_off'] and self.obs_info['el_off']):
+            if ('az_off' and 'el_off') in self.obs_info:
                 self.point_src_id(self.obs_info['ra'], self.obs_info['dec'], 
                                   ant_list, True, self.obs_info['az_off'],  
                                   self.obs_info['el_off'])
@@ -159,10 +159,10 @@ class control(gr.basic_block):
             else:
                 self.point_src_id(self.obs_info['ra'], self.obs_info['dec'], ant_list)
             
-        elif self.obs_info['az'] and self.obs_info['el']:
+        elif ('az' and 'el') in self.obs_info:
             #run az / el observation
             #First, check if this is an off-source scan
-            if (self.obs_info['az_off'] and self.obs_info['el_off']):
+            if ('az_off' and 'el_off') in self.obs_info:
                 self.point_src_azel(self.obs_info['az'], self.obs_info['el'], 
                                   ant_list, True, self.obs_info['az_off'], 
                                   self.obs_info['el_off'])
