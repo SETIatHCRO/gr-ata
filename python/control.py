@@ -297,8 +297,9 @@ class control(gr.basic_block):
         now = datetime.now()
         
         src_ra, src_dec = ac.get_source_ra_dec(src_id)
+        ac.make_and_track_source(src_id, ant_list)
                         
-        if self.pos.isUp('radec', now, src_ra, src_dec):
+        '''if self.pos.isUp('radec', now, src_ra, src_dec):
             ac.create_ephems2(src_id, az_off, el_off)
             if not offsource:
                 ac.point_ants2('on', ant_list)          
@@ -307,7 +308,7 @@ class control(gr.basic_block):
         else:
             print("Source {0} is not up yet. Update source list \
                  and try again.".format(src_id))
-            return
+            return'''
 
     def point_src_radec(self, ra, dec, ant_list, offsource=False, az_off=0, el_off=0):
     
