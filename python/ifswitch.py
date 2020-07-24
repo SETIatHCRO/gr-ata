@@ -78,5 +78,6 @@ value(s) for the given antenna(s).
             print("No antennas specified. Please select one or more antennas and try again.")
             
         set_rf_switch_thread(ant_list)
-        
+        print("IF Switch has been set.")
         set_atten_thread(ant_pol_list, db_list)
+        print("IF Switch attenuation has been set.")

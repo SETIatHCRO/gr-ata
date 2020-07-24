@@ -67,6 +67,7 @@ class control(gr.basic_block):
         
                     if alarm['user'] == username:
                         self.is_user = True
+                        print("You are the primary user. You have full permissions.")
                         
                     else:
                         self.is_user = False
@@ -157,7 +158,8 @@ class control(gr.basic_block):
                                   self.obs_info['el_off'])
             #if not, observe on-source
             else:
-                self.point_src_id(self.obs_info['ra'], self.obs_info['dec'], ant_list)
+                ac.make_and_track_ra_dec(self.obs_info['ra'], self.obs_info['dec'], ant_list)
+                #self.point_src_id(self.obs_info['ra'], self.obs_info['dec'], ant_list)
             
         elif ('az' and 'el') in self.obs_info:
             #run az / el observation
@@ -175,7 +177,7 @@ class control(gr.basic_block):
                    Please specify a target source and try again.")
         
         #self.run()
-        self.end_session()
+        #self.end_session()
         
     def handle_msg_offline(self, msg):
     
@@ -301,9 +303,9 @@ class control(gr.basic_block):
         if self.pos.isUp('radec', now, src_ra, src_dec):
             ac.create_ephems2(src_id, az_off, el_off)
             if not offsource:
-                ac.point_ants2('on', ant_list)          
+                ac.point_ants2(src_id, 'on', ant_list)          
             else:
-                ac.point_ants2('off', ant_list)
+                ac.point_ants2(src_id, 'off', ant_list)
         else:
             print("Source {0} is not up yet. Update source list \
                  and try again.".format(src_id))
@@ -320,9 +322,9 @@ class control(gr.basic_block):
         if self.pos.isUp('radec', now, ra, dec):
             ac.create_ephems2(src_id, az_off, el_off)
             if not offsource:
-                ac.point_ants2('on', ant_list)          
+                ac.point_ants2(src_id, 'on', ant_list)          
             else:
-                ac.point_ants2('off', ant_list)
+                ac.point_ants2(src_id, 'off', ant_list)
         else:
             print("Source {0} is not up yet. Update source list \
                  and try again.".format(src_id))
@@ -338,8 +340,7 @@ class control(gr.basic_block):
             ac.set_az_el(ant_list, az+az_off, el+el_off)
             return
         else:
-            print("Source {0} is not up yet. Update source list \
-                 and try again.".format(src_id))
+            print("Sorry, {0} is below the minimum allowed elevation of {1}. Reset your coordinates and try again.".format(el, ap.MIN_ELEV))
             return
                    
     def stop(self):
