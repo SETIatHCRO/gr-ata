@@ -26,16 +26,19 @@ parameters:
 - id: db1
   label: Gain for Switch 1 (dB)
   dtype: float
+  default: 20.0
   hide: ${ ('all' if ant1.startswith('none') else 'none') }
   
 - id: db2
   label: Gain for Switch 2 (dB)
   dtype: float
+  default: 20.0
   hide: ${ ('all' if ant2.startswith('none') else 'none') }
   
 - id: db3
   label: Gain for Switch 3 (dB)
   dtype: float
+  default: 20.0
   hide: ${ ('all' if ant3.startswith('none') else 'none') }
 
 #  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
@@ -62,6 +65,15 @@ templates:
     - self.${id}.set_db1(${db1})
     - self.${id}.set_db2(${db2})       
     - self.${id}.set_db3(${db3})
+
+documentation: -|
+    This block sets the switch(es) to the right antennas so that you 
+    can observe with the USRP. 
+
+    Note -- the gain values must fall between the allowed range of 
+    0 to 31.5 dB -- if you enter a value below or above this range
+    your flowgraph will crash with an exception. 
+
 
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.

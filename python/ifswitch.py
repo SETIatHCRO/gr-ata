@@ -58,21 +58,30 @@ value(s) for the given antenna(s).
             ant1x = self.ant1+'x'
             ant1y = self.ant1+'y'
             ant_pol_list.append([ant1x, ant1y])
-            db_list.append([self.db1, self.db1])
+            if (self.db1 >= 0) and (self.db1 <= 31.5):
+                db_list.append([self.db1, self.db1])
+            else:
+                raise Exception("Error: Gain for Switch 1 must be between 0 and 31.5 dB")
             
         if self.ant2 != 'none': 
             ant_list.append(ant2)
             ant2x = self.ant2+'x'
             ant2y = self.ant2+'y'
             ant_pol_list.append([ant2x, ant2y])
-            db_list.append([self.db2, self.db2])
+            if (self.db2 >= 0) and (self.db2 <= 31.5):
+                db_list.append([self.db2, self.db2])
+            else:
+                raise Exception("Error: Gain for Switch 2 must be between 0 and 31.5 dB")
             
         if self.ant3 != 'none': 
             ant_list.append(ant3)
             ant3x = self.ant3+'x'
             ant3y = self.ant3+'y'
             ant_pol_list.append([ant3x, ant3y])
-            db_list.append([self.db3, self.db3])
+            if (self.db3 >= 0) and (self.db3 <= 31.5):
+                db_list.append([self.db3, self.db3])
+            else:
+                raise Exception("Error: Gain for Switch 3 must be between 0 and 31.5 dB")
             
         if not (self.ant1 or self.ant2 or self.ant3):
             print("No antennas specified. Please select one or more antennas and try again.")

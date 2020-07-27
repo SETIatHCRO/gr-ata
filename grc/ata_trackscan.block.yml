@@ -11,7 +11,7 @@ category: '[ATA]'
 parameters:
 
 - id: cfreq
-  label: Center frequency
+  label: Center frequency (MHz)
   dtype: float
   default: 0.0
   

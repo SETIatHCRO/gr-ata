@@ -10,7 +10,7 @@ category: '[ATA]'
 #     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
 parameters:
 - id: cfreq
-  label: Center frequency
+  label: Center frequency (MHz)
   dtype: float
   default: 0.0
   
