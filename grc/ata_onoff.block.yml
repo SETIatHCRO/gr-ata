@@ -77,6 +77,11 @@ parameters:
 #      * vlen (optional - data stream vector length. Default is 1)
 #      * optional (optional - set to 1 for optional inputs. Default is 0)
 
+inputs:
+- label: msg_in
+  domain: message
+  optional: True
+
 outputs:
 - label: command
   domain: message

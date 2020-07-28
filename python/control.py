@@ -258,7 +258,7 @@ class control(gr.basic_block):
             print("You have not specified a source location. \
                    Please specify a target source and try again.")
         
-        print("Observing complete")
+        print("Observing complete\n")
         return
         
     def reserve(self, ant_list, force=True):

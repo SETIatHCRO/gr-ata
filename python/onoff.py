@@ -42,7 +42,9 @@ class onoff(gr.sync_block):
                                out_sig=None)
         
         self.message_port_register_out(pmt.intern("command"))
-        #self.message_port_register_in(pmt.intern("msg_in"), self.handle_msg)
+        self.message_port_register_in(pmt.intern("msg_in"))
+        self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)
+
         self.dur = dur
         self.az_off = az_off
         self.el_off = el_off
@@ -81,8 +83,19 @@ class onoff(gr.sync_block):
         self.command = command
 
     def handle_msg(self, msg):
-        self.msg = pmt.symbol_to_string(msg)
-        
+
+        ''' This function handles input from the QT GUI
+        Message Edit Box.'''
+
+        self.key = pmt.car(msg)
+        self.val = pmt.cdr(msg)
+        self.command = pmt.dict_add(self.command, self.key, self.val)
+
+        self.command = pmt.dict_delete(self.command, self.azoff_key)
+        self.command = pmt.dict_delete(self.command, self.eloff_key)
+
+        thr.Thread(target=self.wait_duration).start()
+
     def set_source(self, src):
 
         ''' This function sets the source's 
