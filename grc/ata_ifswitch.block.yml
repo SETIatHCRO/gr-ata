@@ -24,19 +24,19 @@ parameters:
   options: [none, 4j, 4k, 4l, 5b, 5c, 5e, 5g, 5h]
   
 - id: db1
-  label: Gain for Switch 1 (dB)
+  label: Atten. for Switch 1 (dB)
   dtype: float
   default: 20.0
   hide: ${ ('all' if ant1.startswith('none') else 'none') }
   
 - id: db2
-  label: Gain for Switch 2 (dB)
+  label: Atten. for Switch 2 (dB)
   dtype: float
   default: 20.0
   hide: ${ ('all' if ant2.startswith('none') else 'none') }
   
 - id: db3
-  label: Gain for Switch 3 (dB)
+  label: Atten. for Switch 3 (dB)
   dtype: float
   default: 20.0
   hide: ${ ('all' if ant3.startswith('none') else 'none') }

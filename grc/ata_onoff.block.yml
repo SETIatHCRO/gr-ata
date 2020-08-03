@@ -90,7 +90,7 @@ outputs:
 templates:
     imports: import ata
     make: |
-        ata.onoff(${cfreq}, ${ant_list}, ${coord_type}, ${dur}, ${az_off}, ${el_off})
+        ata.onoff(${cfreq}, ${ant_list}, ${dur}, ${az_off}, ${el_off})
         % if context.get('coord_type')() == "azel":
         self.${id}.set_src_azel(${az}, ${el})
         % elif context.get('coord_type')() == "id":
