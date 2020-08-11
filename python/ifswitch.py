@@ -39,7 +39,6 @@ value(s) for the given antenna(s).
                                name="IF Switch",
                                in_sig=None,
                                out_sig=None)
-
         self.ant1 = ant1
         self.ant2 = ant2
         self.ant3 = ant3
@@ -47,6 +46,7 @@ value(s) for the given antenna(s).
         self.db1 = 0
         self.db2 = 0
         self.db3 = 0
+        print("initializing if switch")
 
     def set_db1(self, db1):
         ''' set the attenuation for the switch1 antenna '''
@@ -104,3 +104,5 @@ value(s) for the given antenna(s).
         print("IF Switch has been set.")
         ac.set_atten_thread(ant_pol_list, db_list)
         print("IF Switch attenuation has been set.")
+
+        return super().start() 

@@ -81,14 +81,53 @@ class onoff(gr.sync_block):
         ''' This function handles input from the QT GUI
         Message Edit Box.'''
 
+        self.command = pmt.dict_delete(self.command, pmt.intern("source_id"))
+        self.command = pmt.dict_delete(self.command, pmt.intern("ra"))
+        self.command = pmt.dict_delete(self.command, pmt.intern("dec"))
+        self.command = pmt.dict_delete(self.command, pmt.intern("az"))
+        self.command = pmt.dict_delete(self.command, pmt.intern("el"))
+
         key = pmt.car(msg)
         val = pmt.cdr(msg)
-        self.command = pmt.dict_add(self.command, key, val)
 
-        self.command = pmt.dict_delete(self.command, self.azoff_key)
-        self.command = pmt.dict_delete(self.command, self.eloff_key)
+        str_key = pmt.symbol_to_string(key)
+        
+        if str_key == "source_id":
+            self.command = pmt.dict_add(self.command, key, val)
+            self.command = pmt.dict_delete(self.command, self.azoff_key)
 
-        thr.Thread(target=self.wait_duration).start()
+            self.command = pmt.dict_delete(self.command, self.eloff_key)
+            thr.Thread(target=self.wait_duration).start()
+
+        elif str_key == "azel":
+            azel_pair = pmt.symbol_to_string(val).split(',')
+            az = pmt.from_double(float(azel_pair[0].strip()))
+            el = pmt.from_double(float(azel_pair[1].strip()))
+
+            self.command = pmt.dict_add(self.command, pmt.intern("az"), az)
+            self.command = pmt.dict_add(self.command, pmt.intern("el"), el)
+
+            self.command = pmt.dict_delete(self.command, self.azoff_key)
+            self.command = pmt.dict_delete(self.command, self.eloff_key)
+
+            thr.Thread(target=self.wait_duration).start()
+
+        elif str_key == "radec":
+            radec_pair = pmt.symbol_to_string(val).split(',')
+            ra = pmt.from_double(float(radec_pair[0].strip()))
+            dec = pmt.from_double(float(radec_pair[1].strip()))
+
+            self.command = pmt.dict_add(self.command, pmt.intern("ra"), ra)
+            self.command = pmt.dict_add(self.command, pmt.intern("dec"), dec)
+
+            self.command = pmt.dict_delete(self.command, self.azoff_key)
+            self.command = pmt.dict_delete(self.command, self.eloff_key)
+
+            thr.Thread(target=self.wait_duration).start()
+
+        else: 
+            print("Wrong value in left-hand space of Message Edit box.\n"\
+                  "Must be either source_id, radec, or azel. Try again.\n")
 
     def set_source(self, src):
 
@@ -143,6 +182,9 @@ class onoff(gr.sync_block):
         self.command = pmt.dict_add(self.command, self.eloff_key, self.eloff_val)
 
         self.message_port_pub(pmt.intern("command"), self.command)
+
+        self.command = pmt.dict_delete(self.command, self.azoff_key)
+        self.command = pmt.dict_delete(self.command, self.azoff_key)
 
     def start(self):
         ''' publish the observation info to the output message port '''

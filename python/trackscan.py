@@ -71,11 +71,45 @@ class trackscan(gr.sync_block):
         ''' This function handles messages from a
         text entry box like QT GUI Message Edit. '''
 
+        self.command = pmt.dict_delete(self.command, pmt.intern("source_id"))
+        self.command = pmt.dict_delete(self.command, pmt.intern("ra"))
+        self.command = pmt.dict_delete(self.command, pmt.intern("dec"))
+        self.command = pmt.dict_delete(self.command, pmt.intern("az"))
+        self.command = pmt.dict_delete(self.command, pmt.intern("el"))
+
         key = pmt.car(msg)
         val = pmt.cdr(msg)
 
-        self.command = pmt.dict_add(self.command, key, val)
-        self.message_port_pub(pmt.intern("command"), self.command)
+        str_key = pmt.symbol_to_string(key)
+        
+        if str_key == "source_id":
+            self.command = pmt.dict_add(self.command, key, val)
+            self.message_port_pub(pmt.intern("command"), self.command)
+
+        elif str_key == "azel":
+            azel_pair = pmt.symbol_to_string(val).split(',')
+            az = pmt.from_double(float(azel_pair[0].strip()))
+            el = pmt.from_double(float(azel_pair[1].strip()))
+
+            self.command = pmt.dict_add(self.command, pmt.intern("az"), az)
+            self.command = pmt.dict_add(self.command, pmt.intern("el"), el)
+
+            self.message_port_pub(pmt.intern("command"), self.command)
+
+        elif str_key == "radec":
+            radec_pair = pmt.symbol_to_string(val).split(',')
+            ra = pmt.from_double(float(radec_pair[0].strip()))
+            dec = pmt.from_double(float(radec_pair[1].strip()))
+
+            self.command = pmt.dict_add(self.command, pmt.intern("ra"), ra)
+            self.command = pmt.dict_add(self.command, pmt.intern("dec"), dec)
+
+            self.message_port_pub(pmt.intern("command"), self.command)
+
+        else: 
+            print("Wrong value in left-hand space of Message Edit box.\n"\
+                  "Must be either source_id, radec, or azel. Try again.\n")
+
 
     def set_source(self, src):
 

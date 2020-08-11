@@ -60,7 +60,7 @@ class control(gr.basic_block):
         #run the flowgraph either online or offline
         if mode == 'online':
 
-            try_ping = subprocess.Popen(['ping', '-c', '1', 'tumulus'], 
+            try_ping = subprocess.Popen(['ping', '-c', '1', 'control'], 
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
             stdout, stderr = try_ping.communicate()
@@ -78,21 +78,21 @@ class control(gr.basic_block):
 
                     else:
                         self.is_user = False
-                        print("Another user, {0}, has the array locked out. \n"
-                              "You do not have permission to change the LO frequency.".format(alarm['user']))
+                        raise Exception("Another user, {0}, has the array locked out. \n"
+                                        "You do not have permission to observe.".format(alarm['user']))
                 except KeyError:
                     self.is_user = False
-                    print("The array is not locked out under your username.\n"
-                          "You do not have permission to change the LO frequency.")
+                    raise Exception("The array is not locked out under your username.\n"
+                                    "You do not have permission to observe.")
 
                 self.message_port_register_in(pmt.intern("command"))
                 self.set_msg_handler(pmt.intern("command"), self.handle_msg)
 
             else:
                 exception_msg = "Sorry, you must be able to connect to the ATA\n"\
-                                "machine tumulus if you want to observe. If you want to test\n"\
-                                "the code on your local computer without observing, switch\n"\
-                                "to Offline Mode."
+                                "machine. if you want to observe. If you want to test\n"\
+                                "the code on your local computer without observing, \n"\
+                                "switch to Offline Mode."
                 raise Exception(exception_msg)
 
         elif mode == 'offline':
@@ -110,18 +110,11 @@ class control(gr.basic_block):
 
         cfreq = self.obs_info['freq']
         ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
-        self.ant_list = ant_list
-
-        ## Reserve your antennas ##
-        if not self.is_configured:
-            if ant_list:
-                self.my_ants = reserve(ant_list)
-            else:
-                print("No antennas specified. Provide an antenna list and try again.")
+        self.my_ants = ant_list
 
         ## Set the center frequency (if you have permission), and/or  ##
         ## set the feed focus frequency, and turn on the LNAs         ##
-
+        if not self.is_configured:
             if cfreq and self.my_ants:
                 if self.is_user:
                     ac.try_on_lnas(self.my_ants)
@@ -333,38 +326,6 @@ class control(gr.basic_block):
         return
 
     def stop(self):
-        print("The session has ended.")
-        if self.mode == 'online':
-            ac.release_antennas(self.ant_list, True)
-            print("Releasing and stowing antennas.")
+        print("The session has ended. Stowing antenna(s)")
+        ac.set_az_el(self.my_ants, 0.00, 18.00)
         return True
-
-## outside-of-class functions
-
-def reserve(ant_list, force=True):
-
-    ''' This function checks if the antennas you have requested are
-        available, and reserves them if so. If you set force=True,
-        (not recommended) then it releases and reserves antennas
-        without first checking that they are not reserved by someone
-        else. '''
-
-    if not force:
-        my_ants = list(set(ant_list) & set(ac.list_released_antennas()))
-
-        if my_ants:
-            ac.reserve_antennas(my_ants)
-            print("Antennas: {0} have been reserved.".format(my_ants))
-        else:
-            print("None of the antennas you requested are available. \n"
-                  "Please request non-reserved antennas and try again.")
-        return my_ants
-
-    try:
-        ac.reserve_antennas(ant_list)
-        return ant_list
-    except RuntimeError:
-        print("Antennas were not released after last run. Releasing and reserving.")
-        ac.release_antennas(ant_list, False)
-        ac.reserve_antennas(ant_list)
-        return ant_list
