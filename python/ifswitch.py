@@ -25,17 +25,18 @@ proper switch(es), then sets the appropriate attenuation
 value(s) for the given antenna(s).
 """
 
+import subprocess
 from gnuradio import gr
 from ATATools import ata_control as ac
 
-class ifswitch(gr.sync_block):
+class ifswitch(gr.basic_block):
     """
 This block connects the antenna(s) specified to the
 proper switch(es), then sets the appropriate attenuation
 value(s) for the given antenna(s).
     """
     def __init__(self, ant1, ant2, ant3):
-        gr.sync_block.__init__(self,
+        gr.basic_block.__init__(self,
                                name="IF Switch",
                                in_sig=None,
                                out_sig=None)
@@ -43,10 +44,19 @@ value(s) for the given antenna(s).
         self.ant2 = ant2
         self.ant3 = ant3
 
-        self.db1 = 0
-        self.db2 = 0
-        self.db3 = 0
-        print("initializing if switch")
+        self.db1 = 20
+        self.db2 = 20
+        self.db3 = 20
+        
+        #this is a clunky workaround -- eventually need to troubleshoot why
+        #the start function won't call automatically, but for now this works.
+
+        self.start()
+
+    #note that the set_db functions were left in the python code
+    #in case others decide to re-enable them in the yaml file later. 
+    #Right now, ATA staff recommend they should not be editable by 
+    #the user, so please do not re-enable these fields.
 
     def set_db1(self, db1):
         ''' set the attenuation for the switch1 antenna '''
@@ -62,7 +72,6 @@ value(s) for the given antenna(s).
 
     def start(self):
 
-        print("if switch start")
         ant_list = []
         ant_pol_list = []
         db_list = []
@@ -100,9 +109,21 @@ value(s) for the given antenna(s).
         if not (self.ant1 or self.ant2 or self.ant3):
             print("No antennas specified. Please select one or more antennas and try again.")
 
-        ac.rf_switch_thread(ant_list)
-        print("IF Switch has been set.")
-        ac.set_atten_thread(ant_pol_list, db_list)
-        print("IF Switch attenuation has been set.")
+        try_ping = subprocess.Popen(['ping', '-c', '1', 'if-switch'], 
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT)
+        stdout, stderr = try_ping.communicate()
+        ping_output = stdout.decode('utf-8')
 
-        return super().start() 
+        ping_success = "1 packets transmitted, 1 received"
+
+        if ping_success in ping_output:
+            ac.rf_switch_thread(ant_list)
+            print("IF Switch has been set.")
+            ac.set_atten_thread(ant_pol_list, db_list)
+            print("IF Switch attenuation has been set.")
+
+            return super().start() 
+
+        print("Can't connect to if-switch machine. Try again.")
+        return super().start()
