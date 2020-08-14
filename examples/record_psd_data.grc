@@ -32,6 +32,18 @@ options:
     state: enabled
 
 blocks:
+- name: decimation
+  id: variable
+  parameters:
+    comment: ''
+    value: '1000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [944, 97]
+    rotation: 0
+    state: true
 - name: fftsize
   id: variable
   parameters:
@@ -81,7 +93,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    decim: '1000'
+    decim: decimation
     maxoutbuf: '0'
     minoutbuf: '0'
     type: float
@@ -319,7 +331,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [930, 76]
+    coordinate: [829, 94]
     rotation: 0
     state: true
 - name: timestamp

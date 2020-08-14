@@ -135,7 +135,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /home/ellie/hi_file.dat
+    file: /home/ellie/research/ata/data/hi_file.dat
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
