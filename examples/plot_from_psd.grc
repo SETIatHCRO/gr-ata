@@ -1,0 +1,342 @@
+options:
+  parameters:
+    author: ellie
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: plotdata
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: Not titled yet
+    window_size: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: c
+  id: variable
+  parameters:
+    comment: ''
+    value: '300000000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [10, 103]
+    rotation: 0
+    state: true
+- name: cfreq
+  id: variable
+  parameters:
+    comment: ''
+    value: '1420000000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [486, 79]
+    rotation: 0
+    state: enabled
+- name: fftsize
+  id: variable
+  parameters:
+    comment: center frequency for voyager file
+    value: 8192*2
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [369, 80]
+    rotation: 0
+    state: enabled
+- name: rest_freq
+  id: variable
+  parameters:
+    comment: ''
+    value: '1420405752'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [370, 14]
+    rotation: 0
+    state: true
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 50000000/2
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [583, 78]
+    rotation: 0
+    state: enabled
+- name: v_corr
+  id: variable
+  parameters:
+    comment: ''
+    value: v.vlsr_correction('2020-08-13T06:33:11', 23.848588, 64.671619)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [478, 13]
+    rotation: 0
+    state: true
+- name: vmax
+  id: variable
+  parameters:
+    comment: ''
+    value: c*(1 - (cfreq - (samp_rate/2))/rest_freq)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [183, 8]
+    rotation: 0
+    state: true
+- name: vmin
+  id: variable
+  parameters:
+    comment: ''
+    value: c*(1 - (cfreq + (samp_rate/2))/rest_freq)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [182, 79]
+    rotation: 0
+    state: true
+- name: blocks_file_source_0
+  id: blocks_file_source
+  parameters:
+    affinity: ''
+    alias: ''
+    begin_tag: pmt.PMT_NIL
+    comment: ''
+    file: /home/ellie/hi_file.dat
+    length: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    repeat: 'True'
+    type: float
+    vlen: fftsize
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [148, 264]
+    rotation: 0
+    state: true
+- name: qtgui_vector_sink_f_0_0
+  id: qtgui_vector_sink_f
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    average: '0.05'
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: ''
+    grid: 'False'
+    gui_hint: ''
+    label1: ''
+    label10: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '""'
+    nconnections: '1'
+    ref_level: '0'
+    showports: 'False'
+    update_time: '0.10'
+    vlen: fftsize
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    x_axis_label: '"Freq"'
+    x_start: cfreq - (samp_rate/2)
+    x_step: samp_rate/fftsize
+    x_units: '""'
+    y_axis_label: '"Intensity"'
+    y_units: '""'
+    ymax: '0'
+    ymin: '-25'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [756, 210]
+    rotation: 0
+    state: enabled
+- name: qtgui_vector_sink_f_0_1
+  id: qtgui_vector_sink_f
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    average: '1.0'
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: ''
+    grid: 'False'
+    gui_hint: ''
+    label1: ''
+    label10: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '""'
+    nconnections: '1'
+    ref_level: '0'
+    showports: 'False'
+    update_time: '0.10'
+    vlen: fftsize
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    x_axis_label: '"V_LSR (km/s)"'
+    x_start: (vmin/1000) - v_corr
+    x_step: (vmax-vmin)/(fftsize*1000)
+    x_units: '""'
+    y_axis_label: '"Log PSD"'
+    y_units: '""'
+    ymax: '0'
+    ymin: '-25'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [758, 380]
+    rotation: 0
+    state: enabled
+- name: v
+  id: epy_module
+  parameters:
+    alias: ''
+    comment: ''
+    source_code: "# Calculates the doppler shift of the HI line relative to the local\
+      \ standard of rest\n# Allows frequency shifting a signal to the V_LSR frame\n\
+      \n# Author: Paul Boven <p.boven@xs4all.nl>\n# Copyright (c) 2019 CAMRAS, released\
+      \ under CC BY v4.0\n# https://creativecommons.org/licenses/by/4.0/\n\n# Note:\
+      \ this requires GNU Radio 3.8 (or higher)\n# Required packages (Debian/Ubuntu):\
+      \ python3-zmq, python3-astropy\n\n# To communicate with GNU Radio\n\n'''Part\
+      \ of this code was adapted from a program written by Paul Boven of \n   Dwingeloo\
+      \ Observatory.\n\n   Note -- please give RA in hour angle format and Dec in\
+      \ decimal\n   degree format. (This is the ATA catalog default format).\n\n \
+      \  E. White, 11 Aug. 2020\n'''\n\n# this module will be imported in the into\
+      \ your flowgraph\nfrom astropy import units as u\nfrom astropy.time import Time\n\
+      from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun\nimport\
+      \ time\n\n\ndef vlsr_correction(obs_timestamp, ra, dec):\n    # hcro\n    loc\
+      \ = EarthLocation.from_geodetic(lat=40.8172439*u.deg, \\\n                 \
+      \                     lon=-121.4698327*u.deg, \\\n                         \
+      \             height=986.0*u.m)\n\n    # Correction for the Sun's motion in\
+      \ our own Galaxy\n    sun = get_sun(Time(obs_timestamp)).icrs\n    psun = SkyCoord(ra=\"\
+      18:03:50.29\", \\\n                    dec=\"+30:00:16.8\", \\\n           \
+      \         frame=\"icrs\", unit=(u.hourangle, u.deg))\n    vsun = -20.0 * u.km\
+      \ / u.s\n\n    #Calculate the correction:\n    T = Time(obs_timestamp)\n\n \
+      \   # Source (Antenna) Direction. Make sure to transform to icrs\n    SD = SkyCoord(ra=ra*u.hourangle,\
+      \ dec=dec*u.deg, frame='icrs', \\\n                  location = loc, obstime\
+      \ = T)\n\n    # Calculate radial velocity and correct for Solar motion\n   \
+      \ v = SD.cartesian.dot(psun.cartesian) * vsun - SD.radial_velocity_correction()\n\
+      \n    return v.value\n\n"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [14, 178]
+    rotation: 0
+    state: true
+
+connections:
+- [blocks_file_source_0, '0', qtgui_vector_sink_f_0_0, '0']
+- [blocks_file_source_0, '0', qtgui_vector_sink_f_0_1, '0']
+
+metadata:
+  file_format: 1
