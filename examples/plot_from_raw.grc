@@ -423,16 +423,24 @@ blocks:
   parameters:
     alias: ''
     comment: ''
-    source_code: "# this module will be imported in the into your flowgraph\nfrom\
-      \ astropy import units as u\nfrom astropy.time import Time\nfrom astropy.coordinates\
-      \ import SkyCoord, EarthLocation, AltAz, get_sun\nimport time\n\n\ndef vlsr_correction(obs_timestamp,\
-      \ ra, dec):\n    # hcro\n    loc = EarthLocation.from_geodetic(lat=40.8172439*u.deg,\
-      \ \\\n                                      lon=-121.4698327*u.deg, \\\n   \
-      \                                   height=986.0*u.m)\n\n    # Correction for\
-      \ the Sun's motion in our own Galaxy\n    sun = get_sun(Time(obs_timestamp)).icrs\n\
-      \    psun = SkyCoord(ra=\"18:03:50.29\", \\\n                    dec=\"+30:00:16.8\"\
-      , \\\n                    frame=\"icrs\", unit=(u.hourangle, u.deg))\n    vsun\
-      \ = -20.0 * u.km / u.s\n\n    #Calculate the correction:\n    T = Time('2010-03-26T15:16:33')\n\
+    source_code: "# Author: Paul Boven <p.boven@xs4all.nl>\n# Copyright (c) 2019 CAMRAS,\
+      \ released under CC BY v4.0\n# https://creativecommons.org/licenses/by/4.0/\n\
+      \n# Note: this requires GNU Radio 3.8 (or higher)\n# Required packages (Debian/Ubuntu):\
+      \ python3-zmq, python3-astropy\n\n# To communicate with GNU Radio\n\n'''Part\
+      \ of this code was adapted from a program written by Paul Boven of \n   Dwingeloo\
+      \ Observatory.\n\n   Note -- please give RA in hour angle format and Dec in\
+      \ decimal\n   degree format. (This is the ATA catalog default format).\n\n \
+      \  E. White, 11 Aug. 2020\n'''\n\n# this module will be imported in the into\
+      \ your flowgraph\nfrom astropy import units as u\nfrom astropy.time import Time\n\
+      from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun\nimport\
+      \ time\n\n\ndef vlsr_correction(obs_timestamp, ra, dec):\n    # hcro\n    loc\
+      \ = EarthLocation.from_geodetic(lat=40.8172439*u.deg, \\\n                 \
+      \                     lon=-121.4698327*u.deg, \\\n                         \
+      \             height=986.0*u.m)\n\n    # Correction for the Sun's motion in\
+      \ our own Galaxy\n    sun = get_sun(Time(obs_timestamp)).icrs\n    psun = SkyCoord(ra=\"\
+      18:03:50.29\", \\\n                    dec=\"+30:00:16.8\", \\\n           \
+      \         frame=\"icrs\", unit=(u.hourangle, u.deg))\n    vsun = -20.0 * u.km\
+      \ / u.s\n\n    #Calculate the correction:\n    T = Time('2010-03-26T15:16:33')\n\
       \n    # Source (Antenna) Direction. Make sure to transform to icrs\n    SD =\
       \ SkyCoord(ra=ra*u.hourangle, dec=dec*u.deg, frame='icrs', \\\n            \
       \      location = loc, obstime = T)\n\n    # Calculate radial velocity and correct\
