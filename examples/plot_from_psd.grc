@@ -1,6 +1,7 @@
 options:
   parameters:
     author: ellie
+    catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
     comment: ''
@@ -22,7 +23,6 @@ options:
     sizing_mode: fixed
     thread_safe_setters: ''
     title: Not titled yet
-    window_size: ''
   states:
     bus_sink: false
     bus_source: false
@@ -60,7 +60,7 @@ blocks:
   id: variable
   parameters:
     comment: center frequency for voyager file
-    value: 8192*2
+    value: 4096*4
   states:
     bus_sink: false
     bus_source: false
@@ -96,7 +96,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: v.vlsr_correction('2020-08-13T06:33:11', 23.848588, 64.671619)
+    value: v.vlsr_correction('2020-09-15T20:22:08', 5.575548, 22.014460)
   states:
     bus_sink: false
     bus_source: false
@@ -108,7 +108,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: c*(1 - (cfreq - (samp_rate/2))/rest_freq)
+    value: c*(1 - (cfreq - (samp_rate)/2)/rest_freq)
   states:
     bus_sink: false
     bus_source: false
@@ -120,7 +120,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: c*(1 - (cfreq + (samp_rate/2))/rest_freq)
+    value: c*(1 - (cfreq + (samp_rate)/2)/rest_freq)
   states:
     bus_sink: false
     bus_source: false
@@ -135,7 +135,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /home/ellie/research/ata/data/hi_file.dat
+    file: /home/ewhite/saga_spec_2020-09-16_035723.947956.dat
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -209,13 +209,13 @@ blocks:
     width8: '1'
     width9: '1'
     x_axis_label: '"Freq"'
-    x_start: cfreq - (samp_rate/2)
-    x_step: samp_rate/fftsize
+    x_start: cfreq - (samp_rate)
+    x_step: 2*samp_rate/fftsize
     x_units: '""'
     y_axis_label: '"Intensity"'
     y_units: '""'
-    ymax: '0'
-    ymin: '-25'
+    ymax: '15'
+    ymin: '0'
   states:
     bus_sink: false
     bus_source: false
@@ -238,7 +238,7 @@ blocks:
     alpha7: '1.0'
     alpha8: '1.0'
     alpha9: '1.0'
-    autoscale: 'False'
+    autoscale: 'True'
     average: '1.0'
     color1: '"blue"'
     color10: '"dark blue"'
@@ -283,7 +283,7 @@ blocks:
     width9: '1'
     x_axis_label: '"V_LSR (km/s)"'
     x_start: (vmin/1000) - v_corr
-    x_step: (vmax-vmin)/(fftsize*1000)
+    x_step: -(vmax-vmin)/(fftsize*1000)
     x_units: '""'
     y_axis_label: '"Log PSD"'
     y_units: '""'
@@ -295,7 +295,7 @@ blocks:
     bus_structure: null
     coordinate: [758, 380]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: v
   id: epy_module
   parameters:

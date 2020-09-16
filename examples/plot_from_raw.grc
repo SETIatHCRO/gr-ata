@@ -1,6 +1,7 @@
 options:
   parameters:
     author: ''
+    catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
     comment: ''
@@ -22,7 +23,6 @@ options:
     sizing_mode: fixed
     thread_safe_setters: ''
     title: Sigmf test
-    window_size: ''
   states:
     bus_sink: false
     bus_source: false
@@ -96,7 +96,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: v.vlsr_correction('2010-03-26T15:16:33', 2.451075, 61.873500)
+    value: v.vlsr_correction('2020-09-16T04:15:07', 17.7611, -29.0028)
   states:
     bus_sink: false
     bus_source: false
@@ -144,21 +144,6 @@ blocks:
     coordinate: [824, 412]
     rotation: 0
     state: true
-- name: blocks_conjugate_cc_0
-  id: blocks_conjugate_cc
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [462, 420]
-    rotation: 0
-    state: enabled
 - name: blocks_file_source_0
   id: blocks_file_source
   parameters:
@@ -166,13 +151,13 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: ''
+    file: /home/ewhite/saga_raw_2020-09-16_041507.179121.dat
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
     repeat: 'True'
-    type: byte
+    type: complex
     vlen: '1'
   states:
     bus_sink: false
@@ -199,22 +184,6 @@ blocks:
     coordinate: [1000, 293]
     rotation: 0
     state: true
-- name: blocks_interleaved_char_to_complex_0
-  id: blocks_interleaved_char_to_complex
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    vector_input: 'False'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [306, 315]
-    rotation: 0
-    state: enabled
 - name: blocks_nlog10_ff_0
   id: blocks_nlog10_ff
   parameters:
@@ -344,7 +313,7 @@ blocks:
     bus_structure: null
     coordinate: [1341, 356]
     rotation: 0
-    state: true
+    state: disabled
 - name: qtgui_vector_sink_f_0_0
   id: qtgui_vector_sink_f
   parameters:
@@ -404,13 +373,13 @@ blocks:
     width8: '1'
     width9: '1'
     x_axis_label: '"Freq"'
-    x_start: cfreq - (samp_rate/2)
+    x_start: cfreq - (samp_rate)
     x_step: samp_rate/fftsize
     x_units: '""'
     y_axis_label: '"Log PSD"'
     y_units: '""'
-    ymax: '70'
-    ymin: '50'
+    ymax: '20'
+    ymin: '0'
   states:
     bus_sink: false
     bus_source: false
@@ -456,10 +425,8 @@ blocks:
 
 connections:
 - [blocks_complex_to_mag_squared_0, '0', blocks_integrate_xx_0, '0']
-- [blocks_conjugate_cc_0, '0', blocks_stream_to_vector_0, '0']
-- [blocks_file_source_0, '0', blocks_interleaved_char_to_complex_0, '0']
+- [blocks_file_source_0, '0', blocks_stream_to_vector_0, '0']
 - [blocks_integrate_xx_0, '0', blocks_nlog10_ff_0, '0']
-- [blocks_interleaved_char_to_complex_0, '0', blocks_conjugate_cc_0, '0']
 - [blocks_nlog10_ff_0, '0', qtgui_vector_sink_f_0, '0']
 - [blocks_nlog10_ff_0, '0', qtgui_vector_sink_f_0_0, '0']
 - [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']

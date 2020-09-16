@@ -7,7 +7,7 @@
 # GNU Radio Python Flow Graph
 # Title: Not titled yet
 # Author: ellie
-# GNU Radio version: 3.8.1.0
+# GNU Radio version: 3.9.0.0-git
 
 from distutils.version import StrictVersion
 
@@ -40,7 +40,7 @@ from gnuradio import qtgui
 class plotdata(gr.top_block, Qt.QWidget):
 
     def __init__(self):
-        gr.top_block.__init__(self, "Not titled yet")
+        gr.top_block.__init__(self, "Not titled yet", catch_exceptions=True)
         Qt.QWidget.__init__(self)
         self.setWindowTitle("Not titled yet")
         qtgui.util.check_set_qss()
@@ -77,62 +77,26 @@ class plotdata(gr.top_block, Qt.QWidget):
         self.rest_freq = rest_freq = 1420405752
         self.cfreq = cfreq = 1420000000
         self.c = c = 300000000
-        self.vmin = vmin = c*(1 - (cfreq + (samp_rate/2))/rest_freq)
-        self.vmax = vmax = c*(1 - (cfreq - (samp_rate/2))/rest_freq)
-        self.v_corr = v_corr = v.vlsr_correction('2020-08-13T06:33:11', 23.848588, 64.671619)
-        self.fftsize = fftsize = 8192*2
+        self.vmin = vmin = c*(1 - (cfreq + (samp_rate)/2)/rest_freq)
+        self.vmax = vmax = c*(1 - (cfreq - (samp_rate)/2)/rest_freq)
+        self.v_corr = v_corr = v.vlsr_correction('2020-09-15T20:22:08', 5.575548, 22.014460)
+        self.fftsize = fftsize = 4096*4
 
         ##################################################
         # Blocks
         ##################################################
-        self.qtgui_vector_sink_f_0_1 = qtgui.vector_sink_f(
-            fftsize,
-            (vmin/1000) - v_corr,
-            (vmax-vmin)/(fftsize*1000),
-            "V_LSR (km/s)",
-            "Log PSD",
-            "",
-            1 # Number of inputs
-        )
-        self.qtgui_vector_sink_f_0_1.set_update_time(0.10)
-        self.qtgui_vector_sink_f_0_1.set_y_axis(-25, 0)
-        self.qtgui_vector_sink_f_0_1.enable_autoscale(False)
-        self.qtgui_vector_sink_f_0_1.enable_grid(False)
-        self.qtgui_vector_sink_f_0_1.set_x_axis_units("")
-        self.qtgui_vector_sink_f_0_1.set_y_axis_units("")
-        self.qtgui_vector_sink_f_0_1.set_ref_level(0)
-
-        labels = ['', '', '', '', '',
-            '', '', '', '', '']
-        widths = [1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1]
-        colors = ["blue", "red", "green", "black", "cyan",
-            "magenta", "yellow", "dark red", "dark green", "dark blue"]
-        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0, 1.0]
-
-        for i in range(1):
-            if len(labels[i]) == 0:
-                self.qtgui_vector_sink_f_0_1.set_line_label(i, "Data {0}".format(i))
-            else:
-                self.qtgui_vector_sink_f_0_1.set_line_label(i, labels[i])
-            self.qtgui_vector_sink_f_0_1.set_line_width(i, widths[i])
-            self.qtgui_vector_sink_f_0_1.set_line_color(i, colors[i])
-            self.qtgui_vector_sink_f_0_1.set_line_alpha(i, alphas[i])
-
-        self._qtgui_vector_sink_f_0_1_win = sip.wrapinstance(self.qtgui_vector_sink_f_0_1.pyqwidget(), Qt.QWidget)
-        self.top_grid_layout.addWidget(self._qtgui_vector_sink_f_0_1_win)
         self.qtgui_vector_sink_f_0_0 = qtgui.vector_sink_f(
             fftsize,
-            cfreq - (samp_rate/2),
-            samp_rate/fftsize,
+            cfreq - (samp_rate),
+            2*samp_rate/fftsize,
             "Freq",
             "Intensity",
             "",
-            1 # Number of inputs
+            1, # Number of inputs
+            None # parent
         )
         self.qtgui_vector_sink_f_0_0.set_update_time(0.10)
-        self.qtgui_vector_sink_f_0_0.set_y_axis(-25, 0)
+        self.qtgui_vector_sink_f_0_0.set_y_axis(0, 15)
         self.qtgui_vector_sink_f_0_0.enable_autoscale(False)
         self.qtgui_vector_sink_f_0_0.enable_grid(False)
         self.qtgui_vector_sink_f_0_0.set_x_axis_units("")
@@ -159,7 +123,7 @@ class plotdata(gr.top_block, Qt.QWidget):
 
         self._qtgui_vector_sink_f_0_0_win = sip.wrapinstance(self.qtgui_vector_sink_f_0_0.pyqwidget(), Qt.QWidget)
         self.top_grid_layout.addWidget(self._qtgui_vector_sink_f_0_0_win)
-        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_float*fftsize, '/home/ellie/research/ata/data/hi_file.dat', True, 0, 0)
+        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_float*fftsize, '/home/ewhite/saga_spec_2020-09-16_035723.947956.dat', True, 0, 0)
         self.blocks_file_source_0.set_begin_tag(pmt.PMT_NIL)
 
 
@@ -168,7 +132,6 @@ class plotdata(gr.top_block, Qt.QWidget):
         # Connections
         ##################################################
         self.connect((self.blocks_file_source_0, 0), (self.qtgui_vector_sink_f_0_0, 0))
-        self.connect((self.blocks_file_source_0, 0), (self.qtgui_vector_sink_f_0_1, 0))
 
 
     def closeEvent(self, event):
@@ -181,63 +144,59 @@ class plotdata(gr.top_block, Qt.QWidget):
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
-        self.set_vmax(self.c*(1 - (self.cfreq - (self.samp_rate/2))/self.rest_freq))
-        self.set_vmin(self.c*(1 - (self.cfreq + (self.samp_rate/2))/self.rest_freq))
-        self.qtgui_vector_sink_f_0_0.set_x_axis(self.cfreq - (self.samp_rate/2), self.samp_rate/self.fftsize)
+        self.set_vmax(self.c*(1 - (self.cfreq - (self.samp_rate)/2)/self.rest_freq))
+        self.set_vmin(self.c*(1 - (self.cfreq + (self.samp_rate)/2)/self.rest_freq))
+        self.qtgui_vector_sink_f_0_0.set_x_axis(self.cfreq - (self.samp_rate), 2*self.samp_rate/self.fftsize)
 
     def get_rest_freq(self):
         return self.rest_freq
 
     def set_rest_freq(self, rest_freq):
         self.rest_freq = rest_freq
-        self.set_vmax(self.c*(1 - (self.cfreq - (self.samp_rate/2))/self.rest_freq))
-        self.set_vmin(self.c*(1 - (self.cfreq + (self.samp_rate/2))/self.rest_freq))
+        self.set_vmax(self.c*(1 - (self.cfreq - (self.samp_rate)/2)/self.rest_freq))
+        self.set_vmin(self.c*(1 - (self.cfreq + (self.samp_rate)/2)/self.rest_freq))
 
     def get_cfreq(self):
         return self.cfreq
 
     def set_cfreq(self, cfreq):
         self.cfreq = cfreq
-        self.set_vmax(self.c*(1 - (self.cfreq - (self.samp_rate/2))/self.rest_freq))
-        self.set_vmin(self.c*(1 - (self.cfreq + (self.samp_rate/2))/self.rest_freq))
-        self.qtgui_vector_sink_f_0_0.set_x_axis(self.cfreq - (self.samp_rate/2), self.samp_rate/self.fftsize)
+        self.set_vmax(self.c*(1 - (self.cfreq - (self.samp_rate)/2)/self.rest_freq))
+        self.set_vmin(self.c*(1 - (self.cfreq + (self.samp_rate)/2)/self.rest_freq))
+        self.qtgui_vector_sink_f_0_0.set_x_axis(self.cfreq - (self.samp_rate), 2*self.samp_rate/self.fftsize)
 
     def get_c(self):
         return self.c
 
     def set_c(self, c):
         self.c = c
-        self.set_vmax(self.c*(1 - (self.cfreq - (self.samp_rate/2))/self.rest_freq))
-        self.set_vmin(self.c*(1 - (self.cfreq + (self.samp_rate/2))/self.rest_freq))
+        self.set_vmax(self.c*(1 - (self.cfreq - (self.samp_rate)/2)/self.rest_freq))
+        self.set_vmin(self.c*(1 - (self.cfreq + (self.samp_rate)/2)/self.rest_freq))
 
     def get_vmin(self):
         return self.vmin
 
     def set_vmin(self, vmin):
         self.vmin = vmin
-        self.qtgui_vector_sink_f_0_1.set_x_axis((self.vmin/1000) - self.v_corr, (self.vmax-self.vmin)/(self.fftsize*1000))
 
     def get_vmax(self):
         return self.vmax
 
     def set_vmax(self, vmax):
         self.vmax = vmax
-        self.qtgui_vector_sink_f_0_1.set_x_axis((self.vmin/1000) - self.v_corr, (self.vmax-self.vmin)/(self.fftsize*1000))
 
     def get_v_corr(self):
         return self.v_corr
 
     def set_v_corr(self, v_corr):
         self.v_corr = v_corr
-        self.qtgui_vector_sink_f_0_1.set_x_axis((self.vmin/1000) - self.v_corr, (self.vmax-self.vmin)/(self.fftsize*1000))
 
     def get_fftsize(self):
         return self.fftsize
 
     def set_fftsize(self, fftsize):
         self.fftsize = fftsize
-        self.qtgui_vector_sink_f_0_0.set_x_axis(self.cfreq - (self.samp_rate/2), self.samp_rate/self.fftsize)
-        self.qtgui_vector_sink_f_0_1.set_x_axis((self.vmin/1000) - self.v_corr, (self.vmax-self.vmin)/(self.fftsize*1000))
+        self.qtgui_vector_sink_f_0_0.set_x_axis(self.cfreq - (self.samp_rate), 2*self.samp_rate/self.fftsize)
 
 
 

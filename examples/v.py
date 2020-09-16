@@ -1,6 +1,3 @@
-# Calculates the doppler shift of the HI line relative to the local standard of rest
-# Allows frequency shifting a signal to the V_LSR frame
-
 # Author: Paul Boven <p.boven@xs4all.nl>
 # Copyright (c) 2019 CAMRAS, released under CC BY v4.0
 # https://creativecommons.org/licenses/by/4.0/
@@ -40,7 +37,7 @@ def vlsr_correction(obs_timestamp, ra, dec):
     vsun = -20.0 * u.km / u.s
 
     #Calculate the correction:
-    T = Time(obs_timestamp)
+    T = Time('2010-03-26T15:16:33')
 
     # Source (Antenna) Direction. Make sure to transform to icrs
     SD = SkyCoord(ra=ra*u.hourangle, dec=dec*u.deg, frame='icrs', \

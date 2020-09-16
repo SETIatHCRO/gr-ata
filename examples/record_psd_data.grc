@@ -1,6 +1,7 @@
 options:
   parameters:
     author: ''
+    catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
     comment: ''
@@ -22,7 +23,6 @@ options:
     sizing_mode: fixed
     thread_safe_setters: ''
     title: ''
-    window_size: ''
   states:
     bus_sink: false
     bus_source: false
@@ -72,21 +72,6 @@ blocks:
     coordinate: [782, 412]
     rotation: 0
     state: true
-- name: blocks_conjugate_cc_0
-  id: blocks_conjugate_cc
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [340, 317]
-    rotation: 0
-    state: enabled
 - name: blocks_integrate_xx_0
   id: blocks_integrate_xx
   parameters:
@@ -725,13 +710,12 @@ blocks:
 
 connections:
 - [blocks_complex_to_mag_squared_0, '0', blocks_integrate_xx_0, '0']
-- [blocks_conjugate_cc_0, '0', blocks_stream_to_vector_0, '0']
 - [blocks_integrate_xx_0, '0', blocks_nlog10_ff_0, '0']
 - [blocks_nlog10_ff_0, '0', file_channel_0, '0']
 - [blocks_nlog10_ff_0, '0', qtgui_vector_sink_f_0_0, '0']
 - [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
 - [fft_vxx_0, '0', blocks_complex_to_mag_squared_0, '0']
-- [uhd_usrp_source, '0', blocks_conjugate_cc_0, '0']
+- [uhd_usrp_source, '0', blocks_stream_to_vector_0, '0']
 
 metadata:
   file_format: 1

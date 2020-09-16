@@ -1,6 +1,7 @@
 options:
   parameters:
     author: ''
+    catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
     comment: ''
@@ -22,7 +23,6 @@ options:
     sizing_mode: fixed
     thread_safe_setters: ''
     title: ''
-    window_size: ''
   states:
     bus_sink: false
     bus_source: false
@@ -32,21 +32,6 @@ options:
     state: enabled
 
 blocks:
-- name: blocks_conjugate_cc_0
-  id: blocks_conjugate_cc
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [375, 317]
-    rotation: 0
-    state: enabled
 - name: fc
   id: parameter
   parameters:
@@ -616,9 +601,8 @@ blocks:
     state: enabled
 
 connections:
-- [blocks_conjugate_cc_0, '0', file_channel_0, '0']
-- [blocks_conjugate_cc_0, '0', qtgui_freq_sink_x_0, '0']
-- [uhd_usrp_source, '0', blocks_conjugate_cc_0, '0']
+- [uhd_usrp_source, '0', file_channel_0, '0']
+- [uhd_usrp_source, '0', qtgui_freq_sink_x_0, '0']
 
 metadata:
   file_format: 1
