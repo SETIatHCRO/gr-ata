@@ -36,6 +36,9 @@ from ATATools import ata_control as ac
 from ATATools import ata_positions as ap
 
 FREQ_OFF = 179.0
+FREQ_OFF = 0.0 #Not needed anymore
+
+USRP_LO = 'd' #The tuning that is connected to the USRP
 
 obs_info = {}
 
@@ -120,10 +123,10 @@ class control(gr.basic_block):
             if cfreq and self.my_ants:
                 if self.is_user:
                     ac.try_on_lnas(self.my_ants)
-                    ac.set_freq(cfreq-FREQ_OFF, self.my_ants)
+                    ac.set_freq(cfreq-FREQ_OFF, self.my_ants, lo=USRP_LO)
                 else:
                     ac.try_on_lnas(self.my_ants)
-                    ac.set_freq_focus(cfreq-FREQ_OFF, self.my_ants)
+                    ac.set_freq_focus(cfreq-FREQ_OFF, self.my_ants, lo=USRP_LO)
 
             elif cfreq and not self.my_ants:
                 print("No antenna list specified. You must specify \n"
