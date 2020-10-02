@@ -189,6 +189,9 @@ class control(gr.basic_block):
 
         cfreq = self.obs_info['freq']
         ant_list = [a.strip() for a in self.obs_info['antennas_list'].split(',')]
+        
+        print("\nThe messages below are for demo purposes only,\n"
+              "the commands are not really being executed.\n")
 
         if not self.is_configured:
             ## Reserve your antennas ##
@@ -331,6 +334,8 @@ class control(gr.basic_block):
         return
 
     def stop(self):
-        print("The session has ended. Stowing antenna(s)")
+        if self.mode == 'offline':
+            print("The session has ended. Pretending to stow antenna(s)")
+            return True
         ac.set_az_el(self.my_ants, 0.00, 18.00)
         return True
