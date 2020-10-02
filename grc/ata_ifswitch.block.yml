@@ -16,7 +16,7 @@ parameters:
 - id: ant2
   label: Switch 2 Antennas
   dtype: string
-  options: [none, 2j, 2k, 2l, 3c, 3e, 3j, 3l, 4g]
+  options: [none, 1h, 2j, 2k, 2l, 3c, 3e, 3j, 3l, 4g]
   
 - id: ant3 
   label: Switch 3 Antennas
