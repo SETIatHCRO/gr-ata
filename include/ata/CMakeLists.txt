@@ -23,5 +23,7 @@
 ########################################################################
 install(FILES
     api.h
+    snap_source.h
+    snap_headers.h
     DESTINATION include/ata
 )

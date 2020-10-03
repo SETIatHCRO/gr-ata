@@ -24,6 +24,7 @@
 include(GrPlatform) #define LIB_SUFFIX
 
 list(APPEND ata_sources
+    snap_source_impl.cc
 )
 
 set(ata_sources "${ata_sources}" PARENT_SCOPE)
