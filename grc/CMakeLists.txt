@@ -18,7 +18,7 @@
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
 install(FILES
-    ata_snap_source.yml
+    ata_snap_source.block.yml
     ata_control.block.yml
     ata_trackscan.block.yml
     ata_onoff.block.yml

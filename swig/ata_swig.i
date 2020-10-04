@@ -8,5 +8,8 @@
 %include "ata_swig_doc.i"
 
 %{
+#include "ata/snap_source.h"
 %}
 
+%include "ata/snap_source.h"
+GR_SWIG_BLOCK_MAGIC2(ata, snap_source);
