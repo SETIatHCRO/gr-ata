@@ -46,8 +46,8 @@ protected:
   int d_header_type;
   int d_header_size;
   uint16_t d_payloadsize;
-  int d_precompDataSize;
-  int d_precompDataOverItemSize;
+  uint16_t total_packet_size;
+  uint16_t precomp_samples_per_pkt;
   long d_udp_recv_buf_size;
 
   uint64_t d_seq_num;
@@ -68,9 +68,8 @@ protected:
   uint64_t get_header_seqnum();
 
 public:
-  snap_source_impl(size_t itemsize, size_t vecLen, int port, int headerType,
-                  int payloadsize, bool notifyMissed,
-                  bool sourceZeros, bool ipv6);
+  snap_source_impl(size_t vecLen, int port, int headerType,
+                  bool notifyMissed, bool sourceZeros, bool ipv6);
   ~snap_source_impl();
 
   bool stop();

@@ -32,30 +32,27 @@
 namespace gr {
 namespace ata {
 
-snap_source::sptr snap_source::make(size_t itemsize, size_t vlen, int port,
-                                  int headerType, int payloadsize,
+snap_source::sptr snap_source::make(size_t vlen, int port,
+                                  int headerType,
                                   bool notifyMissed,
                                   bool sourceZeros, bool ipv6) {
   return gnuradio::get_initial_sptr(
-      new snap_source_impl(itemsize, vlen, port, headerType, payloadsize,
+      new snap_source_impl(vlen, port, headerType,
                           notifyMissed, sourceZeros, ipv6));
 }
 
 /*
  * The private constructor
  */
-snap_source_impl::snap_source_impl(size_t itemsize, size_t vlen, int port,
-                                 int headerType, int payloadsize,
+snap_source_impl::snap_source_impl(size_t vlen, int port,
+                                 int headerType,
                                  bool notifyMissed,
                                  bool sourceZeros, bool ipv6)
     : gr::sync_block("snap_source",
                      gr::io_signature::make(0, 0, 0),
-                     gr::io_signature::make(1, 2, sizeof(char) * vlen)) {
+                     gr::io_signature::make(4, 4, sizeof(char) * vlen)) {
 
   is_ipv6 = ipv6;
-
-  d_itemsize = itemsize;
-  d_veclen = vlen;
 
   d_port = port;
   d_seq_num = 0;
@@ -65,15 +62,17 @@ snap_source_impl::snap_source_impl(size_t itemsize, size_t vlen, int port,
   
   d_header_type = headerType;
 
-  d_block_size = d_itemsize * d_veclen;
-  d_payloadsize = payloadsize;
-
   // Configure packet parser
   d_header_size = 0;
   switch (d_header_type) {
   case SNAP_PACKETTYPE_VOLTAGE:
+	d_itemsize = 1;  // Output will be bytes
+	d_veclen = 1;
+
     d_header_size = 8;
-    d_payloadsize = 256 * 16 * 2; // channels * time steps * pols * sizeof(sc4)
+    d_payloadsize = 8192; // 256 * 16 * 2; // channels * time steps * pols * sizeof(sc4)
+    total_packet_size = 8200;
+    precomp_samples_per_pkt = d_payloadsize / 4;  // divided by 2*sizeof(byte)*num_polarizations
     break;
 
   case SNAP_PACKETTYPE_SPECT:
@@ -94,15 +93,11 @@ snap_source_impl::snap_source_impl(size_t itemsize, size_t vlen, int port,
     exit(1);
   }
 
-  // Not sure the purpose of these vars
-  d_precompDataSize = d_payloadsize - d_header_size;
-  d_precompDataOverItemSize = d_precompDataSize / d_itemsize;
-
-  localBuffer = new char[d_header_size + d_payloadsize];
+  localBuffer = new char[total_packet_size];
   long maxCircBuffer;
 
   // Compute reasonable buffer size
-  maxCircBuffer = d_payloadsize * 1500; // 12 MiB
+  maxCircBuffer = total_packet_size * 1500; // 12 MiB
   d_localqueue = new boost::circular_buffer<char>(maxCircBuffer);
 
   // Initialize receiving socket
@@ -126,10 +121,17 @@ snap_source_impl::snap_source_impl(size_t itemsize, size_t vlen, int port,
   GR_LOG_INFO(d_logger, msg_stream.str());
 
   // Configure output data block size
-  int out_multiple = (d_payloadsize - d_header_size) / d_block_size;
+  // For vlen=1 the output multiple will be the data contained in 1 UDP packet (total UDP size - header = data)
+  // ex: 8200 - 8 = 8192.  vlen = 1:
+  // out_multiple = (8200 - 8 ) / 1 = 8192.
+  int out_multiple = d_payloadsize / d_block_size;
 
-  if (out_multiple == 1)
-	  out_multiple = 2; // Ensure we get pairs, for instance complex -> ichar pairs
+  // So the SNAP board will have 8192 samples, but they'll be split into x and y polarizations,
+  // So if we output x and y, we'll have 1/2 * 8192 total output samples.
+  if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
+	  // samples per packet = 8192 / ((sizeof(real) + sizeof(imag) * num_polarizations) = 8192 / 4;
+	  out_multiple = 2048;
+  }
 
   gr::block::set_output_multiple(out_multiple);
 }
@@ -193,11 +195,13 @@ int snap_source_impl::work(int noutput_items,
   static bool firstTime = true;
   static int underRunCounter = 0;
 
-  char *output_real = (char *)output_items[0];
-  char *output_imag = (char *)output_items[1];
+  char *x_real = (char *)output_items[0];
+  char *x_imag = (char *)output_items[1];
+  char *y_real = (char *)output_items[2];
+  char *y_imag = (char *)output_items[3];
   
   int bytesAvailable = netdata_available();
-  unsigned int numRequested = noutput_items * d_block_size;
+  unsigned int numRequested = noutput_items * d_veclen;
 
   // Handle case where no data is available
   if ((bytesAvailable == 0) && (d_localqueue->size() == 0)) {
@@ -206,8 +210,10 @@ int snap_source_impl::work(int noutput_items,
 
     if (d_sourceZeros) {
       // Just return 0's
-      memset((void *)output_real, 0x00, numRequested); // numRequested will be in bytes
-      memset((void *)output_imag, 0x00, numRequested); // numRequested will be in bytes
+      memset((void *)x_real, 0x00, numRequested); // numRequested will be in bytes
+      memset((void *)x_imag, 0x00, numRequested); // numRequested will be in bytes
+      memset((void *)y_real, 0x00, numRequested); // numRequested will be in bytes
+      memset((void *)y_imag, 0x00, numRequested); // numRequested will be in bytes
       return noutput_items;
 
     } else {
@@ -230,7 +236,7 @@ int snap_source_impl::work(int noutput_items,
   int localNumItems;
 
   // we could get here even if no data was received but there's still data in
-  // the queue. however read blocks so we want to make sure we have data before
+  // the queue. however we read blocks so we want to make sure we have data before
   // we call it.
   if (bytesAvailable > 0) {
     boost::asio::streambuf::mutable_buffers_type buf =
@@ -254,7 +260,7 @@ int snap_source_impl::work(int noutput_items,
   }
   
   // Handle partial packets
-  if (d_localqueue->size() < d_payloadsize) {
+  if (d_localqueue->size() < total_packet_size) {
     // since we should be getting these in UDP packet blocks matched on the
     // sender/receiver, this should be a fringe case, or a case where another
     // app is sourcing the packets.
@@ -287,11 +293,19 @@ int snap_source_impl::work(int noutput_items,
   // let's figure out how much we have in relation to noutput_items, accounting
   // for headers
 
-  // Number of data-only blocks requested (set_output_multiple() should make
-  // sure this is an integer multiple)
-  long blocksRequested = noutput_items / d_precompDataOverItemSize;
-  // Number of blocks available accounting for the header as well.
-  long blocksAvailable = d_localqueue->size() / (d_payloadsize);
+  long blocksRequested = 0;
+  long blocksAvailable = 0;
+
+  if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
+	  blocksRequested = noutput_items / precomp_samples_per_pkt;
+	  blocksAvailable = d_localqueue->size() / (precomp_samples_per_pkt + d_header_size);
+  }
+  else {
+	  // SPEC TODO:  Calc blocks
+	  blocksRequested = noutput_items / 4;
+	  blocksAvailable = d_localqueue->size() / (d_payloadsize);
+  }
+
   long blocksRetrieved;
   int itemsreturned;
 
@@ -302,7 +316,7 @@ int snap_source_impl::work(int noutput_items,
 
   // items returned is going to match the payload (actual data) of the number of
   // blocks.
-  itemsreturned = blocksRetrieved * d_precompDataOverItemSize;
+  itemsreturned = blocksRetrieved * precomp_samples_per_pkt;
 
   // We're going to have to read the data out in blocks, account for the header,
   // then just move the data part into the out[] array.
@@ -341,9 +355,19 @@ int snap_source_impl::work(int noutput_items,
       }
     }
 
-    for (unsigned int i = 0; i < itemsreturned; i++) {
-    *output_real++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
-    *output_imag++ = (int8_t)((*pData++) << 4)/16;
+    // because samples / packet is a power of 2, itemsreturned will always be divisible by 2.
+
+    long items_over_2 = itemsreturned / 2;
+
+    for (unsigned int i = 0; i < items_over_2; i++) {
+    *x_real++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
+    *x_imag++ = (int8_t)((*pData++) << 4)/16;
+    }
+
+    // Because of the way C++ stores multi-dimensional arrays we can split the polarizations like this.
+    for (unsigned int i = items_over_2; i < itemsreturned; i++) {
+    *y_real++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
+    *y_imag++ = (int8_t)((*pData++) << 4)/16;
     }
   }
 

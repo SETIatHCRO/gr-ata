@@ -3,62 +3,55 @@ label: ATA SNAP Source
 category: '[ATA]'
 
 parameters:
+-   id: header
+    label: Stream Type
+    dtype: enum
+    options: ['1', '2']
+    option_labels: [Voltage, Spectrometer]
 -   id: port
     label: Port
     dtype: int
-    default: '2000'
--   id: header
-    label: Header
-    dtype: enum
-    options: ['0', '1', '2']
-    option_labels: [None, Voltage, Spectrometer]
--   id: payloadsize
-    label: SNAP Packet Data Size
-    dtype: int
-    default: '8200'
-    hide: part
+    default: '50000'
 -   id: notifyMissed
     label: Notify Missed Frames
     dtype: enum
-    options: ['False', 'True']
-    option_labels: ['No', 'Yes']
+    options: ['True', 'False']
+    option_labels: ['Yes', 'No']
 -   id: srcZeros
     label: Src 0s If No Data
     dtype: enum
-    options: ['False', 'True']
-    option_labels: ['No', 'Yes']
+    options: ['True', 'False']
+    option_labels: ['Yes', 'No']
 -   id: ipv6
     label: Enable IPv6 Support
     dtype: enum
     options: ['False', 'True']
     option_labels: ['No', 'Yes']
--   id: vlen
-    label: Vec Length
-    dtype: int
-    default: '1'
-    hide: ${ 'part' if vlen == 1 else 'none' }
 
 outputs:
--   domain: stream
-    id: real
+-   label: x_real
+    domain: stream
     dtype: byte
-    vlen: ${ vlen }
--   domain: stream
-    id: imag
+    vlen: 1
+-   label: x_imag
+    domain: stream
     dtype: byte
-    vlen: ${ vlen }
-
-asserts:
-- ${ vlen > 0 }
+    vlen: 1
+-   label: y_real
+    domain: stream
+    dtype: byte
+    vlen: 1
+-   label: y_imag
+    domain: stream
+    dtype: byte
+    vlen: 1
 
 templates:
     imports: import ata
-    make: ata.snap_source(${type.size}, ${vlen}, ${port}, ${header}, ${payloadsize}, ${notifyMissed}, ${srcZeros}, ${ipv6})
+    make: ata.snap_source(1, ${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6})
 
 documentation: "This block listens for ATA SNAP traffic on the specified UDP port and outputs\
-    \ the data stream.  Note that the header setting and payload size should\
-    \ match on both the sender and receiver.  For the new SNAP controller, this size \
-    \ should be 8200 (8192 data + 8 byte header).\
+    \ the data stream.\
     \ \n\nIf you need the block to generate 0s when there is\
     \ no UDP data, you can turn on the 'Src 0s If No Data' flag, however this is best\
     \ paired with the grnet UDP sink block.  If using a separate application, problems\
