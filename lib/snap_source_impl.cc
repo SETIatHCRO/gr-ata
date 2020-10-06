@@ -345,21 +345,20 @@ int snap_source_impl::work(int noutput_items,
     long block_bytes = 16 * 256;
 
     for (unsigned int i = 0; i < block_bytes; i++) {
-		*x_pol = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
-		*x_pol++ = (int8_t)((*pData++) << 4)/16;
+		*x_pol++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16; // I
+		*x_pol++ = (int8_t)((*pData++) << 4)/16;  // Q
     }
 
     // Because of the way C++ stores multi-dimensional arrays we can split the polarizations like this.
     for (unsigned int i = 0; i < block_bytes; i++) {
-		*y_pol = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
-		*y_pol++ = (int8_t)((*pData++) << 4)/16;
+		*y_pol++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16;  // I
+		*y_pol++ = (int8_t)((*pData++) << 4)/16;  // Q
     }
 
     pmt::pmt_t pmt_channel_number =pmt::from_long((long)hdr.channel_id);
 
     add_item_tag(0, nitems_written(0) + curPacket, d_pmt_channel, pmt_channel_number);
     add_item_tag(1, nitems_written(0) + curPacket, d_pmt_channel, pmt_channel_number);
-
   }
 
   if (skippedPackets > 0 && d_notifyMissed) {
