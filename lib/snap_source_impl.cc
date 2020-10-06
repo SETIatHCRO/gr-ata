@@ -170,7 +170,7 @@ size_t snap_source_impl::netdata_available() {
   return bytes_readable;
 }
 
-void snap_source_impl::get_voltage_header(snap_voltage_header& hdr) {
+void snap_source_impl::get_voltage_header(snap_header& hdr) {
 	  uint64_t *header_as_uint64;
 	  header_as_uint64 = (uint64_t *)localBuffer;
 
@@ -180,6 +180,19 @@ void snap_source_impl::get_voltage_header(snap_voltage_header& hdr) {
 	  hdr.antenna_id = header & 0x3f;
 	  hdr.channel_id = (header >> 6) & 0x0fff;
 	  hdr.sample_number = (header >> 18) & 0x3fffffffffULL;
+	  hdr.firmware_version = (header >> 56) & 0xff;
+}
+
+void snap_source_impl::get_spectrometer_header(snap_header& hdr) {
+	  uint64_t *header_as_uint64;
+	  header_as_uint64 = (uint64_t *)localBuffer;
+
+	  // Convert from network format to host format.
+	  uint64_t header = be64toh(*header_as_uint64);
+
+	  hdr.antenna_id = header & 0xff;
+	  hdr.channel_id = (header >> 8) & 0x07;
+	  hdr.sample_number = (header >> 11) & 0x1fffffffffffULL;
 	  hdr.firmware_version = (header >> 56) & 0xff;
 }
 
@@ -319,18 +332,23 @@ int snap_source_impl::work(int noutput_items,
     }
 
     // Interpret the header if present
-    snap_voltage_header hdr;
+    snap_header hdr;
 
     if (d_header_type != SNAP_PACKETTYPE_NONE) {
     	// Sample numbers within a packet will be sample_number to sample_number + 15 (16 time samples across 255 channels)
     	// So missing a packet would mean that the current sample_number > last sample_number +16
-    	get_voltage_header(hdr);
+    	if (d_header_type ==SNAP_PACKETTYPE_VOLTAGE) {
+        	get_voltage_header(hdr);
+    	}
+    	else {
+    		get_spectrometer_header(hdr);
+    	}
     	static int print_ctr = 0;
 
     	if (print_ctr++ < 8) {
 			printf("Packet Count: %d\n",print_ctr);
-			printf("Sample Number: %" PRId64 "\n",hdr.sample_number);
-			printf("Channel Number: %d\n",hdr.channel_id);
+			printf("Sample id: %" PRId64 "\n",hdr.sample_number);
+			printf("Channel id: %d\n",hdr.channel_id);
 			printf("Antenna: %d\n",hdr.antenna_id);
 			printf("Firmware version: %d\n\n",hdr.firmware_version);
     	}

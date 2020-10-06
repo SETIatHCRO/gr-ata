@@ -9,7 +9,7 @@
 
 namespace gr {
 namespace ata {
-	struct snap_voltage_header {
+	struct snap_header {
 		// Antenna id: A runtime configurable ID which uniquely associates a packet with a particular SNAP board and antenna
 		// channel_id: Index of the first channel present in the packet.  channels will be id to id + 255
 		// sample_number: index of the first time sample present.  16 time slices will be in each packet.

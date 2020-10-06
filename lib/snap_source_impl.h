@@ -66,7 +66,8 @@ protected:
   boost::circular_buffer<char> *d_localqueue;
   char *localBuffer;
 
-  void get_voltage_header(snap_voltage_header& hdr);
+  void get_voltage_header(snap_header& hdr);
+  void get_spectrometer_header(snap_header& hdr);
 
 public:
   snap_source_impl(int port, int headerType,
