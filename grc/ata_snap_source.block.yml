@@ -11,7 +11,7 @@ parameters:
 -   id: port
     label: Port
     dtype: int
-    default: '50000'
+    default: '4015'
 -   id: notifyMissed
     label: Notify Missed Frames
     dtype: enum
@@ -29,29 +29,24 @@ parameters:
     option_labels: ['No', 'Yes']
 
 outputs:
--   label: x_real
+-   label: x_pol
     domain: stream
     dtype: byte
-    vlen: 1
--   label: x_imag
+    vlen: 512
+-   label: y_pol
     domain: stream
     dtype: byte
-    vlen: 1
--   label: y_real
-    domain: stream
-    dtype: byte
-    vlen: 1
--   label: y_imag
-    domain: stream
-    dtype: byte
-    vlen: 1
+    vlen: 512
 
 templates:
     imports: import ata
-    make: ata.snap_source(1, ${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6})
+    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6})
 
 documentation: "This block listens for ATA SNAP traffic on the specified UDP port and outputs\
-    \ the data stream.\
+    \ the channel vector appropriate for the selected type.  Voltage blocks output 512 byte\
+    \ vectors of byte-based interleaved IQ data (IQIQIQIQ...).  Note that depending on the\
+    \ configured number of channels, it may take multiple packets to make up a complete set.\
+    \ So the channel number represented by the beginning of the vector is included as a tag.\
     \ \n\nIf you need the block to generate 0s when there is\
     \ no UDP data, you can turn on the 'Src 0s If No Data' flag, however this is best\
     \ paired with the grnet UDP sink block.  If using a separate application, problems\

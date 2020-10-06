@@ -36,7 +36,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 2500e6
+    value: 900e6
   states:
     bus_sink: false
     bus_source: false
@@ -54,114 +54,14 @@ blocks:
     ipv6: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
-    notifyMissed: 'True'
-    port: '50000'
+    notifyMissed: 'False'
+    port: '4030'
     srcZeros: 'True'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [88, 232.0]
-    rotation: 0
-    state: true
-- name: blocks_char_to_float_0
-  id: blocks_char_to_float
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    scale: 1/127.0
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [528, 228.0]
-    rotation: 0
-    state: true
-- name: blocks_char_to_float_0_0
-  id: blocks_char_to_float
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    scale: 1/127.0
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [528, 284.0]
-    rotation: 0
-    state: true
-- name: blocks_char_to_float_0_0_0
-  id: blocks_char_to_float
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    scale: 1/127.0
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [528, 348.0]
-    rotation: 0
-    state: true
-- name: blocks_char_to_float_0_0_0_0
-  id: blocks_char_to_float
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    scale: 1/127.0
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [528, 404.0]
-    rotation: 0
-    state: true
-- name: blocks_float_to_complex_0
-  id: blocks_float_to_complex
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [704, 232.0]
-    rotation: 0
-    state: true
-- name: blocks_float_to_complex_0_0
-  id: blocks_float_to_complex
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [704, 360.0]
+    coordinate: [240, 220.0]
     rotation: 0
     state: true
 - name: blocks_throttle_0
@@ -174,13 +74,79 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     samples_per_second: samp_rate
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [992, 228.0]
+    rotation: 0
+    state: true
+- name: blocks_vector_to_stream_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '512'
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [360, 228.0]
+    coordinate: [512, 240.0]
+    rotation: 0
+    state: true
+- name: blocks_vector_to_stream_0_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '512'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [512, 288.0]
+    rotation: 0
+    state: true
+- name: grnet_Signed8ToComplex_0
+  id: grnet_Signed8ToComplex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [720, 240.0]
+    rotation: 0
+    state: true
+- name: grnet_Signed8ToComplex_0_0
+  id: grnet_Signed8ToComplex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [720, 296.0]
     rotation: 0
     state: true
 - name: qtgui_freq_sink_x_0
@@ -254,28 +220,24 @@ blocks:
     width8: '1'
     width9: '1'
     wintype: firdes.WIN_BLACKMAN_hARRIS
-    ymax: '-10'
+    ymax: '10'
     ymin: '-100'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [944, 248.0]
+    coordinate: [1184, 232.0]
     rotation: 0
     state: true
 
 connections:
-- [ata_snap_source_0, '0', blocks_throttle_0, '0']
-- [ata_snap_source_0, '1', blocks_char_to_float_0_0, '0']
-- [ata_snap_source_0, '2', blocks_char_to_float_0_0_0, '0']
-- [ata_snap_source_0, '3', blocks_char_to_float_0_0_0_0, '0']
-- [blocks_char_to_float_0, '0', blocks_float_to_complex_0, '0']
-- [blocks_char_to_float_0_0, '0', blocks_float_to_complex_0, '1']
-- [blocks_char_to_float_0_0_0, '0', blocks_float_to_complex_0_0, '0']
-- [blocks_char_to_float_0_0_0_0, '0', blocks_float_to_complex_0_0, '1']
-- [blocks_float_to_complex_0, '0', qtgui_freq_sink_x_0, '0']
-- [blocks_float_to_complex_0_0, '0', qtgui_freq_sink_x_0, '1']
-- [blocks_throttle_0, '0', blocks_char_to_float_0, '0']
+- [ata_snap_source_0, '0', blocks_vector_to_stream_0, '0']
+- [ata_snap_source_0, '1', blocks_vector_to_stream_0_0, '0']
+- [blocks_throttle_0, '0', qtgui_freq_sink_x_0, '0']
+- [blocks_vector_to_stream_0, '0', grnet_Signed8ToComplex_0, '0']
+- [blocks_vector_to_stream_0_0, '0', grnet_Signed8ToComplex_0_0, '0']
+- [grnet_Signed8ToComplex_0, '0', blocks_throttle_0, '0']
+- [grnet_Signed8ToComplex_0_0, '0', qtgui_freq_sink_x_0, '1']
 
 metadata:
   file_format: 1

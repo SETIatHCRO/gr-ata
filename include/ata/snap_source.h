@@ -63,7 +63,7 @@ public:
   /*!
    * Build a snap_source block.
    */
-  static sptr make(size_t vlen, int port, int headerType, bool notifyMissed,
+  static sptr make(int port, int headerType, bool notifyMissed,
                    bool sourceZeros, bool ipv6);
 };
 

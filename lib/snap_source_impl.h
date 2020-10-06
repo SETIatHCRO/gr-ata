@@ -47,8 +47,9 @@ protected:
   int d_header_size;
   uint16_t d_payloadsize;
   uint16_t total_packet_size;
-  uint16_t precomp_samples_per_pkt;
   long d_udp_recv_buf_size;
+
+  pmt::pmt_t d_pmt_channel;
 
   uint64_t d_seq_num;
 
@@ -66,9 +67,10 @@ protected:
   char *localBuffer;
 
   uint64_t get_header_seqnum();
+  uint16_t get_header_channel_num();
 
 public:
-  snap_source_impl(size_t vecLen, int port, int headerType,
+  snap_source_impl(int port, int headerType,
                   bool notifyMissed, bool sourceZeros, bool ipv6);
   ~snap_source_impl();
 

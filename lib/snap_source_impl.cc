@@ -23,6 +23,8 @@
 #include "config.h"
 #endif
 
+#include <arpa/inet.h>
+
 #include "snap_source_impl.h"
 #include <gnuradio/io_signature.h>
 #include <sstream>
@@ -32,25 +34,25 @@
 namespace gr {
 namespace ata {
 
-snap_source::sptr snap_source::make(size_t vlen, int port,
+snap_source::sptr snap_source::make(int port,
                                   int headerType,
                                   bool notifyMissed,
                                   bool sourceZeros, bool ipv6) {
   return gnuradio::get_initial_sptr(
-      new snap_source_impl(vlen, port, headerType,
+      new snap_source_impl(port, headerType,
                           notifyMissed, sourceZeros, ipv6));
 }
 
 /*
  * The private constructor
  */
-snap_source_impl::snap_source_impl(size_t vlen, int port,
+snap_source_impl::snap_source_impl(int port,
                                  int headerType,
                                  bool notifyMissed,
                                  bool sourceZeros, bool ipv6)
     : gr::sync_block("snap_source",
                      gr::io_signature::make(0, 0, 0),
-                     gr::io_signature::make(4, 4, sizeof(char) * vlen)) {
+                     gr::io_signature::make(2, 2, sizeof(char) * 512)) {
 
   is_ipv6 = ipv6;
 
@@ -62,21 +64,23 @@ snap_source_impl::snap_source_impl(size_t vlen, int port,
   
   d_header_type = headerType;
 
+  d_pmt_channel = pmt::string_to_symbol("channel");
+
   // Configure packet parser
   d_header_size = 0;
   switch (d_header_type) {
   case SNAP_PACKETTYPE_VOLTAGE:
 	d_itemsize = 1;  // Output will be bytes
-	d_veclen = 1;
+	d_veclen = 512;
 
     d_header_size = 8;
     d_payloadsize = 8192; // 256 * 16 * 2; // channels * time steps * pols * sizeof(sc4)
     total_packet_size = 8200;
-    precomp_samples_per_pkt = d_payloadsize / 4;  // divided by 2*sizeof(byte)*num_polarizations
     break;
 
   case SNAP_PACKETTYPE_SPECT:
     d_header_size = 8;
+    total_packet_size = 8200;
     d_payloadsize = 512 * 4 * 4; // channels * pols * sizeof(uint32_t)
     break;
 
@@ -97,7 +101,7 @@ snap_source_impl::snap_source_impl(size_t vlen, int port,
   long maxCircBuffer;
 
   // Compute reasonable buffer size
-  maxCircBuffer = total_packet_size * 1500; // 12 MiB
+  maxCircBuffer = total_packet_size * 1500; // 12.3 MiB
   d_localqueue = new boost::circular_buffer<char>(maxCircBuffer);
 
   // Initialize receiving socket
@@ -120,18 +124,7 @@ snap_source_impl::snap_source_impl(size_t vlen, int port,
   msg_stream << "Listening for data on UDP port " << port << ".";
   GR_LOG_INFO(d_logger, msg_stream.str());
 
-  // Configure output data block size
-  // For vlen=1 the output multiple will be the data contained in 1 UDP packet (total UDP size - header = data)
-  // ex: 8200 - 8 = 8192.  vlen = 1:
-  // out_multiple = (8200 - 8 ) / 1 = 8192.
-  int out_multiple = d_payloadsize / d_block_size;
-
-  // So the SNAP board will have 8192 samples, but they'll be split into x and y polarizations,
-  // So if we output x and y, we'll have 1/2 * 8192 total output samples.
-  if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
-	  // samples per packet = 8192 / ((sizeof(real) + sizeof(imag) * num_polarizations) = 8192 / 4;
-	  out_multiple = 2048;
-  }
+  int out_multiple = 16;
 
   gr::block::set_output_multiple(out_multiple);
 }
@@ -181,11 +174,38 @@ uint64_t snap_source_impl::get_header_seqnum() {
   uint64_t retVal = 0;
 
   if (d_header_type != SNAP_PACKETTYPE_NONE) {
-	  retVal = ((snap_header *)localBuffer)->sample_number;
+	  // retVal = ((snap_header *)localBuffer)->sample_number;
+	  uint64_t *header_as_uint64;
+	  header_as_uint64 = (uint64_t *)localBuffer;
+
+	  // Convert from network format to host format.
+	  uint64_t header = ntohl(*header_as_uint64);
+
+	  // Extract the header
+	  retVal = (header >> 18) & (uint64_t)0x1fffffffffff;
   }
 
   return retVal;
 }
+
+uint16_t snap_source_impl::get_header_channel_num() {
+  uint64_t retVal = 0;
+
+  if (d_header_type != SNAP_PACKETTYPE_NONE) {
+	  // retVal = ((snap_header *)localBuffer)->sample_number;
+	  uint64_t *header_as_uint64;
+	  header_as_uint64 = (uint64_t *)localBuffer;
+
+	  // Convert from network format to host format.
+	  uint64_t header = ntohl(*header_as_uint64);
+
+	  // Extract the header
+	  retVal = (uint16_t)(header >> 6) & (uint16_t)0x0fff;
+  }
+
+  return retVal;
+}
+
 
 int snap_source_impl::work(int noutput_items,
                           gr_vector_const_void_star &input_items,
@@ -195,10 +215,8 @@ int snap_source_impl::work(int noutput_items,
   static bool firstTime = true;
   static int underRunCounter = 0;
 
-  char *x_real = (char *)output_items[0];
-  char *x_imag = (char *)output_items[1];
-  char *y_real = (char *)output_items[2];
-  char *y_imag = (char *)output_items[3];
+  char *x_pol = (char *)output_items[0];
+  char *y_pol = (char *)output_items[1];
   
   int bytesAvailable = netdata_available();
   unsigned int numRequested = noutput_items * d_veclen;
@@ -210,10 +228,8 @@ int snap_source_impl::work(int noutput_items,
 
     if (d_sourceZeros) {
       // Just return 0's
-      memset((void *)x_real, 0x00, numRequested); // numRequested will be in bytes
-      memset((void *)x_imag, 0x00, numRequested); // numRequested will be in bytes
-      memset((void *)y_real, 0x00, numRequested); // numRequested will be in bytes
-      memset((void *)y_imag, 0x00, numRequested); // numRequested will be in bytes
+      memset((void *)x_pol, 0x00, numRequested);
+      memset((void *)y_pol, 0x00, numRequested);
       return noutput_items;
 
     } else {
@@ -297,26 +313,25 @@ int snap_source_impl::work(int noutput_items,
   long blocksAvailable = 0;
 
   if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
-	  blocksRequested = noutput_items / precomp_samples_per_pkt;
-	  blocksAvailable = d_localqueue->size() / (precomp_samples_per_pkt + d_header_size);
+	  blocksRequested = noutput_items / 16;
+	  blocksAvailable = d_localqueue->size() / total_packet_size;
   }
   else {
 	  // SPEC TODO:  Calc blocks
-	  blocksRequested = noutput_items / 4;
-	  blocksAvailable = d_localqueue->size() / (d_payloadsize);
+	  blocksRequested = noutput_items / 16;
+	  blocksAvailable = d_localqueue->size() / total_packet_size;
+  }
+
+  if (blocksAvailable == 0) {
+	  return 0;
   }
 
   long blocksRetrieved;
-  int itemsreturned;
 
   if (blocksRequested <= blocksAvailable)
     blocksRetrieved = blocksRequested;
   else
     blocksRetrieved = blocksAvailable;
-
-  // items returned is going to match the payload (actual data) of the number of
-  // blocks.
-  itemsreturned = blocksRetrieved * precomp_samples_per_pkt;
 
   // We're going to have to read the data out in blocks, account for the header,
   // then just move the data part into the out[] array.
@@ -334,10 +349,16 @@ int snap_source_impl::work(int noutput_items,
     }
 
     // Interpret the header if present
+    uint64_t sample_number = 0;
+    uint16_t channel_number = 0;
+
     if (d_header_type != SNAP_PACKETTYPE_NONE) {
     	// Sample numbers within a packet will be sample_number to sample_number + 15 (16 time samples across 255 channels)
     	// So missing a packet would mean that the current sample_number > last sample_number +16
-      uint64_t sample_number = get_header_seqnum();
+      sample_number = get_header_seqnum();
+      channel_number = get_header_channel_num();
+      std::cout << "Sample #: " << sample_number << std::endl;
+      std::cout << "Channel #: " << channel_number << std::endl << std::endl;
 
       if (sample_number > 0) { // d_seq_num will be 0 when this block starts
         if (sample_number > d_seq_num) {
@@ -355,20 +376,24 @@ int snap_source_impl::work(int noutput_items,
       }
     }
 
-    // because samples / packet is a power of 2, itemsreturned will always be divisible by 2.
+    long block_bytes = 16 * 256;
 
-    long items_over_2 = itemsreturned / 2;
-
-    for (unsigned int i = 0; i < items_over_2; i++) {
-    *x_real++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
-    *x_imag++ = (int8_t)((*pData++) << 4)/16;
+    for (unsigned int i = 0; i < block_bytes; i++) {
+		*x_pol = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
+		*x_pol++ = (int8_t)((*pData++) << 4)/16;
     }
 
     // Because of the way C++ stores multi-dimensional arrays we can split the polarizations like this.
-    for (unsigned int i = items_over_2; i < itemsreturned; i++) {
-    *y_real++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
-    *y_imag++ = (int8_t)((*pData++) << 4)/16;
+    for (unsigned int i = 0; i < block_bytes; i++) {
+		*y_pol = (int8_t)((uint8_t)(*pData) & 0xF0)/16;
+		*y_pol++ = (int8_t)((*pData++) << 4)/16;
     }
+
+    pmt::pmt_t pmt_channel_number =pmt::from_long((long)channel_number);
+
+    add_item_tag(0, nitems_written(0) + curPacket, d_pmt_channel, pmt_channel_number);
+    add_item_tag(1, nitems_written(0) + curPacket, d_pmt_channel, pmt_channel_number);
+
   }
 
   if (skippedPackets > 0 && d_notifyMissed) {
@@ -379,7 +404,7 @@ int snap_source_impl::work(int noutput_items,
   }
 
   // If we had less data than requested, it'll be reflected in the return value.
-  return itemsreturned;
+  return blocksRetrieved;
 }
 } /* namespace grnet */
 } /* namespace gr */
