@@ -23,7 +23,8 @@
 #include "config.h"
 #endif
 
-#include <arpa/inet.h>
+#include <endian.h>
+#include <inttypes.h>
 
 #include "snap_source_impl.h"
 #include <gnuradio/io_signature.h>
@@ -169,43 +170,18 @@ size_t snap_source_impl::netdata_available() {
   return bytes_readable;
 }
 
-// Parse the packet header to get the sequence number
-uint64_t snap_source_impl::get_header_seqnum() {
-  uint64_t retVal = 0;
-
-  if (d_header_type != SNAP_PACKETTYPE_NONE) {
-	  // retVal = ((snap_header *)localBuffer)->sample_number;
+void snap_source_impl::get_voltage_header(snap_voltage_header& hdr) {
 	  uint64_t *header_as_uint64;
 	  header_as_uint64 = (uint64_t *)localBuffer;
 
 	  // Convert from network format to host format.
-	  uint64_t header = ntohl(*header_as_uint64);
+	  uint64_t header = be64toh(*header_as_uint64);
 
-	  // Extract the header
-	  retVal = (header >> 18) & (uint64_t)0x1fffffffffff;
-  }
-
-  return retVal;
+	  hdr.antenna_id = header & 0x3f;
+	  hdr.channel_id = (header >> 6) & 0x0fff;
+	  hdr.sample_number = (header >> 18) & 0x3fffffffffULL;
+	  hdr.firmware_version = (header >> 56) & 0xff;
 }
-
-uint16_t snap_source_impl::get_header_channel_num() {
-  uint64_t retVal = 0;
-
-  if (d_header_type != SNAP_PACKETTYPE_NONE) {
-	  // retVal = ((snap_header *)localBuffer)->sample_number;
-	  uint64_t *header_as_uint64;
-	  header_as_uint64 = (uint64_t *)localBuffer;
-
-	  // Convert from network format to host format.
-	  uint64_t header = ntohl(*header_as_uint64);
-
-	  // Extract the header
-	  retVal = (uint16_t)(header >> 6) & (uint16_t)0x0fff;
-  }
-
-  return retVal;
-}
-
 
 int snap_source_impl::work(int noutput_items,
                           gr_vector_const_void_star &input_items,
@@ -289,12 +265,6 @@ int snap_source_impl::work(int noutput_items,
                  << d_payloadsize << " send blocks.";
       GR_LOG_WARN(d_logger, msg_stream.str());
 
-      // This is just a safety to clear in the case there's a hanging partial
-      // packet. If we've lingered through a number of calls and we still don't
-      // have any data, clear the stale data.
-      while (d_localqueue->size() > 0)
-        d_localqueue->pop_front();
-
       d_partialFrameCounter = 0;
     }
     return 0; // Don't memset 0x00 since we're starting to get data.  In this
@@ -313,7 +283,7 @@ int snap_source_impl::work(int noutput_items,
   long blocksAvailable = 0;
 
   if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
-	  blocksRequested = noutput_items / 16;
+	  blocksRequested = noutput_items / 16; // 16 vectors of 256 samples for 2 polarizations.
 	  blocksAvailable = d_localqueue->size() / total_packet_size;
   }
   else {
@@ -343,37 +313,33 @@ int snap_source_impl::work(int noutput_items,
 
   for (int curPacket = 0; curPacket < blocksRetrieved; curPacket++) {
     // Move a packet to our local buffer
-    for (int curByte = 0; curByte < d_payloadsize; curByte++) {
+    for (int curByte = 0; curByte < total_packet_size; curByte++) {
       localBuffer[curByte] = d_localqueue->at(0);
       d_localqueue->pop_front();
     }
 
     // Interpret the header if present
-    uint64_t sample_number = 0;
-    uint16_t channel_number = 0;
+    snap_voltage_header hdr;
 
     if (d_header_type != SNAP_PACKETTYPE_NONE) {
     	// Sample numbers within a packet will be sample_number to sample_number + 15 (16 time samples across 255 channels)
     	// So missing a packet would mean that the current sample_number > last sample_number +16
-      sample_number = get_header_seqnum();
-      channel_number = get_header_channel_num();
-      std::cout << "Sample #: " << sample_number << std::endl;
-      std::cout << "Channel #: " << channel_number << std::endl << std::endl;
+    	get_voltage_header(hdr);
+    	static int print_ctr = 0;
 
-      if (sample_number > 0) { // d_seq_num will be 0 when this block starts
-        if (sample_number > d_seq_num) {
-        	// Each packet will be 16 time samples.
-        	// Sample # should be d_seq_num + 16 when no packets are dropped.
-        	// So (sample_number - (d_seq_num + 16) ) / 16 will tell us how many packets we missed.
-          skippedPackets += (sample_number - (d_seq_num + 16)) / 16;
-        }
+    	if (print_ctr++ < 8) {
+			printf("Packet Count: %d\n",print_ctr);
+			printf("Sample Number: %" PRId64 "\n",hdr.sample_number);
+			printf("Channel Number: %d\n",hdr.channel_id);
+			printf("Antenna: %d\n",hdr.antenna_id);
+			printf("Firmware version: %d\n\n",hdr.firmware_version);
+    	}
 
-        // Store as current for next pass.
-        d_seq_num = sample_number;
-      } else {
-        // just starting.  Prime it for no loss on the first packet.
-        d_seq_num = sample_number;
+      if (hdr.sample_number > (d_seq_num+1)) {
+    	  skippedPackets += (hdr.sample_number - d_seq_num) -1;
       }
+
+      d_seq_num = hdr.sample_number;
     }
 
     long block_bytes = 16 * 256;
@@ -389,7 +355,7 @@ int snap_source_impl::work(int noutput_items,
 		*y_pol++ = (int8_t)((*pData++) << 4)/16;
     }
 
-    pmt::pmt_t pmt_channel_number =pmt::from_long((long)channel_number);
+    pmt::pmt_t pmt_channel_number =pmt::from_long((long)hdr.channel_id);
 
     add_item_tag(0, nitems_written(0) + curPacket, d_pmt_channel, pmt_channel_number);
     add_item_tag(1, nitems_written(0) + curPacket, d_pmt_channel, pmt_channel_number);

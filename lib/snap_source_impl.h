@@ -66,8 +66,7 @@ protected:
   boost::circular_buffer<char> *d_localqueue;
   char *localBuffer;
 
-  uint64_t get_header_seqnum();
-  uint16_t get_header_channel_num();
+  void get_voltage_header(snap_voltage_header& hdr);
 
 public:
   snap_source_impl(int port, int headerType,
