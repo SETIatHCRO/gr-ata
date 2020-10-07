@@ -276,7 +276,23 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [608, 636.0]
+    coordinate: [536, 616.0]
+    rotation: 0
+    state: enabled
+- name: blocks_complex_to_mag_squared_0_0_0
+  id: blocks_complex_to_mag_squared
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: data_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [536, 860.0]
     rotation: 0
     state: enabled
 - name: blocks_interleaved_char_to_complex_0
@@ -401,6 +417,24 @@ blocks:
     coordinate: [560, 520.0]
     rotation: 0
     state: true
+- name: blocks_stream_to_vector_1_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: data_vector_len
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [496, 376.0]
+    rotation: 0
+    state: true
 - name: blocks_throttle_0
   id: blocks_throttle
   parameters:
@@ -513,6 +547,24 @@ blocks:
     coordinate: [840, 620.0]
     rotation: 0
     state: enabled
+- name: mesa_LongTermIntegrator_0_0
+  id: mesa_LongTermIntegrator
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    normalize: 'True'
+    reset: 'False'
+    vlength: data_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [736, 844.0]
+    rotation: 0
+    state: enabled
 - name: qtgui_vector_sink_f_0
   id: qtgui_vector_sink_f
   parameters:
@@ -543,9 +595,9 @@ blocks:
     comment: ''
     grid: 'False'
     gui_hint: 0,0,1,1
-    label1: ''
+    label1: X pol
     label10: ''
-    label2: ''
+    label2: Y pol
     label3: ''
     label4: ''
     label5: ''
@@ -628,7 +680,7 @@ blocks:
     label9: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    name: '"Integration"'
+    name: '"X Integration"'
     nconnections: '1'
     ref_level: '0'
     showports: 'False'
@@ -657,6 +709,79 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1208, 780.0]
+    rotation: 0
+    state: true
+- name: qtgui_vector_sink_f_0_1_0
+  id: qtgui_vector_sink_f
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    average: '0.05'
+    color1: '"red"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: ''
+    grid: 'False'
+    gui_hint: 4,0,1,1
+    label1: ''
+    label10: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '"Y Integration"'
+    nconnections: '1'
+    ref_level: '0'
+    showports: 'False'
+    update_time: '0.10'
+    vlen: data_vector_len
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    x_axis_label: Frequency
+    x_start: start_freq
+    x_step: channel_width
+    x_units: Hz
+    y_axis_label: Power
+    y_units: '""'
+    ymax: '100'
+    ymin: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 884.0]
     rotation: 0
     state: true
 - name: qtgui_waterfall_sink_x_0
@@ -707,7 +832,7 @@ blocks:
     legend: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
-    name: '""'
+    name: '"X pol spectrum"'
     nconnections: '1'
     showports: 'False'
     type: complex
@@ -727,14 +852,17 @@ connections:
 - [blocks_complex_to_mag_0, '0', blocks_stream_to_vector_0, '0']
 - [blocks_complex_to_mag_0_0, '0', blocks_stream_to_vector_0_0, '0']
 - [blocks_complex_to_mag_squared_0_0, '0', mesa_LongTermIntegrator_0, '0']
+- [blocks_complex_to_mag_squared_0_0_0, '0', mesa_LongTermIntegrator_0_0, '0']
 - [blocks_interleaved_char_to_complex_0, '0', blocks_multiply_const_vxx_0, '0']
 - [blocks_interleaved_char_to_complex_0_0, '0', blocks_multiply_const_vxx_0_0, '0']
 - [blocks_multiply_const_vxx_0, '0', blocks_throttle_0, '0']
 - [blocks_multiply_const_vxx_0_0, '0', blocks_complex_to_mag_0_0, '0']
+- [blocks_multiply_const_vxx_0_0, '0', blocks_stream_to_vector_1_0, '0']
 - [blocks_stream_to_vector_0, '0', qtgui_vector_sink_f_0, '0']
 - [blocks_stream_to_vector_0_0, '0', qtgui_vector_sink_f_0, '1']
 - [blocks_stream_to_vector_1, '0', blocks_complex_to_mag_squared_0_0, '0']
 - [blocks_stream_to_vector_1, '0', fft_vxx_0, '0']
+- [blocks_stream_to_vector_1_0, '0', blocks_complex_to_mag_squared_0_0_0, '0']
 - [blocks_throttle_0, '0', blocks_complex_to_mag_0, '0']
 - [blocks_throttle_0, '0', blocks_stream_to_vector_1, '0']
 - [blocks_vector_to_stream_0, '0', blocks_interleaved_char_to_complex_0, '0']
@@ -742,6 +870,7 @@ connections:
 - [blocks_vector_to_stream_1, '0', qtgui_waterfall_sink_x_0, '0']
 - [fft_vxx_0, '0', blocks_vector_to_stream_1, '0']
 - [mesa_LongTermIntegrator_0, '0', qtgui_vector_sink_f_0_1, '0']
+- [mesa_LongTermIntegrator_0_0, '0', qtgui_vector_sink_f_0_1_0, '0']
 
 metadata:
   file_format: 1
