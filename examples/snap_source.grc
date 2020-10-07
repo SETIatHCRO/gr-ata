@@ -48,7 +48,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: sky_freq - (2048-center_channel)*channel_width
+    value: sky_freq + (center_channel-2048)*channel_width
   states:
     bus_sink: false
     bus_source: false
@@ -72,7 +72,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: snap_samp_rate/4096
+    value: snap_samp_rate/4096.0
   states:
     bus_sink: false
     bus_source: false
@@ -114,6 +114,18 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [664, 76.0]
+    rotation: 0
+    state: true
+- name: half_channel_width
+  id: variable
+  parameters:
+    comment: ''
+    value: channel_width/2.0
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [776, 84.0]
     rotation: 0
     state: true
 - name: num_channels
@@ -168,7 +180,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: sky_freq - (2048-starting_channel)*channel_width
+    value: sky_freq - (2048-starting_channel)*channel_width-half_channel_width
   states:
     bus_sink: false
     bus_source: false

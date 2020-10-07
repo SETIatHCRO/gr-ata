@@ -437,8 +437,7 @@ snap_source::sptr snap_source::make(int port,
 		 }
 	 }
 
-	 // To Do:
-	 // Move queue to output items
+	 // Move queue items to output items as needed
 	 int items_returned = noutput_items;
 
 	 // both queues will be the same size, so can just pick one.
