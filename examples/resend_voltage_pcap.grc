@@ -32,7 +32,43 @@ options:
     state: enabled
 
 blocks:
-- name: samp_rate
+- name: channel_samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: snap_samp_rate*(num_channels/4096)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [304, 12.0]
+    rotation: 0
+    state: enabled
+- name: ending_channel
+  id: variable
+  parameters:
+    comment: ''
+    value: '2815'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [576, 12.0]
+    rotation: 0
+    state: true
+- name: num_channels
+  id: variable
+  parameters:
+    comment: ''
+    value: ending_channel - starting_channel + 1
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [704, 12.0]
+    rotation: 0
+    state: true
+- name: snap_samp_rate
   id: variable
   parameters:
     comment: ''
@@ -41,9 +77,21 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [184, 12]
+    coordinate: [176, 12.0]
     rotation: 0
     state: enabled
+- name: starting_channel
+  id: variable
+  parameters:
+    comment: ''
+    value: '1792'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [448, 12.0]
+    rotation: 0
+    state: true
 - name: blocks_throttle_0
   id: blocks_throttle
   parameters:
@@ -53,7 +101,7 @@ blocks:
     ignoretag: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
-    samples_per_second: samp_rate
+    samples_per_second: channel_samp_rate
     type: byte
     vlen: '1'
   states:
@@ -69,7 +117,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    file: /opt/tmp/ata/goes17_volt.pcap
+    file: /opt/tmp/ata/goes17_volt_synced.pcap
     header: '0'
     maxoutbuf: '0'
     minoutbuf: '0'

@@ -12,6 +12,14 @@ parameters:
     label: Port
     dtype: int
     default: '4015'
+-   id: starting_channel
+    label: Starting Channel
+    dtype: int
+    default: '1792'
+-   id: ending_channel
+    label: Ending Channel
+    dtype: int
+    default: '2815'
 -   id: notifyMissed
     label: Notify Missed Frames
     dtype: enum
@@ -32,15 +40,15 @@ outputs:
 -   label: x_pol
     domain: stream
     dtype: byte
-    vlen: 512
+    vlen: ${ int((ending_channel - starting_channel + 1)*2) }
 -   label: y_pol
     domain: stream
     dtype: byte
-    vlen: 512
+    vlen: ${ int((ending_channel - starting_channel + 1)*2) }
 
 templates:
     imports: import ata
-    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6})
+    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6},${starting_channel},${ending_channel})
 
 documentation: "This block listens for ATA SNAP traffic on the specified UDP port and outputs\
     \ the channel vector appropriate for the selected type.  Voltage blocks output 512 byte\

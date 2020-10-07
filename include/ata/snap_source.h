@@ -64,7 +64,7 @@ public:
    * Build a snap_source block.
    */
   static sptr make(int port, int headerType, bool notifyMissed,
-                   bool sourceZeros, bool ipv6);
+                   bool sourceZeros, bool ipv6, int starting_channel, int ending_channel);
 };
 
 } // namespace ata 
