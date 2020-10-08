@@ -129,12 +129,12 @@ snap_source::sptr snap_source::make(int port,
 		 exit(1);
 	 }
 
-	 localBuffer = new char[total_packet_size];
+	 localBuffer = new unsigned char[total_packet_size];
 	 long maxCircBuffer;
 
 	 // Compute reasonable buffer size
 	 maxCircBuffer = total_packet_size * 1500; // 12.3 MiB
-	 d_localqueue = new boost::circular_buffer<char>(maxCircBuffer);
+	 d_localqueue = new boost::circular_buffer<unsigned char>(maxCircBuffer);
 
 	 // Initialize receiving socket
 	 if (is_ipv6)
@@ -384,47 +384,53 @@ snap_source::sptr snap_source::make(int port,
 		 // Store what we saw as the "last" packet we received.
 		 d_last_channel_block = hdr.channel_id;
 
-		 char *pData;  // Pointer to our UDP payload after the header.
+		 unsigned char *pData;  // Pointer to our UDP payload after the header.
 		 // Move to the beginning of our packet data section
-		 pData = &localBuffer[d_header_size];
+		 pData = (unsigned char *)&localBuffer[d_header_size];
 
 		 // cycle through the time entry rows in the packet. (will always be 16)
 
-		 int block_channel_offset = (hdr.channel_id - d_starting_channel + 1) * 2;
+		 int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
 
-		 packed_4bit *packed_byte;
+		 // Notes on data bytes:
+		 // Each byte contains 4-bit SIGNED real (high nibble), and 4-bit SIGNED imag (low nibble)
+		 // So when we extract the bits, we'll have to restore the +/- based on the high sign bit.
 
 		 // x polarization
-		 for (int row=0;row<16;row++) {
+		 for (int t=0;t<16;t++) {
 			 // This moves us in the packet memory to the correct time row
-			 int block_start = row * d_veclen;
+			 int this_time_start = t * d_veclen;
 			 char *x_pol;
-			 x_pol = &x_vector_buffer[block_start + block_channel_offset];
+			 x_pol = &x_vector_buffer[this_time_start + channel_offset_within_time_block];
 
 			 for (int sample=0;sample<256;sample++) {
-				 packed_byte = (packed_4bit *)pData;
-				 *x_pol++ = packed_byte->I;
-				 *x_pol++ = packed_byte->Q;
-				 pData++;
-				 //*x_pol++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16; // I
-				 //*x_pol++ = (int8_t)((uint8_t)(*pData++) << 4)/16;  // Q
+				 *x_pol = (char)(*pData >> 4); // I
+				 if (*x_pol > 7)
+					 *x_pol = -1 * (*x_pol - 8);
+				 x_pol++;
+				 *x_pol = (char)(*pData++ & 0x0F);  // Q
+				 if (*x_pol > 7)
+					 *x_pol = -1 * (*x_pol - 8);
+				 x_pol++;
 			 }
 		 }
 
 		 // Now process y polarization
-		 for (int row=0;row<16;row++) {
+		 for (int t=0;t<16;t++) {
 			 // This moves us in the packet memory to the correct time row
-			 int block_start = row * d_veclen;
+			 int this_time_start = t * d_veclen;
 			 char *y_pol;
-			 y_pol = &y_vector_buffer[block_start + block_channel_offset];
+			 y_pol = &y_vector_buffer[this_time_start + channel_offset_within_time_block];
 
 			 for (int sample=0;sample<256;sample++) {
-				 packed_byte = (packed_4bit *)pData;
-				 *y_pol++ = packed_byte->I;
-				 *y_pol++ = packed_byte->Q;
-				 pData++;
-				 //*y_pol++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16; // I
-				 //*y_pol++ = (int8_t)((uint8_t)(*pData++) << 4)/16;  // Q
+				 *y_pol = (char)(*pData >> 4); // I
+				 if (*y_pol > 7)
+					 *y_pol = -1 * (*y_pol - 8);
+				 y_pol++;
+				 *y_pol = (char)(*pData++ & 0x0F);  // Q
+				 if (*y_pol > 7)
+					 *y_pol = -1 * (*y_pol - 8);
+				 y_pol++;
 			 }
 		 }
 
@@ -432,11 +438,30 @@ snap_source::sptr snap_source::make(int port,
 		 // for output consumption.
 		 if (hdr.channel_id == d_ending_channel_packet_channel_id) {
 			 // Queue up our vectors.  Again always 16 discrete time entries.
-			 for (int row=0;row<16;row++) {
+			 for (int this_time_start=0;this_time_start<16;this_time_start++) {
 				 data_vector x_cur_vector;
 				 data_vector y_cur_vector;
 
-				 int block_start = row * d_veclen;
+				 int block_start = this_time_start * d_veclen;
+
+				 /*
+				 // DEBUG: Print out first vector to file
+				 static bool first_vector = true;
+				 if (first_vector) {
+					 FILE *d_fp = fopen("/opt/tmp/ata/first_x_vector.csv","w");
+
+					 pData = &x_vector_buffer[block_start];
+
+					 for (int i=0;i<d_veclen;i++) {
+						 if ( (i % 8) == 0) {
+							 fprintf(d_fp,"\ni=%d\n",i);
+						 }
+						 fprintf(d_fp,"%d ",pData[i]);
+					 }
+					 fclose(d_fp);
+					 first_vector = false;
+				 }
+				 */
 
 				 x_cur_vector.store(&x_vector_buffer[block_start],d_veclen);
 				 y_cur_vector.store(&y_vector_buffer[block_start],d_veclen);

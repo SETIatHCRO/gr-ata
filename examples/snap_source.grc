@@ -108,7 +108,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '10'
+    value: '1'
   states:
     bus_sink: false
     bus_source: false
@@ -180,7 +180,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: sky_freq - (2048-starting_channel)*channel_width-half_channel_width
+    value: sky_freq - (2048-starting_channel)*channel_width
   states:
     bus_sink: false
     bus_source: false
@@ -220,7 +220,7 @@ blocks:
     bus_structure: null
     coordinate: [1216, 640.0]
     rotation: 0
-    state: true
+    state: disabled
 - name: ata_snap_source_0
   id: ata_snap_source
   parameters:
@@ -345,7 +345,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    const: 1/127.0* gain
+    const: 1/15.0* gain
     maxoutbuf: '0'
     minoutbuf: '0'
     type: complex
@@ -363,7 +363,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    const: 1/127.0*gain
+    const: 1/15.0*gain
     maxoutbuf: '0'
     minoutbuf: '0'
     type: complex
@@ -519,7 +519,7 @@ blocks:
     bus_structure: null
     coordinate: [1056, 520.0]
     rotation: 0
-    state: true
+    state: disabled
 - name: fft_vxx_0
   id: fft_vxx
   parameters:
@@ -540,7 +540,7 @@ blocks:
     bus_structure: null
     coordinate: [824, 484.0]
     rotation: 0
-    state: true
+    state: disabled
 - name: mesa_LongTermIntegrator_0
   id: mesa_LongTermIntegrator
   parameters:
@@ -680,7 +680,7 @@ blocks:
     comment: ''
     grid: 'False'
     gui_hint: 3,0,1,1
-    label1: ''
+    label1: x pol
     label10: ''
     label2: ''
     label3: ''
@@ -753,7 +753,7 @@ blocks:
     comment: ''
     grid: 'False'
     gui_hint: 4,0,1,1
-    label1: ''
+    label1: y pol
     label10: ''
     label2: ''
     label3: ''
@@ -856,7 +856,7 @@ blocks:
     bus_structure: null
     coordinate: [1232, 520.0]
     rotation: 0
-    state: true
+    state: disabled
 
 connections:
 - [ata_snap_source_0, '0', blocks_vector_to_stream_0, '0']

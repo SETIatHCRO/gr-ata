@@ -33,11 +33,6 @@ namespace ata {
 // Make a vector data type that behaves like a native
 // data type for use with std::deque
 
-struct packed_4bit {
-	char I:4;
-	char Q:4;
-};
-
 class ATA_API data_vector {
 protected:
 	char *data=NULL;
@@ -160,8 +155,8 @@ protected:
 
   // A queue is required because we have 2 different timing
   // domains: The network packets and the GR work()/scheduler
-  boost::circular_buffer<char> *d_localqueue;
-  char *localBuffer;
+  boost::circular_buffer<unsigned char> *d_localqueue;
+  unsigned char *localBuffer;
   char *x_vector_buffer;
   char *y_vector_buffer;
   int vector_buffer_size;
