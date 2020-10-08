@@ -32,6 +32,12 @@ namespace ata {
 
 // Make a vector data type that behaves like a native
 // data type for use with std::deque
+
+struct packed_4bit {
+	char I:4;
+	char Q:4;
+};
+
 class ATA_API data_vector {
 protected:
 	char *data=NULL;

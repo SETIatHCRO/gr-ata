@@ -392,6 +392,8 @@ snap_source::sptr snap_source::make(int port,
 
 		 int block_channel_offset = (hdr.channel_id - d_starting_channel + 1) * 2;
 
+		 packed_4bit *packed_byte;
+
 		 // x polarization
 		 for (int row=0;row<16;row++) {
 			 // This moves us in the packet memory to the correct time row
@@ -400,8 +402,12 @@ snap_source::sptr snap_source::make(int port,
 			 x_pol = &x_vector_buffer[block_start + block_channel_offset];
 
 			 for (int sample=0;sample<256;sample++) {
-				 *x_pol++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16; // I
-				 *x_pol++ = (int8_t)((uint8_t)(*pData++) << 4)/16;  // Q
+				 packed_byte = (packed_4bit *)pData;
+				 *x_pol++ = packed_byte->I;
+				 *x_pol++ = packed_byte->Q;
+				 pData++;
+				 //*x_pol++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16; // I
+				 //*x_pol++ = (int8_t)((uint8_t)(*pData++) << 4)/16;  // Q
 			 }
 		 }
 
@@ -413,8 +419,12 @@ snap_source::sptr snap_source::make(int port,
 			 y_pol = &y_vector_buffer[block_start + block_channel_offset];
 
 			 for (int sample=0;sample<256;sample++) {
-				 *y_pol++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16; // I
-				 *y_pol++ = (int8_t)((uint8_t)(*pData++) << 4)/16;  // Q
+				 packed_byte = (packed_4bit *)pData;
+				 *y_pol++ = packed_byte->I;
+				 *y_pol++ = packed_byte->Q;
+				 pData++;
+				 //*y_pol++ = (int8_t)((uint8_t)(*pData) & 0xF0)/16; // I
+				 //*y_pol++ = (int8_t)((uint8_t)(*pData++) << 4)/16;  // Q
 			 }
 		 }
 
