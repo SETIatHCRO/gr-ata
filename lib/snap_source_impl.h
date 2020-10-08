@@ -33,6 +33,12 @@ namespace ata {
 // Make a vector data type that behaves like a native
 // data type for use with std::deque
 
+// This struct is needed/used to recast the data
+// to an appropriate array.
+struct voltage_packet {
+	unsigned char data[16][256][2];
+};
+
 class ATA_API data_vector {
 protected:
 	char *data=NULL;

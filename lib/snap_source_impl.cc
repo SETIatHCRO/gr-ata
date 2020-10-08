@@ -387,50 +387,26 @@ snap_source::sptr snap_source::make(int port,
 		 unsigned char *pData;  // Pointer to our UDP payload after the header.
 		 // Move to the beginning of our packet data section
 		 pData = (unsigned char *)&localBuffer[d_header_size];
+		 voltage_packet *vp;
+		 vp = (voltage_packet *)pData;
 
 		 // cycle through the time entry rows in the packet. (will always be 16)
 
 		 int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
 
-		 // Notes on data bytes:
-		 // Each byte contains 4-bit SIGNED real (high nibble), and 4-bit SIGNED imag (low nibble)
-		 // So when we extract the bits, we'll have to restore the +/- based on the high sign bit.
-
-		 // x polarization
 		 for (int t=0;t<16;t++) {
 			 // This moves us in the packet memory to the correct time row
 			 int this_time_start = t * d_veclen;
 			 char *x_pol;
-			 x_pol = &x_vector_buffer[this_time_start + channel_offset_within_time_block];
-
-			 for (int sample=0;sample<256;sample++) {
-				 *x_pol = (char)(*pData >> 4); // I
-				 if (*x_pol > 7)
-					 *x_pol = -1 * (*x_pol - 8);
-				 x_pol++;
-				 *x_pol = (char)(*pData++ & 0x0F);  // Q
-				 if (*x_pol > 7)
-					 *x_pol = -1 * (*x_pol - 8);
-				 x_pol++;
-			 }
-		 }
-
-		 // Now process y polarization
-		 for (int t=0;t<16;t++) {
-			 // This moves us in the packet memory to the correct time row
-			 int this_time_start = t * d_veclen;
 			 char *y_pol;
+			 x_pol = &x_vector_buffer[this_time_start + channel_offset_within_time_block];
 			 y_pol = &y_vector_buffer[this_time_start + channel_offset_within_time_block];
 
 			 for (int sample=0;sample<256;sample++) {
-				 *y_pol = (char)(*pData >> 4); // I
-				 if (*y_pol > 7)
-					 *y_pol = -1 * (*y_pol - 8);
-				 y_pol++;
-				 *y_pol = (char)(*pData++ & 0x0F);  // Q
-				 if (*y_pol > 7)
-					 *y_pol = -1 * (*y_pol - 8);
-				 y_pol++;
+				 *x_pol++ = (char)(vp->data[t][sample][0] >> 4); // I
+				 *x_pol++ = (char)(vp->data[t][sample][0] & 0x0F);  // Q
+				 *y_pol++ = (char)(vp->data[t][sample][1] >> 4); // I
+				 *y_pol++ = (char)(vp->data[t][sample][1] & 0x0F);  // Q
 			 }
 		 }
 
@@ -448,9 +424,9 @@ snap_source::sptr snap_source::make(int port,
 				 // DEBUG: Print out first vector to file
 				 static bool first_vector = true;
 				 if (first_vector) {
-					 FILE *d_fp = fopen("/opt/tmp/ata/first_x_vector.csv","w");
+					 FILE *d_fp = fopen("/opt/tmp/ata/first_x_signed_vector.csv","w");
 
-					 pData = &x_vector_buffer[block_start];
+					 pData = (unsigned char *)&x_vector_buffer[block_start];
 
 					 for (int i=0;i<d_veclen;i++) {
 						 if ( (i % 8) == 0) {
@@ -461,7 +437,7 @@ snap_source::sptr snap_source::make(int port,
 					 fclose(d_fp);
 					 first_vector = false;
 				 }
-				 */
+				*/
 
 				 x_cur_vector.store(&x_vector_buffer[block_start],d_veclen);
 				 y_cur_vector.store(&y_vector_buffer[block_start],d_veclen);

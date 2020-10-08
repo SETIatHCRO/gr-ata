@@ -211,8 +211,8 @@ blocks:
     rangeType: float
     start: '-100'
     step: '10'
-    stop: '-20'
-    value: '-60'
+    stop: '10'
+    value: '-20'
     widget: counter_slider
   states:
     bus_sink: false
@@ -220,7 +220,7 @@ blocks:
     bus_structure: null
     coordinate: [1216, 640.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: ata_snap_source_0
   id: ata_snap_source
   parameters:
@@ -356,7 +356,7 @@ blocks:
     bus_structure: null
     coordinate: [384, 252.0]
     rotation: 0
-    state: enabled
+    state: bypassed
 - name: blocks_multiply_const_vxx_0_0
   id: blocks_multiply_const_vxx
   parameters:
@@ -374,7 +374,7 @@ blocks:
     bus_structure: null
     coordinate: [384, 316.0]
     rotation: 0
-    state: enabled
+    state: bypassed
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
   parameters:
@@ -519,7 +519,7 @@ blocks:
     bus_structure: null
     coordinate: [1056, 520.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: fft_vxx_0
   id: fft_vxx
   parameters:
@@ -540,7 +540,7 @@ blocks:
     bus_structure: null
     coordinate: [824, 484.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: mesa_LongTermIntegrator_0
   id: mesa_LongTermIntegrator
   parameters:
@@ -641,7 +641,7 @@ blocks:
     x_units: Hz
     y_axis_label: Power
     y_units: '""'
-    ymax: '2'
+    ymax: '31'
     ymin: '0'
   states:
     bus_sink: false
@@ -829,7 +829,7 @@ blocks:
     freqhalf: 'True'
     grid: 'False'
     gui_hint: 1,0,1,1
-    int_max: '10'
+    int_max: '8'
     int_min: waterfall_min
     label1: ''
     label10: ''
@@ -856,7 +856,7 @@ blocks:
     bus_structure: null
     coordinate: [1232, 520.0]
     rotation: 0
-    state: disabled
+    state: enabled
 
 connections:
 - [ata_snap_source_0, '0', blocks_vector_to_stream_0, '0']
