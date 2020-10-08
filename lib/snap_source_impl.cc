@@ -112,6 +112,8 @@ snap_source::sptr snap_source::make(int port,
 		 d_header_size = 8;
 		 total_packet_size = 8200;
 		 d_payloadsize = 512 * 4 * 4; // channels * pols * sizeof(uint32_t)
+		 GR_LOG_ERROR(d_logger, "Spectrometer mode not implemented yet.");
+		 exit(1);
 		 break;
 
 	 default:
