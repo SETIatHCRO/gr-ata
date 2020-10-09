@@ -405,10 +405,28 @@ snap_source::sptr snap_source::make(int port,
 			 y_pol = &y_vector_buffer[this_time_start + channel_offset_within_time_block];
 
 			 for (int sample=0;sample<256;sample++) {
-				 *x_pol++ = (char)(vp->data[t][sample][0] >> 4); // I
-				 *x_pol++ = (char)(vp->data[t][sample][0] & 0x0F);  // Q
-				 *y_pol++ = (char)(vp->data[t][sample][1] >> 4); // I
-				 *y_pol++ = (char)(vp->data[t][sample][1] & 0x0F);  // Q
+				 *x_pol = (char)(vp->data[t][sample][0] >> 4); // I
+				 if (*x_pol > 7) {
+					 *x_pol = -1 * (*x_pol - 8);
+				 }
+				 x_pol++;
+				 *x_pol = (char)(vp->data[t][sample][0] & 0x0F);  // Q
+				 if (*x_pol > 7) {
+					 *x_pol = -1 * (*x_pol - 8);
+				 }
+				 x_pol++;
+
+				 *y_pol = (char)(vp->data[t][sample][1] >> 4); // I
+				 if (*y_pol > 7) {
+					 *y_pol = -1 * (*y_pol - 8);
+				 }
+				 y_pol++;
+
+				 *y_pol = (char)(vp->data[t][sample][1] & 0x0F);  // Q
+				 if (*y_pol > 7) {
+					 *y_pol = -1 * (*y_pol - 8);
+				 }
+				 y_pol++;
 			 }
 		 }
 
