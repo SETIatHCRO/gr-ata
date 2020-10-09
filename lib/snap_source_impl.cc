@@ -97,8 +97,10 @@ snap_source::sptr snap_source::make(int port,
 
 	 d_header_type = headerType;
 
-	 d_pmt_channel = pmt::string_to_symbol("channel");
+	 d_pmt_seqnum = pmt::string_to_symbol("sample_num");
+	 std::string id_str = identifier() + " chan " + std::to_string(d_starting_channel) + " UDP port " + std::to_string(d_port);
 
+	 d_block_name = pmt::string_to_symbol(id_str);
 	 // Configure packet parser
 	 d_header_size = 0;
 	 switch (d_header_type) {
@@ -464,6 +466,7 @@ snap_source::sptr snap_source::make(int port,
 
 				 x_vector_queue.push_back(x_cur_vector);
 				 y_vector_queue.push_back(y_cur_vector);
+				 seq_num_queue.push_back(hdr.sample_number);
 			 }
 		 }
 	 }
@@ -482,18 +485,21 @@ snap_source::sptr snap_source::make(int port,
 		 x_vector_queue.pop_front();
 		 data_vector y_cur_vector = y_vector_queue.front();
 		 y_vector_queue.pop_front();
+		 uint64_t vector_seq_num = seq_num_queue.front();
+		 seq_num_queue.pop_front();
 
 		 // Now move to work output vector.
 		 memcpy(&x_out[d_veclen*i],x_cur_vector.data_pointer(),d_veclen);
 		 memcpy(&y_out[d_veclen*i],y_cur_vector.data_pointer(),d_veclen);
 
-		 /*
-		 // Add channel start tag for good measure
-		 pmt::pmt_t pmt_channel_number =pmt::from_long((long)hdr.channel_id);
+		 // Add sequence number start tag for down-stream coherence
+		 // Since each packet set contains 16 time samples for the same packet sequence number,
+		 // You'll see output vectors in blocks of 16 with the same sequence number.
+		 // This is expected.
+		 pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
 
-		 add_item_tag(0, nitems_written(0) + i, d_pmt_channel, pmt_channel_number);
-		 add_item_tag(1, nitems_written(0) + i, d_pmt_channel, pmt_channel_number);
-		 */
+		 add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+		 add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
 	 }
 
 	 // Notify on skipped packets

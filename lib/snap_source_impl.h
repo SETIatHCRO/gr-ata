@@ -143,7 +143,8 @@ protected:
   uint16_t total_packet_size;
   long d_udp_recv_buf_size;
 
-  pmt::pmt_t d_pmt_channel;
+  pmt::pmt_t d_pmt_seqnum;
+  pmt::pmt_t d_block_name;
 
   uint16_t d_last_channel_block;
   uint16_t d_starting_channel;
@@ -170,6 +171,7 @@ protected:
   int vector_buffer_size;
   std::deque<data_vector> x_vector_queue;
   std::deque<data_vector> y_vector_queue;
+  std::deque<uint64_t> seq_num_queue;
 
   void get_voltage_header(snap_header& hdr) {
   	  uint64_t *header_as_uint64;
