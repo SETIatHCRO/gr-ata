@@ -221,6 +221,14 @@ public:
     return bytes_readable;
   };
 
+int8_t TwosComplement4Bit(int8_t b) {
+	if (b > 7) { // Max before 4th bit gets flipped on.
+		return b - 16;
+	}
+	else {
+		return b;
+	}
+};
 
   int work(int noutput_items, gr_vector_const_void_star &input_items,
            gr_vector_void_star &output_items);
