@@ -1,0 +1,90 @@
+id: ata_snap_source
+label: ATA SNAP Source
+category: '[ATA]'
+
+parameters:
+-   id: header
+    label: Stream Type
+    dtype: enum
+    options: ['1', '2']
+    option_labels: [Voltage, Spectrometer]
+    option_attributes:
+        size: [gr.sizeof_char, gr.sizeof_float]
+        type: [byte, float]
+-   id: port
+    label: Port
+    dtype: int
+    default: '4015'
+-   id: starting_channel
+    label: Starting Channel
+    dtype: int
+    default: '1792'
+    hide: ${ 'all' if header == '2' else 'none' }
+-   id: ending_channel
+    label: Ending Channel
+    dtype: int
+    default: '2815'
+    hide: ${ 'all' if header == '2' else 'none' }
+-   id: notifyMissed
+    label: Notify Missed Frames
+    dtype: enum
+    options: ['True', 'False']
+    option_labels: ['Yes', 'No']
+-   id: srcZeros
+    label: Src 0s If No Data
+    dtype: enum
+    options: ['True', 'False']
+    option_labels: ['Yes', 'No']
+-   id: ipv6
+    label: Enable IPv6 Support
+    dtype: enum
+    options: ['False', 'True']
+    option_labels: ['No', 'Yes']
+
+outputs:
+-   label: x_pol
+    domain: stream
+    dtype: ${ header.type }
+    vlen: ${ int((ending_channel - starting_channel + 1)*2)  if header == '1' else 4096 }
+-   label: y_pol
+    domain: stream
+    dtype: ${ header.type }
+    vlen: ${ int((ending_channel - starting_channel + 1)*2) if header == '1' else 4096 }
+-   label: xy_real
+    domain: stream
+    dtype: ${ header.type }
+    vlen: ${ 4096 }
+    optional: true
+-   label: xy_imag
+    domain: stream
+    dtype: ${ header.type }
+    vlen: ${ 4096 }
+    optional: true
+-   domain: message
+    id: sync_header
+    optional: true
+    
+templates:
+    imports: import ata
+    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6},${starting_channel},${ending_channel})
+
+documentation: "This block listens for ATA SNAP traffic on the specified UDP port and outputs\
+    \ the channel vector appropriate for the selected type.  Voltage blocks output 512 byte\
+    \ vectors of byte-based interleaved IQ data (IQIQIQIQ...).  Note that depending on the\
+    \ configured number of channels, it may take multiple packets to make up a complete set.\
+    \ So the channel number represented by the beginning of the vector is included as a tag.\
+    \ \n\nIf you need the block to generate 0s when there is\
+    \ no UDP data, you can turn on the 'Src 0s If No Data' flag, however this is best\
+    \ paired with the grnet UDP sink block.  If using a separate application, problems\
+    \ can arise if the sending application is not calling its send function with blocks\
+    \ matching payload size (the logic here can get a 'partial' packet after starting\
+    \ and not continue to produce zeros).\n\n\
+    \ NOTE:\n\
+    \ For best performance and to ensure UDP packets are not dropped, add the following\
+    \ lines to your /etc/sysctl.conf and reboot (the reboot is required).\n\n\
+    \ net.core.rmem_default=26214400\n\
+    \ net.core.rmem_max=104857600\n\
+    \ net.core.wmem_default=65536\n\
+    \ net.core.wmem_max=104857600\n\n"
+
+file_format: 1

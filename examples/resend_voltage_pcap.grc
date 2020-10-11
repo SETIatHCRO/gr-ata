@@ -1,0 +1,138 @@
+options:
+  parameters:
+    author: ghostop14
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: resend_pcap
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: Resend PCAP
+    window_size: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: channel_samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: snap_samp_rate*(num_channels/4096)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [304, 12.0]
+    rotation: 0
+    state: enabled
+- name: num_channels
+  id: variable
+  parameters:
+    comment: ''
+    value: '1024'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [464, 12.0]
+    rotation: 0
+    state: true
+- name: snap_samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 900e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [176, 12.0]
+    rotation: 0
+    state: enabled
+- name: blocks_throttle_0
+  id: blocks_throttle
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: channel_samp_rate
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [624, 204.0]
+    rotation: 0
+    state: true
+- name: grnet_pcap_udp_source_0
+  id: grnet_pcap_udp_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    file: /opt/tmp/ata/goes17_volt_synced.pcap
+    header: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    notifyMissed: 'False'
+    payloadsize: '8200'
+    port: '4030'
+    repeatFile: 'True'
+    type: byte
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [336, 164.0]
+    rotation: 0
+    state: true
+- name: grnet_udp_sink_0
+  id: grnet_udp_sink
+  parameters:
+    addr: 127.0.0.1
+    affinity: ''
+    alias: ''
+    comment: ''
+    header: '0'
+    payloadsize: '8200'
+    port: '4030'
+    send_eof: 'False'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [848, 172.0]
+    rotation: 0
+    state: true
+
+connections:
+- [blocks_throttle_0, '0', grnet_udp_sink_0, '0']
+- [grnet_pcap_udp_source_0, '0', blocks_throttle_0, '0']
+
+metadata:
+  file_format: 1
