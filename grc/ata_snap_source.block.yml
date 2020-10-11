@@ -60,6 +60,9 @@ outputs:
     dtype: ${ header.type }
     vlen: ${ 4096 }
     optional: true
+-   domain: message
+    id: sync_header
+    optional: true
     
 templates:
     imports: import ata

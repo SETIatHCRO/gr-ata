@@ -190,6 +190,8 @@ snap_source_impl::snap_source_impl(int port,
 	if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
 		gr::block::set_output_multiple(16);
 	}
+
+	message_port_register_out(pmt::mp("sync_header"));
 }
 
 /*
@@ -373,8 +375,17 @@ int snap_source_impl::work(int noutput_items,
 				// Set that we're synchronized and exit our loop here.
 				d_found_start_channel = true;
 				std::stringstream msg_stream;
-				msg_stream << "Aligned with start of channel packet with sample number " << hdr.sample_number;
+				msg_stream << "Data block alignment achieved with sample number " << hdr.sample_number << " as first block";
 				GR_LOG_INFO(d_logger, msg_stream.str());
+			    pmt::pmt_t meta = pmt::make_dict();
+
+			    meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
+			    meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
+			    meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
+			    meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
+
+			    pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
+			    message_port_pub(pmt::mp("sync_header"), pdu);
 				break;
 			}
 			else {
