@@ -34,7 +34,7 @@ parameters:
   hide: ${ ('none' if coord_type.startswith('id') else 'all') }
   
 - id: ra
-  label: RA (decimal deg.)
+  label: RA (decimal hrs.)
   dtype: float
   default: 14.00
   hide: ${ ('none' if coord_type.startswith('radec') else 'all') }
