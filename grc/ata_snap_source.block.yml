@@ -8,6 +8,9 @@ parameters:
     dtype: enum
     options: ['1', '2']
     option_labels: [Voltage, Spectrometer]
+    option_attributes:
+        size: [gr.sizeof_char, gr.sizeof_float]
+        type: [byte, float]
 -   id: port
     label: Port
     dtype: int
@@ -16,10 +19,12 @@ parameters:
     label: Starting Channel
     dtype: int
     default: '1792'
+    hide: ${ 'all' if header == '2' else 'none' }
 -   id: ending_channel
     label: Ending Channel
     dtype: int
     default: '2815'
+    hide: ${ 'all' if header == '2' else 'none' }
 -   id: notifyMissed
     label: Notify Missed Frames
     dtype: enum
@@ -39,13 +44,23 @@ parameters:
 outputs:
 -   label: x_pol
     domain: stream
-    dtype: byte
-    vlen: ${ int((ending_channel - starting_channel + 1)*2) }
+    dtype: ${ header.type }
+    vlen: ${ int((ending_channel - starting_channel + 1)*2)  if header == '1' else 4096 }
 -   label: y_pol
     domain: stream
-    dtype: byte
-    vlen: ${ int((ending_channel - starting_channel + 1)*2) }
-
+    dtype: ${ header.type }
+    vlen: ${ int((ending_channel - starting_channel + 1)*2) if header == '1' else 4096 }
+-   label: xy_real
+    domain: stream
+    dtype: ${ header.type }
+    vlen: ${ 4096 }
+    optional: true
+-   label: xy_imag
+    domain: stream
+    dtype: ${ header.type }
+    vlen: ${ 4096 }
+    optional: true
+    
 templates:
     imports: import ata
     make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6},${starting_channel},${ending_channel})

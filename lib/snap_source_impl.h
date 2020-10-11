@@ -36,12 +36,24 @@ namespace ata {
 // This struct is needed/used to recast the data
 // to an appropriate array.
 struct voltage_packet {
+	// 16 times, 256 channels, 2 polarizations
 	unsigned char data[16][256][2];
 };
 
-class ATA_API data_vector {
+struct spectrometer_packet {
+	/*
+	 * Each spectrometer dump is a 64 kiB data set, comprising 4096 channels and 4
+32-bit floats per channel. Each data dump is transmitted from the SNAP in 8 UDP packets, each with an 512 channel
+(8 kiB) payload and 8 byte header
+	 */
+	// 512 channels, 4 output indices ( XX, YY, real XY*, imag XY*)
+	float data[512][4];
+};
+
+template <typename T>
+class data_vector {
 protected:
-	char *data=NULL;
+	T *data=NULL;
 	size_t data_size=0;
 
 public:
@@ -50,19 +62,19 @@ public:
 		data = NULL;
 	};
 
-	data_vector(const data_vector& src) {
+	data_vector(const data_vector<T>& src) {
 		if (src.data && (src.data_size > 0)) {
 			data_size = src.data_size;
-			data = new char[data_size];
-			memcpy(data,src.data,data_size);
+			data = new T[data_size];
+			memcpy(data,src.data,data_size*sizeof(T));
 		}
 	};
 
-	data_vector(char *src_data,size_t src_size) {
+	data_vector(T *src_data,size_t src_size) {
 		if (src_data && (src_size > 0)) {
 			data_size = src_size;
-			data = new char[data_size];
-			memcpy(data,src_data,data_size);
+			data = new T[data_size];
+			memcpy(data,src_data,data_size*sizeof(T));
 		}
 		else {
 			data = NULL;
@@ -70,11 +82,11 @@ public:
 		}
 	};
 
-	data_vector& operator= ( const data_vector & src) {
+	data_vector<T>& operator= ( const data_vector<T> & src) {
 		if (src.data && (src.data_size > 0)) {
 			data_size = src.data_size;
-			data = new char[data_size];
-			memcpy(data,src.data,data_size);
+			data = new T[data_size];
+			memcpy(data,src.data,data_size*sizeof(T));
 		}
 		else {
 			if (data) {
@@ -96,17 +108,17 @@ public:
 		}
 	}
 
-	virtual char * data_pointer() { return data; };
+	virtual T * data_pointer() { return data; };
 
-	virtual void store(char *src_data,size_t src_size) {
+	virtual void store(T *src_data,size_t src_size) {
 		if (data) {
 			delete[] data;
 		}
 
 		if (src_data && (src_size > 0)) {
 			data_size = src_size;
-			data = new char[data_size];
-			memcpy(data,src_data,data_size);
+			data = new T[data_size];
+			memcpy(data,src_data,data_size*sizeof(T));
 		}
 		else {
 			data = NULL;
@@ -128,110 +140,125 @@ public:
 
 class ATA_API snap_source_impl : public snap_source {
 protected:
-  size_t d_veclen;
+	size_t d_veclen;
 
-  bool d_notifyMissed;
-  bool d_sourceZeros;
-  int d_partialFrameCounter;
+	bool d_notifyMissed;
+	bool d_sourceZeros;
+	int d_partialFrameCounter;
 
-  bool is_ipv6;
+	bool is_ipv6;
 
-  int d_port;
-  int d_header_type;
-  int d_header_size;
-  uint16_t d_payloadsize;
-  uint16_t total_packet_size;
-  long d_udp_recv_buf_size;
+	int d_port;
+	int d_header_type;
+	int d_header_size;
+	uint16_t d_payloadsize;
+	uint16_t total_packet_size;
+	long d_udp_recv_buf_size;
 
-  pmt::pmt_t d_pmt_seqnum;
-  pmt::pmt_t d_block_name;
+	pmt::pmt_t d_pmt_seqnum;
+	pmt::pmt_t d_block_name;
 
-  uint16_t d_last_channel_block;
-  uint16_t d_starting_channel;
-  uint16_t d_ending_channel;
-  uint16_t d_ending_channel_packet_channel_id;
-  int d_channel_diff;
-  bool d_found_start_channel;
-  int single_polarization_bytes;
+	uint16_t d_last_channel_block;
+	uint16_t d_starting_channel;
+	uint16_t d_ending_channel;
+	uint16_t d_ending_channel_packet_channel_id;
+	int d_channel_diff;
+	bool d_found_start_channel;
+	int single_polarization_bytes;
 
-  boost::system::error_code ec;
+	boost::system::error_code ec;
 
-  boost::asio::io_service d_io_service;
-  boost::asio::ip::udp::endpoint d_endpoint;
-  boost::asio::ip::udp::socket *d_udpsocket;
+	boost::asio::io_service d_io_service;
+	boost::asio::ip::udp::endpoint d_endpoint;
+	boost::asio::ip::udp::socket *d_udpsocket;
 
-  boost::asio::streambuf d_read_buffer;
+	boost::asio::streambuf d_read_buffer;
 
-  // A queue is required because we have 2 different timing
-  // domains: The network packets and the GR work()/scheduler
-  boost::circular_buffer<unsigned char> *d_localqueue;
-  unsigned char *localBuffer;
-  char *x_vector_buffer;
-  char *y_vector_buffer;
-  int vector_buffer_size;
-  std::deque<data_vector> x_vector_queue;
-  std::deque<data_vector> y_vector_queue;
-  std::deque<uint64_t> seq_num_queue;
+	// A queue is required because we have 2 different timing
+	// domains: The network packets and the GR work()/scheduler
+	boost::circular_buffer<unsigned char> *d_localqueue;
+	unsigned char *localBuffer;
 
-  void get_voltage_header(snap_header& hdr) {
-  	  uint64_t *header_as_uint64;
-  	  header_as_uint64 = (uint64_t *)localBuffer;
+	// Common mode items
+	int vector_buffer_size;
+	int channels_per_packet;
+	std::deque<uint64_t> seq_num_queue;
 
-  	  // Convert from network format to host format.
-  	  uint64_t header = be64toh(*header_as_uint64);
+	// Voltage Mode buffers
+	char *x_vector_buffer = NULL;
+	char *y_vector_buffer = NULL;
+	std::deque<data_vector<char>> x_vector_queue;
+	std::deque<data_vector<char>> y_vector_queue;
 
-  	  hdr.antenna_id = header & 0x3f;
-  	  hdr.channel_id = (header >> 6) & 0x0fff;
-  	  hdr.sample_number = (header >> 18) & 0x3fffffffffULL;
-  	  hdr.firmware_version = (header >> 56) & 0xff;
-  }
+	// Spectrometer mode items
+	float *xx_buffer = NULL;
+	float *yy_buffer = NULL;
+	float *xy_real_buffer = NULL;
+	float *xy_imag_buffer = NULL;
+	std::deque<data_vector<float>> xx_vector_queue;
+	std::deque<data_vector<float>> yy_vector_queue;
+	std::deque<data_vector<float>> xy_real_vector_queue;
+	std::deque<data_vector<float>> xy_imag_vector_queue;
 
-  void get_spectrometer_header(snap_header& hdr) {
-  	  uint64_t *header_as_uint64;
-  	  header_as_uint64 = (uint64_t *)localBuffer;
+	void get_voltage_header(snap_header& hdr) {
+		uint64_t *header_as_uint64;
+		header_as_uint64 = (uint64_t *)localBuffer;
 
-  	  // Convert from network format to host format.
-  	  uint64_t header = be64toh(*header_as_uint64);
+		// Convert from network format to host format.
+		uint64_t header = be64toh(*header_as_uint64);
 
-  	  hdr.antenna_id = header & 0xff;
-  	  hdr.channel_id = (header >> 8) & 0x07;
-  	  hdr.sample_number = (header >> 11) & 0x1fffffffffffULL;
-  	  hdr.firmware_version = (header >> 56) & 0xff;
-  }
+		hdr.antenna_id = header & 0x3f;
+		hdr.channel_id = (header >> 6) & 0x0fff;
+		hdr.sample_number = (header >> 18) & 0x3fffffffffULL;
+		hdr.firmware_version = (header >> 56) & 0xff;
+	}
+
+	void get_spectrometer_header(snap_header& hdr) {
+		uint64_t *header_as_uint64;
+		header_as_uint64 = (uint64_t *)localBuffer;
+
+		// Convert from network format to host format.
+		uint64_t header = be64toh(*header_as_uint64);
+
+		hdr.antenna_id = header & 0xff;
+		hdr.channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val
+		hdr.sample_number = (header >> 11) & 0x1fffffffffffULL;
+		hdr.firmware_version = (header >> 56) & 0xff;
+	}
 
 
 public:
-  snap_source_impl(int port, int headerType,
-                  bool notifyMissed, bool sourceZeros, bool ipv6,
-				  int starting_channel, int ending_channel);
-  ~snap_source_impl();
+	snap_source_impl(int port, int headerType,
+			bool notifyMissed, bool sourceZeros, bool ipv6,
+			int starting_channel, int ending_channel, int data_size);
+	~snap_source_impl();
 
-  bool stop();
+	bool stop();
 
-  size_t data_available() {
-    return (netdata_available() + d_localqueue->size());
-  };
+	size_t data_available() {
+		return (netdata_available() + d_localqueue->size());
+	};
 
-  size_t netdata_available() {
-    // Get amount of data available
-    boost::asio::socket_base::bytes_readable command(true);
-    d_udpsocket->io_control(command);
-    size_t bytes_readable = command.get();
+	size_t netdata_available() {
+		// Get amount of data available
+		boost::asio::socket_base::bytes_readable command(true);
+		d_udpsocket->io_control(command);
+		size_t bytes_readable = command.get();
 
-    return bytes_readable;
-  };
+		return bytes_readable;
+	};
 
-int8_t TwosComplement4Bit(int8_t b) {
-	if (b > 7) { // Max before 4th bit gets flipped on.
-		return b - 16;
-	}
-	else {
-		return b;
-	}
-};
+	int8_t TwosComplement4Bit(int8_t b) {
+		if (b > 7) { // Max before 4th bit gets flipped on.
+			return b - 16;
+		}
+		else {
+			return b;
+		}
+	};
 
-  int work(int noutput_items, gr_vector_const_void_star &input_items,
-           gr_vector_void_star &output_items);
+	int work(int noutput_items, gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items);
 };
 
 } // namespace ata 
