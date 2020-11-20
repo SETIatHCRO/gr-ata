@@ -122,6 +122,16 @@ if(APPLE)
 endif(APPLE)
 
 ########################################################################
+# Setup OpenMP option
+########################################################################
+if(OpenMP_CXX_FOUND)
+    option(ENABLE_OPENMP "Enabling OpenMP boost for SNAP source" ON)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+else(OpenMP_CXX_FOUND)
+    option(ENABLE_OPENMP "OpenMP not found.  Disabling OpenMP boost for SNAP source" OFF)
+endif(OpenMP_CXX_FOUND)
+
+########################################################################
 # Find gnuradio build dependencies
 ########################################################################
 find_package(Doxygen)

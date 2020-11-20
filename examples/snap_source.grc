@@ -240,7 +240,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [16, 200.0]
+    coordinate: [40, 200.0]
     rotation: 0
     state: true
 - name: blocks_complex_to_mag_0
@@ -304,9 +304,45 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [536, 860.0]
+    coordinate: [416, 860.0]
     rotation: 0
     state: enabled
+- name: blocks_integrate_xx_0
+  id: blocks_integrate_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    decim: '500'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: float
+    vlen: data_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [728, 628.0]
+    rotation: 0
+    state: true
+- name: blocks_integrate_xx_0_0
+  id: blocks_integrate_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    decim: '500'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: float
+    vlen: data_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [592, 900.0]
+    rotation: 0
+    state: true
 - name: blocks_interleaved_char_to_complex_0
   id: blocks_interleaved_char_to_complex
   parameters:
@@ -320,7 +356,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [296, 188.0]
+    coordinate: [480, 252.0]
     rotation: 0
     state: true
 - name: blocks_interleaved_char_to_complex_0_0
@@ -336,7 +372,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [264, 372.0]
+    coordinate: [520, 340.0]
     rotation: 0
     state: true
 - name: blocks_message_debug_0
@@ -349,45 +385,28 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [48, 544.0]
+    coordinate: [48, 608.0]
     rotation: 180
     state: true
-- name: blocks_multiply_const_vxx_0
-  id: blocks_multiply_const_vxx
+- name: blocks_probe_rate_0
+  id: blocks_probe_rate
   parameters:
     affinity: ''
     alias: ''
+    alpha: '0.15'
     comment: ''
-    const: 1/15.0* gain
     maxoutbuf: '0'
     minoutbuf: '0'
-    type: complex
-    vlen: '1'
+    mintime: 500.0*2
+    type: byte
+    vlen: num_channels*2
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [384, 252.0]
-    rotation: 0
-    state: bypassed
-- name: blocks_multiply_const_vxx_0_0
-  id: blocks_multiply_const_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    const: 1/15.0*gain
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [384, 316.0]
-    rotation: 0
-    state: bypassed
+    coordinate: [268.0, 456]
+    rotation: 270
+    state: disabled
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
   parameters:
@@ -457,8 +476,8 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [496, 376.0]
-    rotation: 0
+    coordinate: [448.0, 488]
+    rotation: 270
     state: true
 - name: blocks_tag_debug_0
   id: blocks_tag_debug
@@ -495,7 +514,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [608, 252.0]
+    coordinate: [656, 252.0]
     rotation: 0
     state: true
 - name: blocks_vector_to_stream_0
@@ -513,7 +532,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [120, 152.0]
+    coordinate: [312, 256.0]
     rotation: 0
     state: true
 - name: blocks_vector_to_stream_0_0
@@ -531,7 +550,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [104, 376.0]
+    coordinate: [336, 344.0]
     rotation: 0
     state: true
 - name: blocks_vector_to_stream_1
@@ -588,7 +607,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [840, 620.0]
+    coordinate: [904, 620.0]
     rotation: 0
     state: enabled
 - name: mesa_LongTermIntegrator_0_0
@@ -917,19 +936,21 @@ blocks:
     state: enabled
 
 connections:
+- [ata_snap_source_0, '0', blocks_probe_rate_0, '0']
 - [ata_snap_source_0, '0', blocks_vector_to_stream_0, '0']
 - [ata_snap_source_0, '1', blocks_tag_debug_0, '0']
 - [ata_snap_source_0, '1', blocks_vector_to_stream_0_0, '0']
 - [ata_snap_source_0, sync_header, blocks_message_debug_0, print]
 - [blocks_complex_to_mag_0, '0', blocks_stream_to_vector_0, '0']
 - [blocks_complex_to_mag_0_0, '0', blocks_stream_to_vector_0_0, '0']
-- [blocks_complex_to_mag_squared_0_0, '0', mesa_LongTermIntegrator_0, '0']
-- [blocks_complex_to_mag_squared_0_0_0, '0', mesa_LongTermIntegrator_0_0, '0']
-- [blocks_interleaved_char_to_complex_0, '0', blocks_multiply_const_vxx_0, '0']
-- [blocks_interleaved_char_to_complex_0_0, '0', blocks_multiply_const_vxx_0_0, '0']
-- [blocks_multiply_const_vxx_0, '0', blocks_throttle_0, '0']
-- [blocks_multiply_const_vxx_0_0, '0', blocks_complex_to_mag_0_0, '0']
-- [blocks_multiply_const_vxx_0_0, '0', blocks_stream_to_vector_1_0, '0']
+- [blocks_complex_to_mag_squared_0_0, '0', blocks_integrate_xx_0, '0']
+- [blocks_complex_to_mag_squared_0_0_0, '0', blocks_integrate_xx_0_0, '0']
+- [blocks_integrate_xx_0, '0', mesa_LongTermIntegrator_0, '0']
+- [blocks_integrate_xx_0_0, '0', mesa_LongTermIntegrator_0_0, '0']
+- [blocks_interleaved_char_to_complex_0, '0', blocks_throttle_0, '0']
+- [blocks_interleaved_char_to_complex_0_0, '0', blocks_complex_to_mag_0_0, '0']
+- [blocks_interleaved_char_to_complex_0_0, '0', blocks_stream_to_vector_1_0, '0']
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
 - [blocks_stream_to_vector_0, '0', qtgui_vector_sink_f_0, '0']
 - [blocks_stream_to_vector_0_0, '0', qtgui_vector_sink_f_0, '1']
 - [blocks_stream_to_vector_1, '0', blocks_complex_to_mag_squared_0_0, '0']

@@ -68,6 +68,50 @@ blocks:
     coordinate: [176, 12.0]
     rotation: 0
     state: enabled
+- name: target_system
+  id: variable
+  parameters:
+    comment: ''
+    value: '''127.0.0.1'''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [592, 12.0]
+    rotation: 0
+    state: true
+- name: blocks_message_debug_0
+  id: blocks_message_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [928, 24.0]
+    rotation: 0
+    state: disabled
+- name: blocks_probe_rate_0
+  id: blocks_probe_rate
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha: '0.15'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mintime: 500.0*2
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [640, 100.0]
+    rotation: 0
+    state: disabled
 - name: blocks_throttle_0
   id: blocks_throttle
   parameters:
@@ -84,7 +128,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [624, 204.0]
+    coordinate: [520, 196.0]
     rotation: 0
     state: true
 - name: grnet_pcap_udp_source_0
@@ -106,13 +150,13 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [336, 164.0]
+    coordinate: [240, 164.0]
     rotation: 0
     state: true
 - name: grnet_udp_sink_0
   id: grnet_udp_sink
   parameters:
-    addr: 127.0.0.1
+    addr: target_system
     affinity: ''
     alias: ''
     comment: ''
@@ -129,10 +173,33 @@ blocks:
     coordinate: [848, 172.0]
     rotation: 0
     state: true
+- name: grnet_udp_sink_0_0
+  id: grnet_udp_sink
+  parameters:
+    addr: target_system
+    affinity: ''
+    alias: ''
+    comment: ''
+    header: '0'
+    payloadsize: '8200'
+    port: '4031'
+    send_eof: 'False'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [856, 308.0]
+    rotation: 0
+    state: true
 
 connections:
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
+- [blocks_throttle_0, '0', blocks_probe_rate_0, '0']
 - [blocks_throttle_0, '0', grnet_udp_sink_0, '0']
 - [grnet_pcap_udp_source_0, '0', blocks_throttle_0, '0']
+- [grnet_pcap_udp_source_0, '0', grnet_udp_sink_0_0, '0']
 
 metadata:
   file_format: 1

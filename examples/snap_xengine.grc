@@ -1,0 +1,670 @@
+options:
+  parameters:
+    author: ghostop14
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: ata_snap_xengine
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: '1'
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: ATA New SNAP X-Engine
+    window_size: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: center_channel
+  id: variable
+  parameters:
+    comment: ''
+    value: starting_channel + num_channels/2
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1272, 12.0]
+    rotation: 0
+    state: true
+- name: center_freq
+  id: variable
+  parameters:
+    comment: ''
+    value: sky_freq + (center_channel-2048)*channel_width
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1160, 12.0]
+    rotation: 0
+    state: true
+- name: channel_samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: snap_samp_rate*(num_channels/4096)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [680, 76.0]
+    rotation: 0
+    state: enabled
+- name: channel_width
+  id: variable
+  parameters:
+    comment: ''
+    value: snap_samp_rate/4096.0
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [920, 12.0]
+    rotation: 0
+    state: true
+- name: data_vector_len
+  id: variable
+  parameters:
+    comment: ''
+    value: int(snap_vector_len/2)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [832, 76.0]
+    rotation: 0
+    state: true
+- name: ending_channel
+  id: variable
+  parameters:
+    comment: ''
+    value: starting_channel+num_channels-1
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [680, 12.0]
+    rotation: 0
+    state: true
+- name: gain
+  id: variable
+  parameters:
+    comment: ''
+    value: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 76.0]
+    rotation: 0
+    state: true
+- name: half_channel_width
+  id: variable
+  parameters:
+    comment: ''
+    value: channel_width/2.0
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1048, 84.0]
+    rotation: 0
+    state: true
+- name: num_channels
+  id: variable
+  parameters:
+    comment: ''
+    value: '1024'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [512, 12.0]
+    rotation: 0
+    state: true
+- name: sky_freq
+  id: variable
+  parameters:
+    comment: ''
+    value: 1690e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [296, 12.0]
+    rotation: 0
+    state: true
+- name: snap_samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 900e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [176, 12.0]
+    rotation: 0
+    state: enabled
+- name: snap_vector_len
+  id: variable
+  parameters:
+    comment: ''
+    value: int((ending_channel-starting_channel+1)*2)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [808, 12.0]
+    rotation: 0
+    state: true
+- name: start_freq
+  id: variable
+  parameters:
+    comment: ''
+    value: sky_freq - (2048-starting_channel)*channel_width
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1048, 12.0]
+    rotation: 0
+    state: true
+- name: starting_channel
+  id: variable
+  parameters:
+    comment: ''
+    value: '1792'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [392, 12.0]
+    rotation: 0
+    state: true
+- name: ata_snap_source_0
+  id: ata_snap_source
+  parameters:
+    affinity: '0'
+    alias: ''
+    comment: ''
+    ending_channel: ending_channel
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    port: '4030'
+    srcZeros: 'True'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 264.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: '0'
+    alias: ''
+    comment: ''
+    ending_channel: ending_channel
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    port: '4031'
+    srcZeros: 'True'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 440.0]
+    rotation: 0
+    state: enabled
+- name: blocks_interleaved_char_to_complex_0_0
+  id: blocks_interleaved_char_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [496, 340.0]
+    rotation: 0
+    state: true
+- name: blocks_interleaved_char_to_complex_0_0_0
+  id: blocks_interleaved_char_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [496, 388.0]
+    rotation: 0
+    state: true
+- name: blocks_interleaved_char_to_complex_0_0_0_0
+  id: blocks_interleaved_char_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [496, 428.0]
+    rotation: 0
+    state: true
+- name: blocks_interleaved_char_to_complex_0_0_0_0_0
+  id: blocks_interleaved_char_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [496, 476.0]
+    rotation: 0
+    state: true
+- name: blocks_message_debug_0
+  id: blocks_message_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1168, 208.0]
+    rotation: 0
+    state: disabled
+- name: blocks_null_sink_0
+  id: blocks_null_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_sink: '[[0,],]'
+    comment: ''
+    num_inputs: '2'
+    type: byte
+    vlen: num_channels*2
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [328, 160.0]
+    rotation: 0
+    state: disabled
+- name: blocks_null_sink_0_0
+  id: blocks_null_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_sink: '[[0,],]'
+    comment: ''
+    num_inputs: '2'
+    type: byte
+    vlen: num_channels*2
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [304, 640.0]
+    rotation: 0
+    state: disabled
+- name: blocks_null_source_0
+  id: blocks_null_source
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_source: '[[0,],]'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_outputs: '1'
+    type: byte
+    vlen: num_channels*2
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 172.0]
+    rotation: 0
+    state: disabled
+- name: blocks_probe_rate_0
+  id: blocks_probe_rate
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha: '0.15'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mintime: 500.0*2
+    type: byte
+    vlen: '2048'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 204.0]
+    rotation: 0
+    state: disabled
+- name: blocks_stream_to_vector_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: num_channels
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [664, 344.0]
+    rotation: 0
+    state: true
+- name: blocks_stream_to_vector_0_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: num_channels
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [664, 392.0]
+    rotation: 0
+    state: true
+- name: blocks_stream_to_vector_0_0_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: num_channels
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [664, 432.0]
+    rotation: 0
+    state: true
+- name: blocks_stream_to_vector_0_0_0_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: num_channels
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [664, 480.0]
+    rotation: 0
+    state: true
+- name: blocks_throttle_0
+  id: blocks_throttle
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: channel_samp_rate
+    type: byte
+    vlen: num_channels*2
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [344, 268.0]
+    rotation: 0
+    state: enabled
+- name: blocks_vector_to_stream_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: snap_vector_len
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [344, 344.0]
+    rotation: 0
+    state: true
+- name: blocks_vector_to_stream_0_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: snap_vector_len
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [344, 392.0]
+    rotation: 0
+    state: true
+- name: blocks_vector_to_stream_0_0_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: snap_vector_len
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [344, 432.0]
+    rotation: 0
+    state: true
+- name: blocks_vector_to_stream_0_0_0_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: snap_vector_len
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [344, 480.0]
+    rotation: 0
+    state: true
+- name: clenabled_clXEngine_0
+  id: clenabled_clXEngine
+  parameters:
+    affinity: '1'
+    alias: ''
+    comment: ''
+    deviceId: '0'
+    devices: '1'
+    integration: '1024'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_channels: '1024'
+    num_inputs: '2'
+    openCLPlatform: '1'
+    platformId: '0'
+    polarization: '2'
+    setDebug: 'False'
+    type: Complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [832, 368.0]
+    rotation: 0
+    state: enabled
+- name: filerepeater_AdvFileSink_0
+  id: filerepeater_AdvFileSink
+  parameters:
+    affinity: ''
+    alias: ''
+    autostartFreqChange: 'False'
+    basedir: /tmp
+    basefile: '"xengine_" + str(starting_channel)'
+    bits_per_sample: '8'
+    comment: ''
+    honorFreqChange: 'False'
+    honorFreqTags: 'False'
+    maxSize: '0'
+    maxTimeSec: '0'
+    radioCenterFreq: sky_freq
+    recordOnStart: 'True'
+    sampleRate: channel_samp_rate
+    type: complex
+    unbuffered: 'False'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1056, 348.0]
+    rotation: 0
+    state: disabled
+- name: note_0
+  id: note
+  parameters:
+    alias: ''
+    comment: These should be configured
+    note: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [288, 76.0]
+    rotation: 0
+    state: true
+- name: note_0_0
+  id: note
+  parameters:
+    alias: ''
+    comment: These are calculated
+    note: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [680, 140.0]
+    rotation: 0
+    state: true
+
+connections:
+- [ata_snap_source_0, '0', blocks_null_sink_0, '0']
+- [ata_snap_source_0, '0', blocks_throttle_0, '0']
+- [ata_snap_source_0, '1', blocks_null_sink_0, '1']
+- [ata_snap_source_0, '1', blocks_vector_to_stream_0_0_0, '0']
+- [ata_snap_source_0_0, '0', blocks_null_sink_0_0, '0']
+- [ata_snap_source_0_0, '0', blocks_vector_to_stream_0_0, '0']
+- [ata_snap_source_0_0, '1', blocks_null_sink_0_0, '1']
+- [ata_snap_source_0_0, '1', blocks_vector_to_stream_0_0_0_0, '0']
+- [blocks_interleaved_char_to_complex_0_0, '0', blocks_stream_to_vector_0, '0']
+- [blocks_interleaved_char_to_complex_0_0_0, '0', blocks_stream_to_vector_0_0, '0']
+- [blocks_interleaved_char_to_complex_0_0_0_0, '0', blocks_stream_to_vector_0_0_0,
+  '0']
+- [blocks_interleaved_char_to_complex_0_0_0_0_0, '0', blocks_stream_to_vector_0_0_0_0,
+  '0']
+- [blocks_null_source_0, '0', blocks_throttle_0, '0']
+- [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
+- [blocks_stream_to_vector_0, '0', clenabled_clXEngine_0, '0']
+- [blocks_stream_to_vector_0_0, '0', clenabled_clXEngine_0, '1']
+- [blocks_stream_to_vector_0_0_0, '0', clenabled_clXEngine_0, '2']
+- [blocks_stream_to_vector_0_0_0_0, '0', clenabled_clXEngine_0, '3']
+- [blocks_throttle_0, '0', blocks_probe_rate_0, '0']
+- [blocks_throttle_0, '0', blocks_vector_to_stream_0, '0']
+- [blocks_vector_to_stream_0, '0', blocks_interleaved_char_to_complex_0_0, '0']
+- [blocks_vector_to_stream_0_0, '0', blocks_interleaved_char_to_complex_0_0_0, '0']
+- [blocks_vector_to_stream_0_0_0, '0', blocks_interleaved_char_to_complex_0_0_0_0,
+  '0']
+- [blocks_vector_to_stream_0_0_0_0, '0', blocks_interleaved_char_to_complex_0_0_0_0_0,
+  '0']
+- [clenabled_clXEngine_0, xcorr, filerepeater_AdvFileSink_0, data_in]
+
+metadata:
+  file_format: 1

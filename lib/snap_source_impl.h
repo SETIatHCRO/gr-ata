@@ -174,6 +174,16 @@ protected:
 
 	boost::asio::streambuf d_read_buffer;
 
+	// Separate receive thread
+	boost::thread *proc_thread=NULL;
+	bool threadRunning=false;
+	bool stop_thread = false;
+	gr::thread::mutex d_net_mutex;
+	int num_procs;
+
+	// Actual thread function
+	virtual void runThread();
+
 	// A queue is required because we have 2 different timing
 	// domains: The network packets and the GR work()/scheduler
 	boost::circular_buffer<unsigned char> *d_localqueue;
@@ -235,8 +245,12 @@ public:
 
 	bool stop();
 
+	size_t packet_size() { return total_packet_size; };
+
 	size_t data_available() {
-		return (netdata_available() + d_localqueue->size());
+		gr::thread::scoped_lock guard(d_net_mutex);
+		size_t queue_size = d_localqueue->size();
+		return queue_size;
 	};
 
 	size_t netdata_available() {
@@ -256,6 +270,9 @@ public:
 			return b;
 		}
 	};
+
+	int work_test(int noutput_items, gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items);
 
 	int work(int noutput_items, gr_vector_const_void_star &input_items,
 			gr_vector_void_star &output_items);

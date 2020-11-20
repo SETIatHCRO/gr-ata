@@ -54,6 +54,27 @@ include(GrMiscUtils)
 GR_LIBRARY_FOO(gnuradio-ata)
 
 ########################################################################
+# Build and register test-snapsource
+########################################################################
+list(APPEND test_snapsource_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/test-snapsource.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/snap_source_impl.cc
+)
+
+add_executable(test-snapsource ${test_snapsource_sources})
+
+target_link_libraries(
+  test-snapsource
+  ${GNURADIO_RUNTIME_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${OpenMP_CXX_LIBRARIES}
+  volk
+  gnuradio-ata
+)
+
+install(TARGETS test-snapsource DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
+
+########################################################################
 # Print summary
 ########################################################################
 message(STATUS "Using install prefix: ${CMAKE_INSTALL_PREFIX}")
