@@ -194,6 +194,15 @@ snap_source_impl::snap_source_impl(int port,
 		gr::block::set_output_multiple(16);
 	}
 
+	for (int i=0;i<7;i++) {
+		twosComplementLUT[i] = i;
+	}
+
+	twosComplementLUT[8] = 0; // 1000 is a special case: -0 (as opposed to 0000 = +0)
+	for (int i=9;i<16;i++) {
+		twosComplementLUT[i] = i - 16;
+	}
+
 	message_port_register_out(pmt::mp("sync_header"));
 
 #ifdef _OPENMP
@@ -202,8 +211,9 @@ snap_source_impl::snap_source_impl(int port,
 	if (num_procs < 1)
 		num_procs = 1;
 	*/
-	// Seems like we can hard-code this.  4 is plenty.
-	num_procs = 4;
+	// Seems like we can hard-code this.
+	// Two seems to do fine.
+	num_procs = 2;
 #else
 	num_procs = 1;
 #endif
@@ -517,16 +527,16 @@ int snap_source_impl::work_test(int noutput_items,
 
 						x_pol[TwoS] = (char)(vp->data[t][sample][0] >> 4); // I
 						// Need to adjust twos-complement
-						x_pol[TwoS] = TwosComplement4Bit(x_pol[TwoS]);
+						x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
 
 						x_pol[TwoS1] = (char)(vp->data[t][sample][0] & 0x0F);  // Q
-						x_pol[TwoS1] = TwosComplement4Bit(x_pol[TwoS1]);
+						x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
 
 						y_pol[TwoS] = (char)(vp->data[t][sample][1] >> 4); // I
-						y_pol[TwoS] = TwosComplement4Bit(y_pol[TwoS]);
+						y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
 
 						y_pol[TwoS1] = (char)(vp->data[t][sample][1] & 0x0F);  // Q
-						y_pol[TwoS1] = TwosComplement4Bit(y_pol[TwoS1]);
+						y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
 					}
 					/*
 					for (sample=0;sample<256;sample++) {
@@ -942,16 +952,16 @@ int snap_source_impl::work(int noutput_items,
 
 						x_pol[TwoS] = (char)(vp->data[t][sample][0] >> 4); // I
 						// Need to adjust twos-complement
-						x_pol[TwoS] = TwosComplement4Bit(x_pol[TwoS]);
+						x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
 
 						x_pol[TwoS1] = (char)(vp->data[t][sample][0] & 0x0F);  // Q
-						x_pol[TwoS1] = TwosComplement4Bit(x_pol[TwoS1]);
+						x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
 
 						y_pol[TwoS] = (char)(vp->data[t][sample][1] >> 4); // I
-						y_pol[TwoS] = TwosComplement4Bit(y_pol[TwoS]);
+						y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
 
 						y_pol[TwoS1] = (char)(vp->data[t][sample][1] & 0x0F);  // Q
-						y_pol[TwoS1] = TwosComplement4Bit(y_pol[TwoS1]);
+						y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
 					}
 					/*
 					for (sample=0;sample<256;sample++) {

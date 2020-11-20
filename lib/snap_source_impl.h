@@ -184,6 +184,9 @@ protected:
 	// Actual thread function
 	virtual void runThread();
 
+	// Two's complement lookup table
+	char twosComplementLUT[16];
+
 	// A queue is required because we have 2 different timing
 	// domains: The network packets and the GR work()/scheduler
 	boost::circular_buffer<unsigned char> *d_localqueue;
@@ -270,6 +273,10 @@ public:
 			return b;
 		}
 	};
+
+	int8_t TwosComplementLookup4Bit(int8_t b) {
+		return twosComplementLUT[b];
+	}
 
 	int work_test(int noutput_items, gr_vector_const_void_star &input_items,
 			gr_vector_void_star &output_items);
