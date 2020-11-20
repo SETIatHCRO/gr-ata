@@ -56,12 +56,14 @@
 #define	OUR_O_LARGEFILE 0
 #endif
 
-
 #include "snap_source_impl.h"
 
 // bool verbose=false;
-int iterations = 100;
+int iterations = 10;
 bool wait_for_data = true;
+
+#define THREAD_RECEIVE
+
 
 class comma_numpunct : public std::numpunct<char>
 {
@@ -78,6 +80,10 @@ class comma_numpunct : public std::numpunct<char>
 };
 
 bool testSNAPSource() {
+#ifndef _OPENMP
+	std::cout << "WARNING: OMP not enabled.  Please install libomp and recompile." << std::endl;
+#endif
+
 	std::cout << "----------------------------------------------------------" << std::endl;
 
 	std::cout << "Testing SNAP Source: " << std::endl;
@@ -105,7 +111,8 @@ bool testSNAPSource() {
 	std::vector<void *> outputPointers;
 
 	int output_size = num_channels*2;
-	for (i=0;i<output_size;i++) {
+	int entries_per_complete_frame = 16;
+	for (i=0;i<output_size*entries_per_complete_frame;i++) {
 		inputItems_char.push_back(0x00);
 		outputItems.push_back(0x00);
 	}
@@ -124,28 +131,61 @@ bool testSNAPSource() {
 	float bits_throughput;
 
 	int packet_size = test->packet_size();
+	int packets_per_complete_frame = 4;
 
 	if (wait_for_data) {
 		std::cout << "Waiting for enough packets to be queued to run the test at full speed..." << std::endl;
-		while (test->data_available() < (iterations+1)*packet_size) {
+
+		// Let's get aligned
+		while (!test->packets_aligned()) {
+			noutputitems = test->work_test(entries_per_complete_frame,inputPointers,outputPointers);
+
+			if (test->packets_aligned()) {
+				break;
+			}
+			else {
+				usleep(100);
+			}
+		}
+
+		// Now let's make sure we have enough data for the test.
+		while (test->data_available() < (iterations+1)*packet_size*packets_per_complete_frame) {
+#ifndef THREAD_RECEIVE
+			test->queue_data();
+#endif
 			usleep(100);
 		}
 
 		std::cout << "Enough data has been received.  Proceeding to test..." << std::endl;
 	}
-	// Test memory queueing approach
-	noutputitems = test->work_test(1,inputPointers,outputPointers);
 
-	start = std::chrono::steady_clock::now();
+	// Get the first run out of the way.
+	noutputitems = test->work_test(entries_per_complete_frame,inputPointers,outputPointers);
+
+	elapsed_time = 0.0;
+
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->work_test(1,inputPointers,outputPointers);
+#ifndef THREAD_RECEIVE
+		test->queue_data();
+#endif
+
+		start = std::chrono::steady_clock::now();
+		noutputitems = test->work_test(entries_per_complete_frame,inputPointers,outputPointers);
+		end = std::chrono::steady_clock::now();
+
+		if (noutputitems == entries_per_complete_frame) {
+			elapsed_seconds = end-start;
+
+			elapsed_time += elapsed_seconds.count();
+		}
+		else {
+			i--;
+			// std::cout << "Error: got zero entries back from work_test.  Retesting." << std::endl;
+		}
 	}
-	end = std::chrono::steady_clock::now();
 
-	elapsed_seconds = end-start;
-
-	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	elapsed_time = elapsed_time / (float)iterations / entries_per_complete_frame;
 	throughput = num_channels  / elapsed_time;
 	input_buffer_total_bytes = num_channels * data_size * 2;
 	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;

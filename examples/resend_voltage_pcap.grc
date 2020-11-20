@@ -130,7 +130,7 @@ blocks:
     bus_structure: null
     coordinate: [520, 196.0]
     rotation: 0
-    state: true
+    state: bypassed
 - name: grnet_pcap_udp_source_0
   id: grnet_pcap_udp_source
   parameters:
@@ -192,7 +192,7 @@ blocks:
     bus_structure: null
     coordinate: [856, 308.0]
     rotation: 0
-    state: true
+    state: disabled
 
 connections:
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, print]

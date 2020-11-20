@@ -239,7 +239,37 @@ protected:
 		hdr.firmware_version = (header >> 56) & 0xff;
 	}
 
+	void NotifyMissed(int skippedPackets) {
+		if (skippedPackets > 0 && d_notifyMissed) {
+			std::stringstream msg_stream;
+			msg_stream << "[UDP source:" << d_port
+					<< "] missed  packets: " << skippedPackets;
+			GR_LOG_WARN(d_logger, msg_stream.str());
+		}
+	};
 
+	void header_to_local_buffer(void)
+	{
+		gr::thread::scoped_lock guard(d_net_mutex);
+		for (int curByte = 0; curByte < d_header_size; curByte++) {
+			localBuffer[curByte] = d_localqueue->at(curByte);
+		}
+	};
+
+	void fill_local_buffer(void) {
+			gr::thread::scoped_lock guard(d_net_mutex);
+
+			for (int curByte = 0; curByte < total_packet_size; curByte++) {
+				localBuffer[curByte] = d_localqueue->front();
+				d_localqueue->pop_front();
+			}
+
+	};
+
+	int work_volt_mode(int noutput_items, gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items, bool liveWork);
+	int work_spec_mode(int noutput_items, gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items, bool liveWork);
 public:
 	snap_source_impl(int port, int headerType,
 			bool notifyMissed, bool sourceZeros, bool ipv6,
@@ -249,6 +279,8 @@ public:
 	bool stop();
 
 	size_t packet_size() { return total_packet_size; };
+	bool packets_aligned() { return d_found_start_channel; };
+	void queue_data();
 
 	size_t data_available() {
 		gr::thread::scoped_lock guard(d_net_mutex);
