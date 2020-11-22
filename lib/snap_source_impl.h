@@ -71,6 +71,7 @@ public:
 	};
 
 	data_vector(T *src_data,size_t src_size) {
+		/*
 		if (src_data && (src_size > 0)) {
 			data_size = src_size;
 			data = new T[data_size];
@@ -80,6 +81,11 @@ public:
 			data = NULL;
 			data_size = 0;
 		}
+		*/
+		// Pulled off safeties to get a speedup
+		data_size = src_size;
+		data = new T[data_size];
+		memcpy(data,src_data,data_size*sizeof(T));
 	};
 
 	data_vector<T>& operator= ( const data_vector<T> & src) {
@@ -111,19 +117,33 @@ public:
 	virtual T * data_pointer() { return data; };
 
 	virtual void store(T *src_data,size_t src_size) {
-		if (data) {
-			delete[] data;
+		if (!src_data || (src_size == 0)) {
+			// If we requested NULL or zero size, clear our buffer.
+			if (data) {
+				delete[] data;
+				data = NULL;
+			}
+			data_size = 0;
+			return;
 		}
 
-		if (src_data && (src_size > 0)) {
+		if ((src_size != data_size) && (data) ) {
+			// If the new size is different than the old size,
+			// let's change our buffer.  This'll save memory
+			// delete/news if the size is re-used.
+			delete[] data;
+			data = NULL;
+		}
+
+		if (!data) {
 			data_size = src_size;
 			data = new T[data_size];
-			memcpy(data,src_data,data_size*sizeof(T));
 		}
-		else {
-			data = NULL;
-			data_size = 0;
-		}
+
+		// We can get here if the buffer size didn't change,
+		// or a new data block was created.  In either case
+		// data_size should be correct.
+		memcpy(data,src_data,data_size*sizeof(T));
 	};
 
 
@@ -132,8 +152,9 @@ public:
 	virtual ~data_vector() {
 		if (data) {
 			delete[] data;
-			data = NULL;
-			data_size = 0;
+			// Pulled safeties off for speedup
+			// data = NULL;
+			// data_size = 0;
 		}
 	}
 };

@@ -499,13 +499,13 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		if (hdr.channel_id == d_ending_channel_packet_channel_id) {
 			// Queue up our vectors.  Again always 16 discrete time entries.
 			for (int this_time_start=0;this_time_start<16;this_time_start++) {
-				data_vector<char> x_cur_vector;
-				data_vector<char> y_cur_vector;
-
 				int block_start = this_time_start * d_veclen;
 
-				x_cur_vector.store(&x_vector_buffer[block_start],d_veclen);
-				y_cur_vector.store(&y_vector_buffer[block_start],d_veclen);
+				data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
+				data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
+
+				// x_cur_vector.store(&x_vector_buffer[block_start],d_veclen);
+				// y_cur_vector.store(&y_vector_buffer[block_start],d_veclen);
 
 				x_vector_queue.push_back(x_cur_vector);
 				y_vector_queue.push_back(y_cur_vector);
@@ -892,7 +892,7 @@ void snap_source_impl::runThread() {
 	while (!stop_thread) {
 		queue_data();
 
-		usleep(10);
+		usleep(100);
 	}
 
 	threadRunning = false;
