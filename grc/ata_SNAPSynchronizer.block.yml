@@ -1,0 +1,40 @@
+id: ata_SNAPSynchronizer
+label: ATA SNAP Synchronizer
+category: '[ATA]'
+
+parameters:
+-   id: num_channels
+    label: Num Channels
+    dtype: int
+    default: '1024'
+-   id: num_inputs
+    label: Num Streams
+    dtype: int
+    default: '1'
+    hide: part
+-   id: bypass
+    label: Bypass
+    dtype: enum
+    options: ['False', 'True']
+    option_labels: ['No', 'Yes']
+    hide: part
+
+inputs:
+-   domain: stream
+    dtype: byte
+    vlen: ${ num_channels * 2 }
+    multiplicity: ${num_inputs}
+
+outputs:
+-   domain: stream
+    dtype: byte
+    vlen: ${ num_channels * 2 }
+    multiplicity: ${num_inputs}
+
+templates:
+  imports: import ata
+  make: ata.SNAPSynchronizer(${num_inputs}, ${num_channels},${bypass})
+
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1
