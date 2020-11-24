@@ -200,10 +200,28 @@ blocks:
     coordinate: [392, 12.0]
     rotation: 0
     state: true
+- name: ata_SNAPSynchronizer_0
+  id: ata_SNAPSynchronizer
+  parameters:
+    affinity: '0'
+    alias: ''
+    bypass: 'False'
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_channels: data_vector_len
+    num_inputs: '4'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [272, 352.0]
+    rotation: 0
+    state: true
 - name: ata_snap_source_0
   id: ata_snap_source
   parameters:
-    affinity: '0'
+    affinity: '1'
     alias: ''
     comment: ''
     ending_channel: ending_channel
@@ -213,7 +231,7 @@ blocks:
     minoutbuf: '0'
     notifyMissed: 'True'
     port: '4030'
-    srcZeros: 'True'
+    srcZeros: 'False'
     starting_channel: starting_channel
   states:
     bus_sink: false
@@ -225,7 +243,7 @@ blocks:
 - name: ata_snap_source_0_0
   id: ata_snap_source
   parameters:
-    affinity: '0'
+    affinity: '2'
     alias: ''
     comment: ''
     ending_channel: ending_channel
@@ -235,7 +253,7 @@ blocks:
     minoutbuf: '0'
     notifyMissed: 'True'
     port: '4031'
-    srcZeros: 'True'
+    srcZeros: 'False'
     starting_channel: starting_channel
   states:
     bus_sink: false
@@ -257,7 +275,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [496, 340.0]
+    coordinate: [664, 340.0]
     rotation: 0
     state: true
 - name: blocks_interleaved_char_to_complex_0_0_0
@@ -273,7 +291,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [496, 388.0]
+    coordinate: [664, 388.0]
     rotation: 0
     state: true
 - name: blocks_interleaved_char_to_complex_0_0_0_0
@@ -289,7 +307,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [496, 428.0]
+    coordinate: [664, 428.0]
     rotation: 0
     state: true
 - name: blocks_interleaved_char_to_complex_0_0_0_0_0
@@ -305,7 +323,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [496, 476.0]
+    coordinate: [664, 476.0]
     rotation: 0
     state: true
 - name: blocks_message_debug_0
@@ -318,7 +336,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1168, 208.0]
+    coordinate: [1336, 208.0]
     rotation: 0
     state: disabled
 - name: blocks_null_sink_0
@@ -390,7 +408,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [960, 204.0]
+    coordinate: [1128, 204.0]
     rotation: 0
     state: disabled
 - name: blocks_stream_to_vector_0
@@ -408,7 +426,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [664, 344.0]
+    coordinate: [832, 344.0]
     rotation: 0
     state: true
 - name: blocks_stream_to_vector_0_0
@@ -426,7 +444,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [664, 392.0]
+    coordinate: [832, 392.0]
     rotation: 0
     state: true
 - name: blocks_stream_to_vector_0_0_0
@@ -444,7 +462,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [664, 432.0]
+    coordinate: [832, 432.0]
     rotation: 0
     state: true
 - name: blocks_stream_to_vector_0_0_0_0
@@ -462,7 +480,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [664, 480.0]
+    coordinate: [832, 480.0]
     rotation: 0
     state: true
 - name: blocks_throttle_0
@@ -481,7 +499,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [344, 268.0]
+    coordinate: [512, 268.0]
     rotation: 0
     state: enabled
 - name: blocks_vector_to_stream_0
@@ -499,7 +517,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [344, 344.0]
+    coordinate: [512, 344.0]
     rotation: 0
     state: true
 - name: blocks_vector_to_stream_0_0
@@ -517,7 +535,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [344, 392.0]
+    coordinate: [512, 392.0]
     rotation: 0
     state: true
 - name: blocks_vector_to_stream_0_0_0
@@ -535,7 +553,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [344, 432.0]
+    coordinate: [512, 432.0]
     rotation: 0
     state: true
 - name: blocks_vector_to_stream_0_0_0_0
@@ -553,13 +571,13 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [344, 480.0]
+    coordinate: [512, 480.0]
     rotation: 0
     state: true
 - name: clenabled_clXEngine_0
   id: clenabled_clXEngine
   parameters:
-    affinity: '1'
+    affinity: '3'
     alias: ''
     comment: ''
     deviceId: '0'
@@ -578,7 +596,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [832, 368.0]
+    coordinate: [1000, 368.0]
     rotation: 0
     state: enabled
 - name: filerepeater_AdvFileSink_0
@@ -605,7 +623,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1056, 348.0]
+    coordinate: [1224, 348.0]
     rotation: 0
     state: disabled
 - name: note_0
@@ -636,14 +654,18 @@ blocks:
     state: true
 
 connections:
+- [ata_SNAPSynchronizer_0, '0', blocks_throttle_0, '0']
+- [ata_SNAPSynchronizer_0, '1', blocks_vector_to_stream_0_0_0, '0']
+- [ata_SNAPSynchronizer_0, '2', blocks_vector_to_stream_0_0, '0']
+- [ata_SNAPSynchronizer_0, '3', blocks_vector_to_stream_0_0_0_0, '0']
+- [ata_snap_source_0, '0', ata_SNAPSynchronizer_0, '0']
 - [ata_snap_source_0, '0', blocks_null_sink_0, '0']
-- [ata_snap_source_0, '0', blocks_throttle_0, '0']
+- [ata_snap_source_0, '1', ata_SNAPSynchronizer_0, '1']
 - [ata_snap_source_0, '1', blocks_null_sink_0, '1']
-- [ata_snap_source_0, '1', blocks_vector_to_stream_0_0_0, '0']
+- [ata_snap_source_0_0, '0', ata_SNAPSynchronizer_0, '2']
 - [ata_snap_source_0_0, '0', blocks_null_sink_0_0, '0']
-- [ata_snap_source_0_0, '0', blocks_vector_to_stream_0_0, '0']
+- [ata_snap_source_0_0, '1', ata_SNAPSynchronizer_0, '3']
 - [ata_snap_source_0_0, '1', blocks_null_sink_0_0, '1']
-- [ata_snap_source_0_0, '1', blocks_vector_to_stream_0_0_0_0, '0']
 - [blocks_interleaved_char_to_complex_0_0, '0', blocks_stream_to_vector_0, '0']
 - [blocks_interleaved_char_to_complex_0_0_0, '0', blocks_stream_to_vector_0_0, '0']
 - [blocks_interleaved_char_to_complex_0_0_0_0, '0', blocks_stream_to_vector_0_0_0,

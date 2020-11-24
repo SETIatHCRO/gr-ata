@@ -82,7 +82,7 @@ snap_source_impl::snap_source_impl(int port,
 	d_found_start_channel = false;
 
 	d_pmt_seqnum = pmt::string_to_symbol("sample_num");
-	std::string id_str = identifier() + " chan " + std::to_string(d_starting_channel) + " UDP port " + std::to_string(d_port);
+	std::string id_str = identifier() + " chan " + std::to_string(starting_channel) + " UDP port " + std::to_string(d_port);
 
 	d_block_name = pmt::string_to_symbol(id_str);
 	// Configure packet parser
@@ -316,6 +316,15 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			memset((void *)x_out, 0x00, numRequested);
 			memset((void *)y_out, 0x00, numRequested);
 
+			if (liveWork) {
+				// Since we're sourcing zeros, output a definable sequence number.
+				pmt::pmt_t pmt_sequence_number =pmt::from_long(-1);
+
+				for (int i=0;i<noutput_items;i++) {
+					add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+					add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+				}
+			}
 			return noutput_items;
 
 		} else {

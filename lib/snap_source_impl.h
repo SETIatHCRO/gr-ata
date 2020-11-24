@@ -112,7 +112,7 @@ public:
 		else {
 			return true;
 		}
-	}
+	};
 
 	virtual T * data_pointer() { return data; };
 
@@ -156,7 +156,7 @@ public:
 			// data = NULL;
 			// data_size = 0;
 		}
-	}
+	};
 };
 
 class ATA_API snap_source_impl : public snap_source {
