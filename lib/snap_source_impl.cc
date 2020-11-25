@@ -290,6 +290,12 @@ bool snap_source_impl::stop() {
 		delete d_localqueue;
 		d_localqueue = NULL;
 	}
+
+	if (test_buffer) {
+		delete[] test_buffer;
+		test_buffer = NULL;
+
+	}
 	return true;
 }
 
@@ -419,7 +425,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	// Queue all the data we have into our local queue
 
-	while (bytesAvailable >= total_packet_size) {
+	int noutput_items_x2 = noutput_items * 2;
+
+	while ((bytesAvailable >= total_packet_size) && (x_vector_queue.size() < noutput_items_x2)) {
 		fill_local_buffer();
 		bytesAvailable -= total_packet_size;
 
@@ -840,6 +848,29 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 	return items_returned;
 }
 
+void snap_source_impl::create_test_buffer() {
+	if (!test_buffer) {
+		test_buffer = new char[d_channel_diff*2];
+	}
+}
+
+int snap_source_impl::work_test_copy(int noutput_items,
+		gr_vector_const_void_star &input_items,
+		gr_vector_void_star &output_items) {
+	// This just tests copying noutput_items from in to out to
+	// isolate and benchmark memory copy performance.
+	static int test_block_size = d_channel_diff * 2;
+
+	char *x_out = (char *)output_items[0];
+	char *y_out = (char *)output_items[1];
+
+	for (int i=0;i<noutput_items;i++) {
+		memcpy(&x_out[i*test_block_size],&test_buffer[0],test_block_size);
+		memcpy(&y_out[i*test_block_size],&test_buffer[0],test_block_size);
+	}
+
+	return noutput_items;
+}
 
 int snap_source_impl::work_test(int noutput_items,
 		gr_vector_const_void_star &input_items,

@@ -212,6 +212,7 @@ protected:
 	// domains: The network packets and the GR work()/scheduler
 	boost::circular_buffer<unsigned char> *d_localqueue;
 	unsigned char *localBuffer;
+	char *test_buffer = NULL;
 
 	// Common mode items
 	int vector_buffer_size;
@@ -303,6 +304,8 @@ public:
 	bool packets_aligned() { return d_found_start_channel; };
 	void queue_data();
 
+	void create_test_buffer();
+
 	size_t data_available() {
 		gr::thread::scoped_lock guard(d_net_mutex);
 		size_t queue_size = d_localqueue->size();
@@ -330,6 +333,9 @@ public:
 	int8_t TwosComplementLookup4Bit(int8_t b) {
 		return twosComplementLUT[b];
 	}
+
+	int work_test_copy(int noutput_items, gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items);
 
 	int work_test(int noutput_items, gr_vector_const_void_star &input_items,
 			gr_vector_void_star &output_items);

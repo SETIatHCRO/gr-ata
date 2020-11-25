@@ -194,9 +194,42 @@ bool testSNAPSource() {
 	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
 	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
 	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
-				"Total throughput: " << std::setprecision(2) << throughput << " byte complex samples/sec" << std::endl <<
+				"Total throughput: " << std::setprecision(2) << throughput << " byte complex (x and y) samples/sec" << std::endl <<
 				"Projected processing rate: " << bits_throughput << " bps" << std::endl;
 
+	// -------------------------------------------------------------------------------------------
+	// Now just run memory copy test.
+
+	test->create_test_buffer();
+
+	// Get the first run out of the way.
+	noutputitems = test->work_test_copy(1,inputPointers,outputPointers);
+
+	elapsed_time = 0.0;
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->work_test_copy(1,inputPointers,outputPointers);
+	}
+
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	elapsed_time = elapsed_seconds.count();
+
+	elapsed_time = elapsed_time / (float)iterations;
+	throughput = num_channels  / elapsed_time;
+	input_buffer_total_bytes = num_channels * data_size * 2 * 2;  // channels * 1 * 2 (IQ) * 2 streams (X and Y)
+	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+
+	std::cout << std::endl << "System memory copy performance:" << std::endl;
+	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
+	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
+				"Total throughput: " << std::setprecision(2) << throughput << " byte complex (x and y) samples/sec" << std::endl <<
+				"Projected processing rate: " << bits_throughput << " bps" << std::endl;
 	// Reset test
 	if (test != NULL) {
 		delete test;
@@ -227,8 +260,6 @@ main (int argc, char **argv)
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
 			std::cout << "Usage: test-snapsource" << std::endl;
-			std::cout << "Where --source-zeros allows the block to be timed simply returning empty data." << std::endl;
-			std::cout << "The default mode will wait for the test number of data packets to be available first before running the test." << std::endl;
 			std::cout << std::endl;
 			exit(0);
 		}
@@ -237,7 +268,7 @@ main (int argc, char **argv)
 		for (int i=1;i<argc;i++) {
 			std::string param = argv[i];
 
-			if (strcmp(argv[i],"--source-zeros")==0) {
+			if (strcmp(argv[i],"--xxxxxxxxxx")==0) { // disabled
 				wait_for_data = false;
 			}
 			else {
