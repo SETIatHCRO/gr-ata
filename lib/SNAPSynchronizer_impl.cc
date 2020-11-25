@@ -28,6 +28,16 @@
 #include <omp.h>
 #endif
 
+// #define _TIMEWORK
+
+#ifdef _TIMEWORK
+#include <chrono>
+#include <ctime>
+
+#define iterations 100
+
+#endif
+
 namespace gr {
 namespace ata {
 
@@ -190,6 +200,20 @@ SNAPSynchronizer_impl::work(int noutput_items,
 		gr_vector_void_star &output_items)
 {
 	gr::thread::scoped_lock guard(d_setlock);
+
+	#ifdef _TIMEWORK
+	static int current_iteration = 0;
+
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+	static float elapsed_time = 0.0;
+	/*
+	if (current_iteration == 0) {
+		std::cout << "Starting timing..." << std::endl;
+	}
+	*/
+	start = std::chrono::steady_clock::now();
+	#endif
+
 	// If we're in bypass mode, just copy the data and on the first pass,
 	// put up a notice on synchronization state.
 	if (d_bypass) {
@@ -201,22 +225,57 @@ SNAPSynchronizer_impl::work(int noutput_items,
 	int cur_item;
 	long cur_tag;
 
+	// First lets copy the tags to a faster array.
+	// get_tags does a lot of vector work, so we can avoid it
+	// by grabbing them once.  This saves us noutput_items many
+	// additional calls to get_tags and all the vector work
+	// further down since we need them here anyway to deterimine
+	// If we need to queue the data or not.
+
+	long tag_matrix[noutput_items][d_num_inputs];
+	bool b_tags_match = true;
+
+	#pragma omp parallel for num_threads(2)
+	for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
+		std::vector<gr::tag_t> tags;
+		this->get_tags_in_window(tags, cur_input, 0, noutput_items);
+
+		for (cur_item=0;cur_item < tags.size();cur_item++) {
+			cur_tag = pmt::to_long(tags[cur_item].value);
+
+			tag_matrix[cur_item][cur_input] = cur_tag;
+		}
+	}
+
+	cur_input=0;
+
+	while ((cur_input<d_num_inputs) && b_tags_match) {
+		long match_tag = tag_matrix[0][cur_input];
+
+		for (cur_item=1;cur_item < noutput_items;cur_item++) {
+			if (tag_matrix[cur_item][cur_input] != match_tag) {
+				b_tags_match = false;
+				break;
+			}
+		}
+
+		cur_input++;
+	}
+
 	// Fast track data pipeline: If the queues are empty and the tags match,
 	// We're good just continue copying for speed.  No need to queue.
-	if (queues_empty() && tags_match(noutput_items, input_items)) {
-		/*
-		static int print_counter=0;
+	if (queues_empty() && b_tags_match) {
+		// static int print_counter=0;
 
-		print_counter++;
+		// print_counter++;
 
-		if (print_counter == 1) {
-			std::cout << "Full alignment.  Fast-tracking data." << std::endl;
-		}
+		// if (print_counter == 1) {
+		// 	std::cout << "Full alignment.  Fast-tracking data." << std::endl;
+		// }
 
-		if (print_counter > 200) {
-			print_counter = 0;
-		}
-		*/
+		// if (print_counter > 200) {
+		// 	print_counter = 0;
+		// }
 		#pragma omp parallel for num_threads(2)
 		for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 			const char *in = (const char *) input_items[cur_input];
@@ -239,26 +298,6 @@ SNAPSynchronizer_impl::work(int noutput_items,
 
 	// If we're here, we have synchronization issues to align
 	// ------------------------------------------------------
-	// First lets copy the tags to a faster array.
-	// get_tags does a lot of vector work, so we can avoid it
-	// by grabbing them once.  This saves us noutput_items many
-	// additional calls to get_tags and all the vector work
-	// further down since we need them here anyway to deterimine
-	// If we need to queue the data or not.
-
-	long tag_matrix[noutput_items][d_num_inputs];
-	std::vector<gr::tag_t> tags;
-
-	for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
-		this->get_tags_in_window(tags, cur_input, 0, noutput_items);
-
-		for (cur_item=0;cur_item < tags.size();cur_item++) {
-			cur_tag = pmt::to_long(tags[cur_item].value);
-
-			tag_matrix[cur_item][cur_input] = cur_tag;
-		}
-	}
-
 	// Queue up the data we received
 	#pragma omp parallel for num_threads(2)
 	for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
@@ -266,8 +305,8 @@ SNAPSynchronizer_impl::work(int noutput_items,
 		// Grab its tag vectors
 		// Go through its input items and queue them up.
 		const char * input_stream = (const char *)input_items[cur_input];
-
 		for (cur_item=0;cur_item < noutput_items;cur_item++) {
+
 			cur_tag = tag_matrix[cur_item][cur_input];
 
 			// If the tag value is -1, the block sourced zeros which we don't want to
@@ -340,6 +379,36 @@ SNAPSynchronizer_impl::work(int noutput_items,
 			}
 		}
 	}
+
+#ifdef _TIMEWORK
+	end = std::chrono::steady_clock::now();
+
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	float throughput;
+	long input_buffer_total_bytes;
+	float bits_throughput;
+
+	elapsed_seconds = end-start;
+
+	elapsed_time += elapsed_seconds.count() / noutput_items; // let's get a per-vector time
+
+	current_iteration++;
+
+	if (current_iteration == 100) {
+		elapsed_time = elapsed_time / (float)iterations;
+		throughput = d_num_channels * d_num_inputs  / elapsed_time;
+		input_buffer_total_bytes = d_num_channels_x2;
+		bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+
+		std::cout << std::endl << "GNURadio work() performance:" << std::endl;
+		std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+		std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
+		std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
+					"Total throughput: " << std::setprecision(2) << throughput << " byte complex samples/sec" << std::endl <<
+					"Individual stream throughput: " << std::setprecision(2) << throughput / d_num_inputs << " byte complex samples/sec" << std::endl <<
+					"Projected processing rate: " << bits_throughput << " bps" << std::endl;
+	}
+#endif
 
 	return noutput_items;
 }
