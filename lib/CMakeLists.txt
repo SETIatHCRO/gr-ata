@@ -35,7 +35,7 @@ if(NOT ata_sources)
 endif(NOT ata_sources)
 
 add_library(gnuradio-ata SHARED ${ata_sources})
-target_link_libraries(gnuradio-ata gnuradio::gnuradio-runtime)
+target_link_libraries(gnuradio-ata gnuradio::gnuradio-runtime ${PCAP_LIBRARY})
 target_include_directories(gnuradio-ata
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     PUBLIC $<INSTALL_INTERFACE:include>
@@ -71,6 +71,7 @@ target_link_libraries(
   ${OpenMP_CXX_LIBRARIES}
   volk
   gnuradio-ata
+  ${PCAP_LIBRARY}
 )
 
 install(TARGETS test-snapsource DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)

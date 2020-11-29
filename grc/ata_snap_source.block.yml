@@ -3,6 +3,21 @@ label: ATA SNAP Source
 category: '[ATA]'
 
 parameters:
+-   id: use_pcap
+    label: Data Source
+    dtype: enum
+    options: ['False', 'True']
+    option_labels: [Network, PCAP]
+-   id: file
+    label: File
+    dtype: file_open
+    hide: ${ 'part' if use_pcap=='True' else 'all' }
+-   id: repeat_file
+    label: Repeat
+    dtype: enum
+    options: ['False', 'True']
+    option_labels: ['No', 'Yes']
+    hide: ${ 'part' if use_pcap=='True' else 'all' }
 -   id: header
     label: Stream Type
     dtype: enum
@@ -11,6 +26,7 @@ parameters:
     option_attributes:
         size: [gr.sizeof_char, gr.sizeof_float]
         type: [byte, float]
+        multiplier: [2, 1]
 -   id: port
     label: Port
     dtype: int
@@ -25,6 +41,11 @@ parameters:
     dtype: int
     default: '2815'
     hide: ${ 'all' if header == '2' else 'none' }
+-   id: packed_output
+    label: Output Packed
+    dtype: enum
+    options: ['False', 'True']
+    option_labels: ['No', 'Yes']
 -   id: notifyMissed
     label: Notify Missed Frames
     dtype: enum
@@ -45,11 +66,11 @@ outputs:
 -   label: x_pol
     domain: stream
     dtype: ${ header.type }
-    vlen: ${ int((ending_channel - starting_channel + 1)*2)  if header == '1' else 4096 }
+    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier)  if header == '1' else 4096 }
 -   label: y_pol
     domain: stream
     dtype: ${ header.type }
-    vlen: ${ int((ending_channel - starting_channel + 1)*2) if header == '1' else 4096 }
+    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier) if header == '1' else 4096 }
 -   label: xy_real
     domain: stream
     dtype: ${ header.type }
@@ -66,7 +87,7 @@ outputs:
     
 templates:
     imports: import ata
-    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6},${starting_channel},${ending_channel})
+    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6},${starting_channel},${ending_channel},${use_pcap}, ${file}, ${repeat_file}, ${packed_output})
 
 documentation: "This block listens for ATA SNAP traffic on the specified UDP port and outputs\
     \ the channel vector appropriate for the selected type.  Voltage blocks output 512 byte\

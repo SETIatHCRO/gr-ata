@@ -26,6 +26,7 @@
 #include <boost/asio/ip/udp.hpp>
 #include <boost/circular_buffer.hpp>
 #include <ata/snap_source.h>
+#include <pcap/pcap.h>
 
 namespace gr {
 namespace ata {
@@ -81,7 +82,7 @@ public:
 			data = NULL;
 			data_size = 0;
 		}
-		*/
+		 */
 		// Pulled off safeties to get a speedup
 		data_size = src_size;
 		data = new T[data_size];
@@ -169,6 +170,16 @@ protected:
 
 	bool is_ipv6;
 
+	bool d_use_pcap;
+	std::string d_file;
+	bool d_repeat_file;
+	bool pcap_file_done;
+	pcap_t *pcapFile = NULL;
+	boost::mutex fp_mutex;
+	long min_pcap_queue_size;
+
+	bool d_packed_output;
+
 	int d_port;
 	int d_header_type;
 	int d_header_size;
@@ -191,7 +202,7 @@ protected:
 
 	boost::asio::io_service d_io_service;
 	boost::asio::ip::udp::endpoint d_endpoint;
-	boost::asio::ip::udp::socket *d_udpsocket;
+	boost::asio::ip::udp::socket *d_udpsocket = NULL;
 
 	boost::asio::streambuf d_read_buffer;
 
@@ -234,6 +245,9 @@ protected:
 	std::deque<data_vector<float>> yy_vector_queue;
 	std::deque<data_vector<float>> xy_real_vector_queue;
 	std::deque<data_vector<float>> xy_imag_vector_queue;
+
+	void openPCAP();
+	void closePCAP();
 
 	void get_voltage_header(snap_header& hdr) {
 		uint64_t *header_as_uint64;
@@ -279,12 +293,12 @@ protected:
 	};
 
 	void fill_local_buffer(void) {
-			gr::thread::scoped_lock guard(d_net_mutex);
+		gr::thread::scoped_lock guard(d_net_mutex);
 
-			for (int curByte = 0; curByte < total_packet_size; curByte++) {
-				localBuffer[curByte] = d_localqueue->front();
-				d_localqueue->pop_front();
-			}
+		for (int curByte = 0; curByte < total_packet_size; curByte++) {
+			localBuffer[curByte] = d_localqueue->front();
+			d_localqueue->pop_front();
+		}
 
 	};
 
@@ -295,7 +309,9 @@ protected:
 public:
 	snap_source_impl(int port, int headerType,
 			bool notifyMissed, bool sourceZeros, bool ipv6,
-			int starting_channel, int ending_channel, int data_size);
+			int starting_channel, int ending_channel, int data_size,
+			bool use_pcap=false, std::string file="", bool repeat_file=false, bool packed_output=false);
+
 	~snap_source_impl();
 
 	bool stop();
@@ -303,8 +319,11 @@ public:
 	size_t packet_size() { return total_packet_size; };
 	bool packets_aligned() { return d_found_start_channel; };
 	void queue_data();
+	void queue_pcap_data();
 
 	void create_test_buffer();
+
+	void set_test_case_min_queue_length(long min_queue_length) { min_pcap_queue_size = min_queue_length; };
 
 	size_t data_available() {
 		gr::thread::scoped_lock guard(d_net_mutex);

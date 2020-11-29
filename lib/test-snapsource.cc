@@ -61,6 +61,8 @@
 // bool verbose=false;
 int iterations = 10;
 bool wait_for_data = true;
+bool use_pcap = false;
+std::string pcap_filename = "";
 
 #define THREAD_RECEIVE
 
@@ -97,7 +99,7 @@ bool testSNAPSource() {
 
 	// The one specifies output triangular order rather than full matrix.
 	test = new gr::ata::snap_source_impl(4030,1, // voltage
-			false, false,false, starting_channel, ending_channel, data_size);
+			false, false,false, starting_channel, ending_channel, data_size, use_pcap, pcap_filename, false, false);
 
 	int i;
 	std::chrono::time_point<std::chrono::steady_clock> start, end;
@@ -146,6 +148,10 @@ bool testSNAPSource() {
 			else {
 				usleep(100);
 			}
+		}
+
+		if (use_pcap) {
+			test->set_test_case_min_queue_length((iterations+1)*packet_size*packets_per_complete_frame);
 		}
 
 		// Now let's make sure we have enough data for the test.
@@ -259,7 +265,8 @@ main (int argc, char **argv)
 		// 1 is the file name
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
-			std::cout << "Usage: test-snapsource" << std::endl;
+			std::cout << "Usage: test-snapsource [--pcapfile=<file>]" << std::endl;
+			std::cout << "If pcapfile is not specified, live network packets will be captured." << std::endl;
 			std::cout << std::endl;
 			exit(0);
 		}
@@ -268,8 +275,10 @@ main (int argc, char **argv)
 		for (int i=1;i<argc;i++) {
 			std::string param = argv[i];
 
-			if (strcmp(argv[i],"--xxxxxxxxxx")==0) { // disabled
-				wait_for_data = false;
+			if (param.find("--pcapfile") != std::string::npos) { // disabled
+				boost::replace_all(param,"--pcapfile=","");
+				pcap_filename = param;
+				use_pcap = true;
 			}
 			else {
 				std::cout << "ERROR: Unknown parameter." << std::endl;

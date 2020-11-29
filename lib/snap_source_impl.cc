@@ -35,6 +35,11 @@
 #include <omp.h>
 #endif
 
+#include <net/ethernet.h>
+#include <net/if.h>
+#include <netinet/ip.h>
+#include <netinet/udp.h>
+
 #define THREAD_RECEIVE
 
 namespace gr {
@@ -44,7 +49,8 @@ snap_source::sptr snap_source::make(int port,
 		int headerType,
 		bool notifyMissed,
 		bool sourceZeros, bool ipv6,
-		int starting_channel, int ending_channel) {
+		int starting_channel, int ending_channel,
+		bool use_pcap, std::string file, bool repeat_file, bool packed_output) {
 	int data_size;
 	if (headerType == SNAP_PACKETTYPE_VOLTAGE) {
 		data_size = sizeof(char);
@@ -54,7 +60,7 @@ snap_source::sptr snap_source::make(int port,
 	}
 	return gnuradio::get_initial_sptr(
 			new snap_source_impl(port, headerType,
-					notifyMissed, sourceZeros, ipv6, starting_channel, ending_channel, data_size));
+					notifyMissed, sourceZeros, ipv6, starting_channel, ending_channel, data_size, use_pcap, file, repeat_file, packed_output));
 }
 
 /*
@@ -64,13 +70,43 @@ snap_source_impl::snap_source_impl(int port,
 		int headerType,
 		bool notifyMissed,
 		bool sourceZeros, bool ipv6,
-		int starting_channel, int ending_channel, int data_size)
+		int starting_channel, int ending_channel, int data_size,
+		bool use_pcap, std::string file, bool repeat_file, bool packed_output)
 : gr::sync_block("snap_source",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(2, 4,
 				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1))) {
 
+	d_use_pcap = use_pcap;
+	d_file = file;
+	d_repeat_file = repeat_file;
+	pcap_file_done = false;
+
+	if (d_use_pcap) {
+		if (d_file.length() == 0) {
+			std::stringstream msg;
+			msg << "No PCAP file name provided.  Please provide a filename.";
+			GR_LOG_ERROR(d_logger, msg.str());
+			throw std::runtime_error("[SNAP Source] No PCAP file name provided.  Please provide a filename.");
+			return;
+		}
+
+		if (FILE *file = fopen(d_file.c_str(), "r")) {
+			fclose(file);
+		} else {
+			std::stringstream msg;
+			msg << "Can't open pcap file.";
+			GR_LOG_ERROR(d_logger, msg.str());
+			throw std::runtime_error("[SNAP Source] can't open pcap file");
+			return;
+		}
+
+		openPCAP();
+	}
+
 	is_ipv6 = ipv6;
+
+	d_packed_output = packed_output;
 
 	d_port = port;
 	d_last_channel_block = -1;
@@ -171,25 +207,28 @@ snap_source_impl::snap_source_impl(int port,
 	maxCircBuffer = total_packet_size * 3000;
 	d_localqueue = new boost::circular_buffer<unsigned char>(maxCircBuffer);
 
-	// Initialize receiving socket
-	if (is_ipv6)
-		d_endpoint =
-				boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v6(), port);
-	else
-		d_endpoint =
-				boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port);
+	if (!d_use_pcap) {
+		// Initialize receiving socket
+		if (is_ipv6)
+			d_endpoint =
+					boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v6(), port);
+		else
+			d_endpoint =
+					boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port);
 
-	// TODO: Move opening of the socket to ::start()
-	try {
-		d_udpsocket = new boost::asio::ip::udp::socket(d_io_service, d_endpoint);
-	} catch (const std::exception &ex) {
-		throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
-				ex.what());
+		try {
+			d_udpsocket = new boost::asio::ip::udp::socket(d_io_service, d_endpoint);
+		} catch (const std::exception &ex) {
+			throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
+					ex.what());
+		}
+
+		std::stringstream msg_stream;
+		msg_stream << "Listening for data on UDP port " << port << ".";
+		GR_LOG_INFO(d_logger, msg_stream.str());
 	}
 
-	std::stringstream msg_stream;
-	msg_stream << "Listening for data on UDP port " << port << ".";
-	GR_LOG_INFO(d_logger, msg_stream.str());
+	min_pcap_queue_size = total_packet_size * 16;
 
 	// We'll always produce blocks of 16 time vectors for voltage mode.
 	if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
@@ -212,7 +251,7 @@ snap_source_impl::snap_source_impl(int port,
 	num_procs = omp_get_num_procs()/2;
 	if (num_procs < 1)
 		num_procs = 1;
-	*/
+	 */
 	// Seems like we can hard-code this.
 	// Two seems to do fine.
 	num_procs = 2;
@@ -231,6 +270,34 @@ snap_source_impl::snap_source_impl(int port,
  */
 snap_source_impl::~snap_source_impl() { stop(); }
 
+void snap_source_impl::openPCAP() {
+	gr::thread::scoped_lock lock(fp_mutex);
+	char errbuf[PCAP_ERRBUF_SIZE];
+	try {
+		pcapFile = pcap_open_offline(d_file.c_str(), errbuf);
+
+		if (pcapFile == NULL) {
+			std::stringstream msg;
+			msg << "[SNAP Source] Error occurred: " << errbuf;
+			GR_LOG_ERROR(d_logger, msg.str());
+			return;
+		}
+	} catch (const std::exception &ex) {
+		std::stringstream msg;
+		msg << "[SNAP Source] Error occurred: " << ex.what();
+		GR_LOG_ERROR(d_logger, msg.str());
+		pcapFile = NULL;
+	}
+}
+
+void snap_source_impl::closePCAP() {
+	gr::thread::scoped_lock lock(fp_mutex);
+	if (pcapFile != NULL) {
+		pcap_close(pcapFile);
+		pcapFile = NULL;
+	}
+}
+
 bool snap_source_impl::stop() {
 	if (proc_thread) {
 		stop_thread = true;
@@ -241,6 +308,8 @@ bool snap_source_impl::stop() {
 		delete proc_thread;
 		proc_thread = NULL;
 	}
+
+	closePCAP();
 
 	if (d_udpsocket) {
 		d_udpsocket->close();
@@ -302,7 +371,6 @@ bool snap_source_impl::stop() {
 int snap_source_impl::work_volt_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items, bool liveWork) {
-	gr::thread::scoped_lock guard(d_setlock);
 	char *x_out = (char *)output_items[0];
 	char *y_out = (char *)output_items[1];
 
@@ -377,15 +445,15 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				GR_LOG_INFO(d_logger, msg_stream.str());
 
 				if (liveWork) {
-				    pmt::pmt_t meta = pmt::make_dict();
+					pmt::pmt_t meta = pmt::make_dict();
 
-				    meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
-				    meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
-				    meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
-				    meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
+					meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
+					meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
+					meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
+					meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
 
-				    pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
-				    message_port_pub(pmt::mp("sync_header"), pdu);
+					pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
+					message_port_pub(pmt::mp("sync_header"), pdu);
 				}
 
 				break;
@@ -483,7 +551,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		int t;
 		int sample;
 
-		#pragma omp parallel for num_threads(2) collapse(2)
+#pragma omp parallel for num_threads(2) collapse(2)
 		for (t=0;t<16;t++) {
 			for (sample=0;sample<256;sample++) {
 				// This moves us in the packet memory to the correct time row
@@ -575,8 +643,6 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 int snap_source_impl::work_spec_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items, bool liveWork) {
-	gr::thread::scoped_lock guard(d_setlock);
-
 	static bool firstTime = true;
 
 	float *xx_out = (float *)output_items[0];
@@ -649,15 +715,15 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 				GR_LOG_INFO(d_logger, msg_stream.str());
 
 				if (liveWork) {
-				    pmt::pmt_t meta = pmt::make_dict();
+					pmt::pmt_t meta = pmt::make_dict();
 
-				    meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
-				    meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
-				    meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
-				    meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
+					meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
+					meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
+					meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
+					meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
 
-				    pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
-				    message_port_pub(pmt::mp("sync_header"), pdu);
+					pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
+					message_port_pub(pmt::mp("sync_header"), pdu);
 				}
 
 				break;
@@ -886,6 +952,16 @@ int snap_source_impl::work_test(int noutput_items,
 int snap_source_impl::work(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items) {
+	gr::thread::scoped_lock guard(d_setlock);
+
+	if (d_use_pcap && pcap_file_done) {
+		if (data_available() < total_packet_size) {
+			GR_LOG_INFO(d_logger,"End of PCAP file reached.");
+
+			return WORK_DONE;
+		}
+	}
+
 	if (SNAP_PACKETTYPE_VOLTAGE) {
 		return work_volt_mode(noutput_items, input_items, output_items, true);
 	}
@@ -926,11 +1002,91 @@ void snap_source_impl::queue_data() {
 	}
 }
 
+void snap_source_impl::queue_pcap_data() {
+
+	// Lets try to keep 16 packets queued up at a time.
+	long queue_size = data_available();
+
+	if (queue_size < min_pcap_queue_size) {
+		long queue_diff = min_pcap_queue_size - queue_size;
+		long new_packets = (long)ceil((float)queue_diff / (float)total_packet_size);
+		long matchingPackets = 0;
+
+		int sizeUDPHeader = sizeof(struct udphdr);
+		const u_char *p=NULL;
+		pcap_pkthdr header;
+
+		while ( (matchingPackets < new_packets) && (p = pcap_next(pcapFile, &header)) ) {
+			if (header.len != header.caplen) {
+				continue;
+			}
+			auto eth = reinterpret_cast<const ether_header *>(p);
+
+			// jump over and ignore vlan tag
+			if (ntohs(eth->ether_type) == ETHERTYPE_VLAN) {
+				p += 4;
+				eth = reinterpret_cast<const ether_header *>(p);
+			}
+			if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
+				continue;
+			}
+			auto ip = reinterpret_cast<const iphdr *>(p + sizeof(ether_header));
+			if (ip->version != 4) {
+				continue;
+			}
+
+			if (ip->protocol != IPPROTO_UDP) {
+				continue;
+			}
+
+			// IP Header length is defined in a packet field (IHL).  IHL represents
+			// the # of 32-bit words So header size is ihl * 4 [bytes]
+			int etherIPHeaderSize = sizeof(ether_header) + ip->ihl * 4;
+
+			auto udp = reinterpret_cast<const udphdr *>(p + etherIPHeaderSize);
+
+			uint16_t destPort = ntohs(udp->dest);
+
+			if (destPort == d_port) {
+				matchingPackets++;
+				size_t len = ntohs(udp->len) - sizeUDPHeader;
+
+				if (len > 0) {
+					const u_char *pData = &p[etherIPHeaderSize + sizeUDPHeader];
+
+					gr::thread::scoped_lock guard(d_net_mutex);
+
+					for (int i = 0; i < len; i++) {
+						d_localqueue->push_back(pData[i]);
+					}
+				}
+			} // if ports match
+		} // while read
+
+		if ((!p) && (matchingPackets < new_packets)) {
+			// We've reached the end of the file.  restart it if necessary.
+			if (d_repeat_file) {
+				closePCAP();
+				openPCAP();
+			}
+			else {
+				pcap_file_done = true;
+			}
+		}
+	} // if queue_size < min_queue_size
+}
+
 void snap_source_impl::runThread() {
 	threadRunning = true;
 
 	while (!stop_thread) {
-		queue_data();
+		if (!d_use_pcap) {
+			// Getting data from the network
+			queue_data();
+		}
+		else {
+			queue_pcap_data();
+		}
 
 		usleep(100);
 	}
