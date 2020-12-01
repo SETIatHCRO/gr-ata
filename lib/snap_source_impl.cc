@@ -74,8 +74,8 @@ snap_source_impl::snap_source_impl(int port,
 		bool use_pcap, std::string file, bool repeat_file, bool packed_output)
 : gr::sync_block("snap_source",
 		gr::io_signature::make(0, 0, 0),
-		gr::io_signature::make(2, 4,
-				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*(packed_output?1:2):data_size * (ending_channel-starting_channel+1))) {
+		gr::io_signature::make(1, 4,
+				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1))) {
 
 	d_use_pcap = use_pcap;
 	d_file = file;
@@ -147,14 +147,11 @@ snap_source_impl::snap_source_impl(int port,
 			}
 		}
 		// GR output vector length will be number of total channels * 2
-		// since we expand the packed 8-bit to separate bytes for I and Q.
+		// In all modes.
+		// Unpacked mode: since we expand the packed 8-bit to separate bytes for I and Q.
+		// Packed mode: 4-bit IQ X, 4-bit IQ Y
 
-		if (d_packed_output) {
-			d_veclen = d_channel_diff;
-		}
-		else {
-			d_veclen = d_channel_diff * 2;
-		}
+		d_veclen = d_channel_diff * 2;
 
 		// We're going to lay out the 2-dimensional array as a contiguous block of memory.
 		// This will make multi-vector copies in work faster as well, ensuring we have
@@ -210,7 +207,7 @@ snap_source_impl::snap_source_impl(int port,
 	long maxCircBuffer;
 
 	// Compute reasonable buffer size
-	maxCircBuffer = total_packet_size * 3000;
+	maxCircBuffer = 3000;
 	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(maxCircBuffer);
 
 	if (!d_use_pcap) {
@@ -241,7 +238,7 @@ snap_source_impl::snap_source_impl(int port,
 		gr::block::set_output_multiple(16);
 	}
 
-	for (int i=0;i<7;i++) {
+	for (int i=0;i<8;i++) {
 		twosComplementLUT[i] = i;
 	}
 
@@ -402,7 +399,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 				for (int i=0;i<noutput_items;i++) {
 					add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
-					add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+					if (!d_packed_output) {
+						add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+					}
 				}
 			}
 			return noutput_items;
@@ -533,27 +532,26 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		int t;
 		int sample;
 
-		if (d_packed_output) {
-			int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel);
+		int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
 
+		if (d_packed_output) {
 			#pragma omp parallel for num_threads(2) collapse(2)
 			for (t=0;t<16;t++) {
 				for (sample=0;sample<256;sample++) {
 					// This moves us in the packet memory to the correct time row
 					int vector_start = t * d_veclen  + channel_offset_within_time_block;
 					char *x_pol;
-					char *y_pol;
+					// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
+					// Both go in the x_pol output.
 					x_pol = &x_vector_buffer[vector_start];
-					y_pol = &y_vector_buffer[vector_start];
 
-					x_pol[sample] = vp->data[t][sample][0];
-					y_pol[sample] = vp->data[t][sample][1];
+					int sample_pos = sample * 2;
+					x_pol[sample_pos] = vp->data[t][sample][0];
+					x_pol[sample_pos+1] = vp->data[t][sample][1];
 				}
 			}
 		}
 		else {
-			int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
-
 			#pragma omp parallel for num_threads(2) collapse(2)
 			for (t=0;t<16;t++) {
 				for (sample=0;sample<256;sample++) {
@@ -591,13 +589,14 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				int block_start = this_time_start * d_veclen;
 
 				data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
-				data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
-
-				// x_cur_vector.store(&x_vector_buffer[block_start],d_veclen);
-				// y_cur_vector.store(&y_vector_buffer[block_start],d_veclen);
-
 				x_vector_queue.push_back(x_cur_vector);
-				y_vector_queue.push_back(y_cur_vector);
+
+				if (!d_packed_output) {
+					// If we're packed output, everything is in x_pol output.
+					data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
+					y_vector_queue.push_back(y_cur_vector);
+				}
+
 				seq_num_queue.push_back(hdr.sample_number);
 			}
 		}
@@ -614,16 +613,19 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		// This needs to come from the new queue
 		data_vector<char> x_cur_vector = x_vector_queue.front();
 		x_vector_queue.pop_front();
-		data_vector<char> y_cur_vector = y_vector_queue.front();
-		y_vector_queue.pop_front();
-		uint64_t vector_seq_num = seq_num_queue.front();
-		seq_num_queue.pop_front();
 
 		int out_index = d_veclen*i;
 
 		// Now move to work output vector.
 		memcpy(&x_out[out_index],x_cur_vector.data_pointer(),d_veclen);
-		memcpy(&y_out[out_index],y_cur_vector.data_pointer(),d_veclen);
+		if (!d_packed_output) {
+			data_vector<char> y_cur_vector = y_vector_queue.front();
+			y_vector_queue.pop_front();
+			memcpy(&y_out[out_index],y_cur_vector.data_pointer(),d_veclen);
+		}
+
+		uint64_t vector_seq_num = seq_num_queue.front();
+		seq_num_queue.pop_front();
 
 		// Add sequence number start tag for down-stream coherence
 		// Since each packet set contains 16 time samples for the same packet sequence number,
@@ -634,7 +636,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
 
 			add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
-			add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+			if (!d_packed_output) {
+				add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+			}
 		}
 	}
 

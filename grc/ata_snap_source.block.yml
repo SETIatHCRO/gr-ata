@@ -42,7 +42,7 @@ parameters:
     default: '2815'
     hide: ${ 'all' if header == '2' else 'none' }
 -   id: packed_output
-    label: Output Packed
+    label: Output 4-Bit Packed XY
     dtype: enum
     options: ['False', 'True']
     option_labels: ['No', 'Yes']
@@ -69,12 +69,13 @@ outputs:
 -   label: x_pol
     domain: stream
     dtype: ${ header.type }
-    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier*packed_output.multiplier)  if header == '1' else 4096 }
+    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier)  if header == '1' else 4096 }
 -   label: y_pol
     domain: stream
     dtype: ${ header.type }
-    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier*packed_output.multiplier) if header == '1' else 4096 }
--   label: xy_real
+    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier) if header == '1' else 4096 }
+    optional: true
+-   label: xy
     domain: stream
     dtype: ${ header.type }
     vlen: ${ 4096 }
