@@ -63,6 +63,7 @@ int iterations = 10;
 bool wait_for_data = true;
 bool use_pcap = false;
 std::string pcap_filename = "";
+bool output_packed = false;
 
 #define THREAD_RECEIVE
 
@@ -99,7 +100,7 @@ bool testSNAPSource() {
 
 	// The one specifies output triangular order rather than full matrix.
 	test = new gr::ata::snap_source_impl(4030,1, // voltage
-			false, false,false, starting_channel, ending_channel, data_size, use_pcap, pcap_filename, false, false);
+			false, false,false, starting_channel, ending_channel, data_size, use_pcap, pcap_filename, false, output_packed);
 
 	int i;
 	std::chrono::time_point<std::chrono::steady_clock> start, end;
@@ -265,8 +266,9 @@ main (int argc, char **argv)
 		// 1 is the file name
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
-			std::cout << "Usage: test-snapsource [--pcapfile=<file>]" << std::endl;
-			std::cout << "If pcapfile is not specified, live network packets will be captured." << std::endl;
+			std::cout << "Usage: test-snapsource [--packed] [--pcapfile=<file>]" << std::endl;
+			std::cout << "If --pcapfile is not specified, live network packets will be captured." << std::endl;
+			std::cout << "--packed will output packed 4-bit IQ rather than full 8-bit IQ." << std::endl;
 			std::cout << std::endl;
 			exit(0);
 		}
@@ -279,6 +281,9 @@ main (int argc, char **argv)
 				boost::replace_all(param,"--pcapfile=","");
 				pcap_filename = param;
 				use_pcap = true;
+			}
+			else if (strcmp(argv[i],"--packed")==0) {
+				output_packed = true;
 			}
 			else {
 				std::cout << "ERROR: Unknown parameter." << std::endl;

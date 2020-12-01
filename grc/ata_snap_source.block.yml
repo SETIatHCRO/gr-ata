@@ -46,6 +46,9 @@ parameters:
     dtype: enum
     options: ['False', 'True']
     option_labels: ['No', 'Yes']
+    option_attributes:
+        multiplier: [1.0, 0.5]
+    hide: ${ 'all' if header == '2' else 'part' }
 -   id: notifyMissed
     label: Notify Missed Frames
     dtype: enum
@@ -66,11 +69,11 @@ outputs:
 -   label: x_pol
     domain: stream
     dtype: ${ header.type }
-    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier)  if header == '1' else 4096 }
+    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier*packed_output.multiplier)  if header == '1' else 4096 }
 -   label: y_pol
     domain: stream
     dtype: ${ header.type }
-    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier) if header == '1' else 4096 }
+    vlen: ${ int((ending_channel - starting_channel + 1)*header.multiplier*packed_output.multiplier) if header == '1' else 4096 }
 -   label: xy_real
     domain: stream
     dtype: ${ header.type }

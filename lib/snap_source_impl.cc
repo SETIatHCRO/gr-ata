@@ -75,7 +75,7 @@ snap_source_impl::snap_source_impl(int port,
 : gr::sync_block("snap_source",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(2, 4,
-				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1))) {
+				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*(packed_output?1:2):data_size * (ending_channel-starting_channel+1))) {
 
 	d_use_pcap = use_pcap;
 	d_file = file;
@@ -148,7 +148,13 @@ snap_source_impl::snap_source_impl(int port,
 		}
 		// GR output vector length will be number of total channels * 2
 		// since we expand the packed 8-bit to separate bytes for I and Q.
-		d_veclen = d_channel_diff * 2;
+
+		if (d_packed_output) {
+			d_veclen = d_channel_diff;
+		}
+		else {
+			d_veclen = d_channel_diff * 2;
+		}
 
 		// We're going to lay out the 2-dimensional array as a contiguous block of memory.
 		// This will make multi-vector copies in work faster as well, ensuring we have
@@ -546,36 +552,56 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 		// cycle through the time entry rows in the packet. (will always be 16)
 
-		int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
-
 		int t;
 		int sample;
 
-#pragma omp parallel for num_threads(2) collapse(2)
-		for (t=0;t<16;t++) {
-			for (sample=0;sample<256;sample++) {
-				// This moves us in the packet memory to the correct time row
-				int vector_start = t * d_veclen  + channel_offset_within_time_block;
-				char *x_pol;
-				char *y_pol;
-				x_pol = &x_vector_buffer[vector_start];
-				y_pol = &y_vector_buffer[vector_start];
+		if (d_packed_output) {
+			int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel);
 
-				int TwoS = 2*sample;
-				int TwoS1 = TwoS + 1;
+			#pragma omp parallel for num_threads(2) collapse(2)
+			for (t=0;t<16;t++) {
+				for (sample=0;sample<256;sample++) {
+					// This moves us in the packet memory to the correct time row
+					int vector_start = t * d_veclen  + channel_offset_within_time_block;
+					char *x_pol;
+					char *y_pol;
+					x_pol = &x_vector_buffer[vector_start];
+					y_pol = &y_vector_buffer[vector_start];
 
-				x_pol[TwoS] = (char)(vp->data[t][sample][0] >> 4); // I
-				// Need to adjust twos-complement
-				x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
+					x_pol[sample] = vp->data[t][sample][0];
+					y_pol[sample] = vp->data[t][sample][1];
+				}
+			}
+		}
+		else {
+			int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
 
-				x_pol[TwoS1] = (char)(vp->data[t][sample][0] & 0x0F);  // Q
-				x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
+			#pragma omp parallel for num_threads(2) collapse(2)
+			for (t=0;t<16;t++) {
+				for (sample=0;sample<256;sample++) {
+					// This moves us in the packet memory to the correct time row
+					int vector_start = t * d_veclen  + channel_offset_within_time_block;
+					char *x_pol;
+					char *y_pol;
+					x_pol = &x_vector_buffer[vector_start];
+					y_pol = &y_vector_buffer[vector_start];
 
-				y_pol[TwoS] = (char)(vp->data[t][sample][1] >> 4); // I
-				y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
+					int TwoS = 2*sample;
+					int TwoS1 = TwoS + 1;
 
-				y_pol[TwoS1] = (char)(vp->data[t][sample][1] & 0x0F);  // Q
-				y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
+					x_pol[TwoS] = (char)(vp->data[t][sample][0] >> 4); // I
+					// Need to adjust twos-complement
+					x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
+
+					x_pol[TwoS1] = (char)(vp->data[t][sample][0] & 0x0F);  // Q
+					x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
+
+					y_pol[TwoS] = (char)(vp->data[t][sample][1] >> 4); // I
+					y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
+
+					y_pol[TwoS1] = (char)(vp->data[t][sample][1] & 0x0F);  // Q
+					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
+				}
 			}
 		}
 
