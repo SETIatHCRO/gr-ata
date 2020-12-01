@@ -221,7 +221,7 @@ protected:
 
 	// A queue is required because we have 2 different timing
 	// domains: The network packets and the GR work()/scheduler
-	boost::circular_buffer<unsigned char> *d_localqueue;
+	boost::circular_buffer<data_vector<unsigned char>> *d_localqueue;
 	unsigned char *localBuffer;
 	char *test_buffer = NULL;
 
@@ -287,19 +287,17 @@ protected:
 	void header_to_local_buffer(void)
 	{
 		gr::thread::scoped_lock guard(d_net_mutex);
-		for (int curByte = 0; curByte < d_header_size; curByte++) {
-			localBuffer[curByte] = d_localqueue->at(curByte);
-		}
+
+		unsigned char *first_packet = d_localqueue->front().data_pointer();
+		memcpy(localBuffer,first_packet,d_header_size);
 	};
 
 	void fill_local_buffer(void) {
 		gr::thread::scoped_lock guard(d_net_mutex);
 
-		for (int curByte = 0; curByte < total_packet_size; curByte++) {
-			localBuffer[curByte] = d_localqueue->front();
-			d_localqueue->pop_front();
-		}
-
+		unsigned char *first_packet = d_localqueue->front().data_pointer();
+		memcpy(localBuffer,first_packet,total_packet_size);
+		d_localqueue->pop_front();
 	};
 
 	int work_volt_mode(int noutput_items, gr_vector_const_void_star &input_items,
@@ -325,7 +323,7 @@ public:
 
 	void set_test_case_min_queue_length(long min_queue_length) { min_pcap_queue_size = min_queue_length; };
 
-	size_t data_available() {
+	size_t packets_available() {
 		gr::thread::scoped_lock guard(d_net_mutex);
 		size_t queue_size = d_localqueue->size();
 		return queue_size;

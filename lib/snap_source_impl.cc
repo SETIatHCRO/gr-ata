@@ -211,7 +211,7 @@ snap_source_impl::snap_source_impl(int port,
 
 	// Compute reasonable buffer size
 	maxCircBuffer = total_packet_size * 3000;
-	d_localqueue = new boost::circular_buffer<unsigned char>(maxCircBuffer);
+	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(maxCircBuffer);
 
 	if (!d_use_pcap) {
 		// Initialize receiving socket
@@ -234,7 +234,7 @@ snap_source_impl::snap_source_impl(int port,
 		GR_LOG_INFO(d_logger, msg_stream.str());
 	}
 
-	min_pcap_queue_size = total_packet_size * 16;
+	min_pcap_queue_size = 16;
 
 	// We'll always produce blocks of 16 time vectors for voltage mode.
 	if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
@@ -384,10 +384,10 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 	queue_data();
 #endif
 
-	int bytesAvailable = data_available();
+	int num_packets_available = packets_available();
 
 	// Handle case where no data is available
-	if (bytesAvailable == 0) {
+	if (num_packets_available == 0) {
 		d_partialFrameCounter = 0;
 
 		if (d_sourceZeros) {
@@ -413,31 +413,11 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		}
 	}
 
-	// Handle partial packets
-	if (bytesAvailable < total_packet_size) {
-		// since we should be getting these in UDP packet blocks matched on the
-		// sender/receiver, this should be a fringe case, or a case where another
-		// app is sourcing the packets.
-		d_partialFrameCounter++;
-
-		if (d_partialFrameCounter >= 100) {
-			std::stringstream msg_stream;
-			msg_stream << "Insufficient block data.  Check your sending "
-					"app is using "
-					<< d_payloadsize << " send blocks.";
-			GR_LOG_WARN(d_logger, msg_stream.str());
-
-			d_partialFrameCounter = 0;
-		}
-		return 0; // Don't memset 0x00 since we're starting to get data.  In this
-		// case we'll hold for the rest.
-	}
-
 	snap_header hdr;
 
 	if (!d_found_start_channel) {
 		// synchronize on start of vector
-		while ( (!d_found_start_channel) && (bytesAvailable >= total_packet_size)) {
+		while ( (!d_found_start_channel) && (num_packets_available > 0)) {
 			header_to_local_buffer();
 
 			get_voltage_header(hdr);
@@ -471,11 +451,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 #ifdef THREAD_RECEIVE
 					gr::thread::scoped_lock guard(d_net_mutex);
 #endif
-					for (int curByte=0;curByte < total_packet_size;curByte++) {
-						d_localqueue->pop_front();
-					}
+					d_localqueue->pop_front();
 
-					bytesAvailable = d_localqueue->size();
+					num_packets_available = d_localqueue->size();
 				}
 			}
 		}
@@ -501,9 +479,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	int noutput_items_x2 = noutput_items * 2;
 
-	while ((bytesAvailable >= total_packet_size) && (x_vector_queue.size() < noutput_items_x2)) {
+	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items_x2)) {
 		fill_local_buffer();
-		bytesAvailable -= total_packet_size;
+		num_packets_available--;
 
 		get_voltage_header(hdr);
 
@@ -680,11 +658,11 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 	queue_data();
 #endif
 
-	int bytesAvailable = data_available();
+	int num_packets_available = packets_available();
 	int items_returned = noutput_items;
 
 	// Handle case where no data is available
-	if (bytesAvailable == 0) {
+	if (num_packets_available == 0) {
 		d_partialFrameCounter = 0;
 
 		if (d_sourceZeros) {
@@ -703,31 +681,11 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 		}
 	}
 
-	// Handle partial packets
-	if (bytesAvailable < total_packet_size) {
-		// since we should be getting these in UDP packet blocks matched on the
-		// sender/receiver, this should be a fringe case, or a case where another
-		// app is sourcing the packets.
-		d_partialFrameCounter++;
-
-		if (d_partialFrameCounter >= 100) {
-			std::stringstream msg_stream;
-			msg_stream << "Insufficient block data.  Check your sending "
-					"app is using "
-					<< d_payloadsize << " send blocks.";
-			GR_LOG_WARN(d_logger, msg_stream.str());
-
-			d_partialFrameCounter = 0;
-		}
-		return 0; // Don't memset 0x00 since we're starting to get data.  In this
-		// case we'll hold for the rest.
-	}
-
 	snap_header hdr;
 
 	if (!d_found_start_channel) {
 		// synchronize on start of vector
-		while ( (!d_found_start_channel) && (bytesAvailable >= total_packet_size)) {
+		while ( (!d_found_start_channel) && (num_packets_available > 0)) {
 			header_to_local_buffer();
 
 			get_spectrometer_header(hdr);
@@ -761,11 +719,9 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 #ifdef THREAD_RECEIVE
 					gr::thread::scoped_lock guard(d_net_mutex);
 #endif
-					for (int curByte=0;curByte < total_packet_size;curByte++) {
-						d_localqueue->pop_front();
-					}
+					d_localqueue->pop_front();
 
-					bytesAvailable = d_localqueue->size();
+					num_packets_available = d_localqueue->size();
 				}
 			}
 		}
@@ -789,11 +745,13 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 	int skippedPackets = 0;
 
 	// Queue all the data we have into our local queue
-	int snapshot_data_available = data_available();
+	int snapshot_packets_available = packets_available();
 
-	while (snapshot_data_available >= total_packet_size) {
+	int noutput_items_x2 = noutput_items * 2;
+
+	while ((snapshot_packets_available > 0) && (xx_vector_queue.size() < noutput_items_x2)) {
 		fill_local_buffer();
-		snapshot_data_available -= total_packet_size;
+		snapshot_packets_available--;
 
 		get_spectrometer_header(hdr);
 
@@ -811,7 +769,6 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 			memset(xy_real_buffer,0x00,vector_buffer_size);
 			memset(xy_imag_buffer,0x00,vector_buffer_size);
 		}
-
 
 		// Check if we skipped packets by missing a channel block.
 		// The if statement just checks that this isn't our very first packet we're processing.
@@ -981,7 +938,7 @@ int snap_source_impl::work(int noutput_items,
 	gr::thread::scoped_lock guard(d_setlock);
 
 	if (d_use_pcap && pcap_file_done) {
-		if (data_available() < total_packet_size) {
+		if (packets_available() == 0) {
 			GR_LOG_INFO(d_logger,"End of PCAP file reached.");
 
 			return WORK_DONE;
@@ -1004,26 +961,34 @@ void snap_source_impl::queue_data() {
 	// disrupt work()
 
 	if (bytesAvailable >= total_packet_size) {
-		boost::asio::streambuf::mutable_buffers_type buf = d_read_buffer.prepare(bytesAvailable);
-		size_t bytesRead = d_udpsocket->receive_from(buf, d_endpoint);
+		int num_packets = bytesAvailable / total_packet_size;
 
-		if (bytesRead > 0) {
-			d_read_buffer.commit(bytesRead);
+		if (num_packets > 0) {
+			long bytes_to_read = num_packets * total_packet_size;
 
-			// Get the data and add it to our local queue.  We have to maintain a
-			// local queue in case we read more bytes than noutput_items is asking
-			// for.  In that case we'll only return noutput_items bytes
-			const char *readData = boost::asio::buffer_cast<const char *>(d_read_buffer.data());
-			{
-#ifdef THREAD_RECEIVE
-				gr::thread::scoped_lock guard(d_net_mutex);
-#endif
-				for (size_t i = 0; i < bytesRead; i++) {
-					d_localqueue->push_back(readData[i]);
+			boost::asio::streambuf::mutable_buffers_type buf = d_read_buffer.prepare(bytes_to_read);
+			size_t bytesRead = d_udpsocket->receive_from(buf, d_endpoint);
+
+			if (bytesRead > 0) {
+				d_read_buffer.commit(bytesRead);
+
+				// Get the data and add it to our local queue.  We have to maintain a
+				// local queue in case we read more bytes than noutput_items is asking
+				// for.  In that case we'll only return noutput_items bytes
+				const char *readData = boost::asio::buffer_cast<const char *>(d_read_buffer.data());
+				{
+					#ifdef THREAD_RECEIVE
+					gr::thread::scoped_lock guard(d_net_mutex);
+					#endif
+					for (long i = 0; i < num_packets; i++) {
+						data_vector<unsigned char> new_data((unsigned char *)&readData[i*total_packet_size],total_packet_size);
+
+						d_localqueue->push_back(new_data);
+					}
 				}
-			}
 
-			d_read_buffer.consume(bytesRead);
+				d_read_buffer.consume(bytesRead);
+			}
 		}
 	}
 }
@@ -1031,7 +996,7 @@ void snap_source_impl::queue_data() {
 void snap_source_impl::queue_pcap_data() {
 
 	// Lets try to keep 16 packets queued up at a time.
-	long queue_size = data_available();
+	long queue_size = packets_available();
 
 	if (queue_size < min_pcap_queue_size) {
 		long queue_diff = min_pcap_queue_size - queue_size;
@@ -1072,20 +1037,18 @@ void snap_source_impl::queue_pcap_data() {
 			auto udp = reinterpret_cast<const udphdr *>(p + etherIPHeaderSize);
 
 			uint16_t destPort = ntohs(udp->dest);
+			size_t len = ntohs(udp->len) - sizeUDPHeader;
 
-			if (destPort == d_port) {
+			if ((destPort == d_port) && (len == total_packet_size)) {
 				matchingPackets++;
-				size_t len = ntohs(udp->len) - sizeUDPHeader;
 
-				if (len > 0) {
-					const u_char *pData = &p[etherIPHeaderSize + sizeUDPHeader];
+				const u_char *pData = &p[etherIPHeaderSize + sizeUDPHeader];
 
-					gr::thread::scoped_lock guard(d_net_mutex);
+				data_vector<unsigned char> new_data((unsigned char *)pData,len);
 
-					for (int i = 0; i < len; i++) {
-						d_localqueue->push_back(pData[i]);
-					}
-				}
+				gr::thread::scoped_lock guard(d_net_mutex);
+
+				d_localqueue->push_back(new_data);
 			} // if ports match
 		} // while read
 

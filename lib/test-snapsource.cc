@@ -156,7 +156,7 @@ bool testSNAPSource() {
 		}
 
 		// Now let's make sure we have enough data for the test.
-		while (test->data_available() < (iterations+1)*packet_size*packets_per_complete_frame) {
+		while (test->packets_available() < (iterations+1)*packets_per_complete_frame) {
 #ifndef THREAD_RECEIVE
 			test->queue_data();
 #endif
