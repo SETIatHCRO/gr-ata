@@ -340,7 +340,12 @@ public:
 
 	int8_t TwosComplement4Bit(int8_t b) {
 		if (b > 7) { // Max before 4th bit gets flipped on.
-			return b - 16;
+			if (b==8) {
+				return 0;
+			}
+			else {
+				return b - 16;
+			}
 		}
 		else {
 			return b;

@@ -10,7 +10,7 @@ options:
     gen_linking: dynamic
     generate_options: no_gui
     hier_block_src_path: '.:'
-    id: ata_snap_xengine_byte
+    id: ata_snap_xengine_ichar
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -213,10 +213,10 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     notifyMissed: 'True'
-    packed_output: 'True'
+    packed_output: 'False'
     port: '4030'
     repeat_file: 'False'
-    srcZeros: 'True'
+    srcZeros: 'False'
     starting_channel: starting_channel
     use_pcap: 'True'
   states:
@@ -239,10 +239,10 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     notifyMissed: 'True'
-    packed_output: 'True'
+    packed_output: 'False'
     port: '4031'
     repeat_file: 'False'
-    srcZeros: 'True'
+    srcZeros: 'False'
     starting_channel: starting_channel
     use_pcap: 'True'
   states:
@@ -281,7 +281,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [960, 204.0]
+    coordinate: [824, 228.0]
     rotation: 0
     state: disabled
 - name: blocks_throttle_0
@@ -311,7 +311,7 @@ blocks:
     comment: ''
     deviceId: '0'
     devices: '1'
-    file_base: /opt/tmp/ata/xengine_output_ch1792-2815_xy_int1024_4bit_input
+    file_base: /opt/tmp/ata/xengine_output_ch1792-2815_xy_int1024_ichar_input
     integration: '1024'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -323,7 +323,7 @@ blocks:
     polarization: '2'
     rollover_size_mb: '0'
     setDebug: 'False'
-    type: Packed XY
+    type: IChar
   states:
     bus_sink: false
     bus_source: false
@@ -360,7 +360,9 @@ blocks:
 
 connections:
 - [ata_snap_source_0, '0', blocks_throttle_0, '0']
+- [ata_snap_source_0, '1', clenabled_clXEngine_0, '2']
 - [ata_snap_source_0_0, '0', clenabled_clXEngine_0, '1']
+- [ata_snap_source_0_0, '1', clenabled_clXEngine_0, '3']
 - [blocks_probe_rate_0, rate, blocks_message_debug_0, print]
 - [blocks_throttle_0, '0', blocks_probe_rate_0, '0']
 - [blocks_throttle_0, '0', clenabled_clXEngine_0, '0']

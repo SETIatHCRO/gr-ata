@@ -160,7 +160,13 @@ snap_source_impl::snap_source_impl(int port,
 		vector_buffer_size = d_veclen * 16;
 
 		x_vector_buffer = new char[vector_buffer_size];
-		y_vector_buffer = new char[vector_buffer_size];
+
+		if (!d_packed_output) {
+			y_vector_buffer = new char[vector_buffer_size];
+		}
+		else {
+			y_vector_buffer = NULL; // Not used in this mode.
+		}
 
 		single_polarization_bytes = d_payloadsize/2;
 
@@ -494,7 +500,8 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		if (hdr.channel_id == d_starting_channel) {
 			// We're starting a new vector, so zero out what we have.
 			memset(x_vector_buffer,0x00,vector_buffer_size);
-			memset(y_vector_buffer,0x00,vector_buffer_size);
+			if (!d_packed_output)
+				memset(y_vector_buffer,0x00,vector_buffer_size);
 		}
 
 		// Check if we skipped packets by missing a channel block.
@@ -540,14 +547,15 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				for (sample=0;sample<256;sample++) {
 					// This moves us in the packet memory to the correct time row
 					int vector_start = t * d_veclen  + channel_offset_within_time_block;
-					char *x_pol;
+					unsigned char *x_pol;
 					// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
 					// Both go in the x_pol output.
-					x_pol = &x_vector_buffer[vector_start];
+					x_pol = (unsigned char *)&x_vector_buffer[vector_start];
 
-					int sample_pos = sample * 2;
-					x_pol[sample_pos] = vp->data[t][sample][0];
-					x_pol[sample_pos+1] = vp->data[t][sample][1];
+					int TwoS = 2*sample;
+					int TwoS1 = TwoS + 1;
+					x_pol[TwoS] = vp->data[t][sample][0];
+					x_pol[TwoS1] = vp->data[t][sample][1];
 				}
 			}
 		}
@@ -1004,14 +1012,13 @@ void snap_source_impl::queue_pcap_data() {
 
 	if (queue_size < min_pcap_queue_size) {
 		long queue_diff = min_pcap_queue_size - queue_size;
-		long new_packets = (long)ceil((float)queue_diff / (float)total_packet_size);
 		long matchingPackets = 0;
 
 		int sizeUDPHeader = sizeof(struct udphdr);
 		const u_char *p=NULL;
 		pcap_pkthdr header;
 
-		while ( (matchingPackets < new_packets) && (p = pcap_next(pcapFile, &header)) ) {
+		while ( (matchingPackets < queue_diff) && (p = pcap_next(pcapFile, &header)) ) {
 			if (header.len != header.caplen) {
 				continue;
 			}
@@ -1056,7 +1063,7 @@ void snap_source_impl::queue_pcap_data() {
 			} // if ports match
 		} // while read
 
-		if ((!p) && (matchingPackets < new_packets)) {
+		if ((!p) && (matchingPackets < queue_diff)) {
 			// We've reached the end of the file.  restart it if necessary.
 			if (d_repeat_file) {
 				closePCAP();
@@ -1081,7 +1088,7 @@ void snap_source_impl::runThread() {
 			queue_pcap_data();
 		}
 
-		usleep(100);
+		usleep(25);
 	}
 
 	threadRunning = false;
