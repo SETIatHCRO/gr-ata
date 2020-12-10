@@ -31,14 +31,34 @@
 namespace gr {
 namespace ata {
 
-// Make a vector data type that behaves like a native
-// data type for use with std::deque
+#define SNAPFORMAT_2_0_0
+
+#ifdef SNAPFORMAT_2_0_0
+struct voltage_header {
+	uint8_t version;
+	uint8_t type;
+	uint16_t n_chans;
+	uint16_t chan;
+	uint16_t feng_id;
+	uint64_t timestamp;
+};
+#else
+struct voltage_header {
+	uint64_t header;
+};
+#endif
 
 // This struct is needed/used to recast the data
 // to an appropriate array.
+
 struct voltage_packet {
+#ifdef SNAPFORMAT_2_0_0
+	// 256 channels,16 times, 2 polarizations
+	unsigned char data[256][16][2];
+#else
 	// 16 times, 256 channels, 2 polarizations
 	unsigned char data[16][256][2];
+#endif
 };
 
 struct spectrometer_packet {
@@ -50,6 +70,9 @@ struct spectrometer_packet {
 	// 512 channels, 4 output indices ( XX, YY, real XY*, imag XY*)
 	float data[512][4];
 };
+
+// Make a vector data type that behaves like a native
+// data type for use with std::deque
 
 template <typename T>
 class data_vector {
@@ -250,6 +273,15 @@ protected:
 	void closePCAP();
 
 	void get_voltage_header(snap_header& hdr) {
+#ifdef SNAPFORMAT_2_0_0
+		struct voltage_header *v_hdr;
+		v_hdr = (struct voltage_header *)localBuffer;
+		hdr.antenna_id = be16toh(v_hdr->feng_id);
+		hdr.channel_id = be16toh(v_hdr->chan);
+		hdr.firmware_version = v_hdr->version; // no need to network->host order, only a byte
+		hdr.sample_number = be64toh(v_hdr->timestamp);
+		hdr.type = v_hdr->type;
+#else
 		uint64_t *header_as_uint64;
 		header_as_uint64 = (uint64_t *)localBuffer;
 
@@ -260,6 +292,7 @@ protected:
 		hdr.channel_id = (header >> 6) & 0x0fff;
 		hdr.sample_number = (header >> 18) & 0x3fffffffffULL;
 		hdr.firmware_version = (header >> 56) & 0xff;
+#endif
 	}
 
 	void get_spectrometer_header(snap_header& hdr) {

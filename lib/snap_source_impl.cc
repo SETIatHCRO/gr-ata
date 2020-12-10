@@ -125,9 +125,10 @@ snap_source_impl::snap_source_impl(int port,
 	d_header_size = 0;
 	switch (d_header_type) {
 	case SNAP_PACKETTYPE_VOLTAGE:
-		d_header_size = 8;
+		d_header_size = sizeof(struct voltage_header);
+
 		d_payloadsize = 8192; // 256 * 16 * 2; // channels * time steps * pols * sizeof(sc4)
-		total_packet_size = 8200;
+		total_packet_size = d_payloadsize + d_header_size;
 
 		d_starting_channel = starting_channel;
 		d_ending_channel = ending_channel;
@@ -432,7 +433,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				// Set that we're synchronized and exit our loop here.
 				d_found_start_channel = true;
 				std::stringstream msg_stream;
-				msg_stream << "Data block alignment achieved with sample number " << hdr.sample_number << " as first block";
+				msg_stream << "Data block alignment achieved with timestamp " << hdr.sample_number << " as first block";
 				GR_LOG_INFO(d_logger, msg_stream.str());
 
 				if (liveWork) {
@@ -554,8 +555,13 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 					int TwoS = 2*sample;
 					int TwoS1 = TwoS + 1;
+#ifdef SNAPFORMAT_2_0_0
+					x_pol[TwoS] = vp->data[sample][t][0];
+					x_pol[TwoS1] = vp->data[sample][t][1];
+#else
 					x_pol[TwoS] = vp->data[t][sample][0];
 					x_pol[TwoS1] = vp->data[t][sample][1];
+#endif
 				}
 			}
 		}
@@ -573,6 +579,20 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 					int TwoS = 2*sample;
 					int TwoS1 = TwoS + 1;
 
+#ifdef SNAPFORMAT_2_0_0
+					x_pol[TwoS] = (char)(vp->data[sample][t][0] >> 4); // I
+					// Need to adjust twos-complement
+					x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
+
+					x_pol[TwoS1] = (char)(vp->data[sample][t][0] & 0x0F);  // Q
+					x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
+
+					y_pol[TwoS] = (char)(vp->data[sample][t][1] >> 4); // I
+					y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
+
+					y_pol[TwoS1] = (char)(vp->data[sample][t][1] & 0x0F);  // Q
+					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
+#else
 					x_pol[TwoS] = (char)(vp->data[t][sample][0] >> 4); // I
 					// Need to adjust twos-complement
 					x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
@@ -585,6 +605,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 					y_pol[TwoS1] = (char)(vp->data[t][sample][1] & 0x0F);  // Q
 					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
+#endif
 				}
 			}
 		}
