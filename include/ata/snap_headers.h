@@ -18,6 +18,7 @@ namespace ata {
 		uint16_t channel_id;
 		uint64_t sample_number;
 		uint8_t firmware_version;
+		uint8_t type;
 	};
 
 } // namespace ata
