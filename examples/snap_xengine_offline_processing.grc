@@ -335,7 +335,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    const: 1.0/127.0
+    const: 1.0/7.0
     maxoutbuf: '0'
     minoutbuf: '0'
     type: complex
@@ -353,7 +353,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    const: 1.0/127.0
+    const: 1.0/7.0
     maxoutbuf: '0'
     minoutbuf: '0'
     type: complex
@@ -371,7 +371,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    const: 1.0/127.0
+    const: 1.0/7.0
     maxoutbuf: '0'
     minoutbuf: '0'
     type: complex
@@ -389,7 +389,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    const: 1.0/127.0
+    const: 1.0/7.0
     maxoutbuf: '0'
     minoutbuf: '0'
     type: complex
