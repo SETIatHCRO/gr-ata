@@ -110,6 +110,7 @@ snap_source_impl::snap_source_impl(int port,
 
 	d_port = port;
 	d_last_channel_block = -1;
+	d_last_timestamp = -1;
 	d_notifyMissed = notifyMissed;
 	d_sourceZeros = sourceZeros;
 	d_partialFrameCounter = 0;
@@ -614,6 +615,32 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		// for output consumption.
 		if (hdr.channel_id == d_ending_channel_packet_channel_id) {
 			// Queue up our vectors.  Again always 16 discrete time entries.
+
+			// First, check if we missed any sequence numbers.  If we did,
+			// Let's fill in the mising with zeros to keep things aligned.
+			// d_last_timestamp = -1 on first pass, so ignore that.
+			// if hdr.sample_number < d_last_timestamp our counter may have wrapped.  So ignore that.
+			if ( (d_last_timestamp >= 0) && (hdr.sample_number > d_last_timestamp) && ((hdr.sample_number - d_last_timestamp) > 16) ) {
+				// Each timestamp will always be t[n+1] = t[n] + 16.  If we missed any, we'll know from this.
+				// When t[n+1] is correct, missed_sets = 0.
+				uint64_t missed_sets = (hdr.sample_number - d_last_timestamp) / 16 - 1;
+
+				for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
+					// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
+					data_vector<char> x_cur_vector(d_veclen);
+					x_vector_queue.push_back(x_cur_vector);
+					if (!d_packed_output) {
+						// If we're packed output, everything is in x_pol output.
+						data_vector<char> y_cur_vector(d_veclen);
+						y_vector_queue.push_back(y_cur_vector);
+					}
+
+					seq_num_queue.push_back(missed_timestamp);
+				}
+			}
+
+			d_last_timestamp = hdr.sample_number;
+
 			for (int this_time_start=0;this_time_start<16;this_time_start++) {
 				int block_start = this_time_start * d_veclen;
 

@@ -112,6 +112,13 @@ public:
 		memcpy(data,src_data,data_size*sizeof(T));
 	};
 
+	data_vector(size_t src_size) {
+		// Initialize with empty memory.
+		data_size = src_size;
+		data = new T[data_size];
+		memset(data,0x00,data_size*sizeof(T));
+	};
+
 	data_vector<T>& operator= ( const data_vector<T> & src) {
 		if (src.data && (src.data_size > 0)) {
 			data_size = src.data_size;
@@ -214,6 +221,8 @@ protected:
 	pmt::pmt_t d_block_name;
 
 	uint16_t d_last_channel_block;
+	uint64_t d_last_timestamp;
+
 	uint16_t d_starting_channel;
 	uint16_t d_ending_channel;
 	uint16_t d_ending_channel_packet_channel_id;
