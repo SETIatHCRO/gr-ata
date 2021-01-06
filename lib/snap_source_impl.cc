@@ -136,6 +136,14 @@ snap_source_impl::snap_source_impl(int port,
 		d_ending_channel_packet_channel_id = ending_channel - 255;
 
 		d_channel_diff = d_ending_channel - d_starting_channel + 1;
+
+		if (d_channel_diff <= 256) {
+			b_one_packet = true;
+		}
+		else {
+			b_one_packet = false;
+		}
+
 		channels_per_packet = 256;
 
 		{
@@ -429,12 +437,18 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 			get_voltage_header(hdr);
 
-			if (hdr.channel_id == d_starting_channel) {
+			if ( b_one_packet || (hdr.channel_id == d_starting_channel) ) {
 				// We found our start channel packet.
 				// Set that we're synchronized and exit our loop here.
 				d_found_start_channel = true;
 				std::stringstream msg_stream;
-				msg_stream << "Data block alignment achieved with timestamp " << hdr.sample_number << " as first block";
+				if (d_use_pcap) {
+					msg_stream << "Data block alignment achieved for " << d_file << " with timestamp " << hdr.sample_number << " as first block";
+				}
+				else {
+					msg_stream << "Data block alignment achieved for port " << d_port << " with timestamp " << hdr.sample_number << " as first block";
+				}
+
 				GR_LOG_INFO(d_logger, msg_stream.str());
 
 				if (liveWork) {
@@ -499,7 +513,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			continue;
 		}
 
-		if (hdr.channel_id == d_starting_channel) {
+		if ( b_one_packet || (hdr.channel_id == d_starting_channel) ) {
 			// We're starting a new vector, so zero out what we have.
 			memset(x_vector_buffer,0x00,vector_buffer_size);
 			if (!d_packed_output)
@@ -509,7 +523,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		// Check if we skipped packets by missing a channel block.
 		// The if statement just checks that this isn't our very first packet we're processing.
 		// d_last_channel_block is set to -1 in the constructor, and 0 could be a valid start channel.
-		if (d_last_channel_block >= 0) {
+		if ( (!b_one_packet) && (d_last_channel_block >= 0) ) {
 			if (hdr.channel_id > d_last_channel_block) {
 				int delta = (hdr.channel_id - d_last_channel_block) / channels_per_packet;
 
@@ -613,7 +627,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 		// Now check if we've completed a set.  If so, let's queue it up
 		// for output consumption.
-		if (hdr.channel_id == d_ending_channel_packet_channel_id) {
+		if ( b_one_packet || (hdr.channel_id == d_ending_channel_packet_channel_id) ) {
 			// Queue up our vectors.  Again always 16 discrete time entries.
 
 			// First, check if we missed any sequence numbers.  If we did,
@@ -625,17 +639,24 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				// When t[n+1] is correct, missed_sets = 0.
 				uint64_t missed_sets = (hdr.sample_number - d_last_timestamp) / 16 - 1;
 
-				for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
-					// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
-					data_vector<char> x_cur_vector(d_veclen);
-					x_vector_queue.push_back(x_cur_vector);
-					if (!d_packed_output) {
-						// If we're packed output, everything is in x_pol output.
-						data_vector<char> y_cur_vector(d_veclen);
-						y_vector_queue.push_back(y_cur_vector);
-					}
+				if (b_one_packet) {
+					skippedPackets += missed_sets;
+				}
 
-					seq_num_queue.push_back(missed_timestamp);
+				if (missed_sets < 10) {
+					// If it's > 10, something may have gone wrong with the skipped packets calculation.
+					for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
+						// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
+						data_vector<char> x_cur_vector(d_veclen);
+						x_vector_queue.push_back(x_cur_vector);
+						if (!d_packed_output) {
+							// If we're packed output, everything is in x_pol output.
+							data_vector<char> y_cur_vector(d_veclen);
+							y_vector_queue.push_back(y_cur_vector);
+						}
+
+						seq_num_queue.push_back(missed_timestamp);
+					}
 				}
 			}
 

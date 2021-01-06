@@ -227,6 +227,7 @@ protected:
 	uint16_t d_ending_channel;
 	uint16_t d_ending_channel_packet_channel_id;
 	int d_channel_diff;
+	bool b_one_packet;
 	bool d_found_start_channel;
 	int single_polarization_bytes;
 
