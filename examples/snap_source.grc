@@ -56,23 +56,11 @@ blocks:
     coordinate: [1160, 12.0]
     rotation: 0
     state: true
-- name: channel_samp_rate
-  id: variable
-  parameters:
-    comment: ''
-    value: snap_samp_rate*(num_channels/4096)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [680, 76.0]
-    rotation: 0
-    state: enabled
 - name: channel_width
   id: variable
   parameters:
     comment: ''
-    value: snap_samp_rate/4096.0
+    value: 250e3
   states:
     bus_sink: false
     bus_source: false
@@ -152,11 +140,23 @@ blocks:
     coordinate: [296, 12.0]
     rotation: 0
     state: true
+- name: snap_bandwidth
+  id: variable
+  parameters:
+    comment: ''
+    value: channel_width*num_channels
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [680, 76.0]
+    rotation: 0
+    state: enabled
 - name: snap_samp_rate
   id: variable
   parameters:
     comment: ''
-    value: 900e6
+    value: num_channels / 4e-6
   states:
     bus_sink: false
     bus_source: false
@@ -228,14 +228,18 @@ blocks:
     alias: ''
     comment: ''
     ending_channel: ending_channel
+    file: ''
     header: '1'
     ipv6: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
     notifyMissed: 'True'
+    packed_output: 'False'
     port: '4030'
+    repeat_file: 'False'
     srcZeros: 'True'
     starting_channel: starting_channel
+    use_pcap: 'False'
   states:
     bus_sink: false
     bus_source: false
@@ -507,7 +511,7 @@ blocks:
     ignoretag: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
-    samples_per_second: channel_samp_rate
+    samples_per_second: snap_samp_rate
     type: complex
     vlen: '1'
   states:
@@ -915,7 +919,7 @@ blocks:
     alpha8: '1.0'
     alpha9: '1.0'
     axislabels: 'True'
-    bw: channel_samp_rate
+    bw: snap_bandwidth
     color1: '0'
     color10: '0'
     color2: '0'

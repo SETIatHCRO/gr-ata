@@ -156,7 +156,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 900e6
+    value: num_channels/4e-6
   states:
     bus_sink: false
     bus_source: false
@@ -293,7 +293,7 @@ blocks:
     ignoretag: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
-    samples_per_second: channel_samp_rate
+    samples_per_second: snap_samp_rate
     type: byte
     vlen: num_channels*2
   states:
@@ -302,7 +302,7 @@ blocks:
     bus_structure: null
     coordinate: [480, 204.0]
     rotation: 0
-    state: bypassed
+    state: enabled
 - name: clenabled_clXEngine_0
   id: clenabled_clXEngine
   parameters:

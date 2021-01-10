@@ -207,7 +207,7 @@ blocks:
     alias: ''
     comment: ''
     ending_channel: ending_channel
-    file: /mnt/ramdisk/goes17_volt_synced.rewrite_local.pcap
+    file: /opt/tmp/ata/goes17_volt_synced.rewrite_local.pcap
     header: '1'
     ipv6: 'False'
     maxoutbuf: '0'
@@ -216,7 +216,7 @@ blocks:
     packed_output: 'True'
     port: '4030'
     repeat_file: 'False'
-    srcZeros: 'True'
+    srcZeros: 'False'
     starting_channel: starting_channel
     use_pcap: 'True'
   states:
@@ -233,7 +233,7 @@ blocks:
     alias: ''
     comment: ''
     ending_channel: ending_channel
-    file: /mnt/ramdisk/goes17_volt_synced.rewrite_local_4031.pcap
+    file: /opt/tmp/ata/goes17_volt_synced.rewrite_local_4031.pcap
     header: '1'
     ipv6: 'False'
     maxoutbuf: '0'
@@ -242,7 +242,7 @@ blocks:
     packed_output: 'True'
     port: '4031'
     repeat_file: 'False'
-    srcZeros: 'True'
+    srcZeros: 'False'
     starting_channel: starting_channel
     use_pcap: 'True'
   states:
@@ -312,6 +312,7 @@ blocks:
     deviceId: '0'
     devices: '1'
     file_base: /opt/tmp/ata/xengine_output_ch1792-2815_xy_int1024_4bit_input
+    first_channel: '0'
     integration: '1024'
     maxoutbuf: '0'
     minoutbuf: '0'
