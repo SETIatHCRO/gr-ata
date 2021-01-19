@@ -64,6 +64,9 @@ bool wait_for_data = true;
 bool use_pcap = false;
 std::string pcap_filename = "";
 bool output_packed = false;
+int starting_channel = 1792;
+int num_channels = 1024;
+int port = 10000;
 
 #define THREAD_RECEIVE
 
@@ -90,16 +93,17 @@ bool testSNAPSource() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
 	std::cout << "Testing SNAP Source: " << std::endl;
+	std::cout << "Starting channel: " << starting_channel << std::endl <<
+			     "Num Channels: " << num_channels << std::endl <<
+				 "Listening port: " << port << std::endl;
 
 	gr::ata::snap_source_impl *test=NULL;
-	int starting_channel = 1792;
-	int num_channels = 1024;
 	int output_data_size = num_channels * 2; // IQ, one byte each
 	int ending_channel = starting_channel + num_channels - 1;
 	int data_size = sizeof(char); // GR size
 
 	// The one specifies output triangular order rather than full matrix.
-	test = new gr::ata::snap_source_impl(4030,1, // voltage
+	test = new gr::ata::snap_source_impl(port,1, // voltage
 			false, false,false, starting_channel, ending_channel, data_size, use_pcap, pcap_filename, false, output_packed);
 
 	int i;
@@ -266,8 +270,11 @@ main (int argc, char **argv)
 		// 1 is the file name
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
-			std::cout << "Usage: test-snapsource [--packed] [--pcapfile=<file>]" << std::endl;
+			std::cout << "Usage: test-snapsource [--packed] [--pcapfile=<file>] [--start-channel=<channel>]  [--num-channels=num-channels]  [--port=<port>]" << std::endl;
 			std::cout << "If --pcapfile is not specified, live network packets will be captured." << std::endl;
+			std::cout << "--start-channel = first channel in the set.  Default is 1792." << std::endl <<
+					     "--num-channels = total number of channels. Default is 1024. " << std::endl <<
+						 "--port = UDP port number. " << std::endl;
 			std::cout << "--packed will output packed 4-bit IQ rather than full 8-bit IQ." << std::endl;
 			std::cout << std::endl;
 			exit(0);
@@ -285,8 +292,20 @@ main (int argc, char **argv)
 			else if (strcmp(argv[i],"--packed")==0) {
 				output_packed = true;
 			}
+			else if (param.find("--start-channel") != std::string::npos) { // disabled
+				boost::replace_all(param,"--start-channel=","");
+				starting_channel = atoi(param.c_str());
+			}
+			else if (param.find("--num-channels") != std::string::npos) { // disabled
+				boost::replace_all(param,"--num-channels=","");
+				num_channels = atoi(param.c_str());
+			}
+			else if (param.find("--port") != std::string::npos) { // disabled
+				boost::replace_all(param,"--port=","");
+				port = atoi(param.c_str());
+			}
 			else {
-				std::cout << "ERROR: Unknown parameter." << std::endl;
+				std::cout << "ERROR: Unknown parameter: " << param << std::endl;
 				exit(1);
 
 			}
