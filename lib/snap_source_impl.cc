@@ -139,6 +139,7 @@ snap_source_impl::snap_source_impl(int port,
 
 		if (d_channel_diff <= 256) {
 			b_one_packet = true;
+			// std::cout << "Configuring for single-packet mode" << std::endl;
 		}
 		else {
 			b_one_packet = false;
@@ -170,9 +171,11 @@ snap_source_impl::snap_source_impl(int port,
 		vector_buffer_size = d_veclen * 16;
 
 		x_vector_buffer = new char[vector_buffer_size];
+		memset(x_vector_buffer,0x00,vector_buffer_size);
 
 		if (!d_packed_output) {
 			y_vector_buffer = new char[vector_buffer_size];
+			memset(y_vector_buffer,0x00,vector_buffer_size);
 		}
 		else {
 			y_vector_buffer = NULL; // Not used in this mode.
@@ -247,7 +250,15 @@ snap_source_impl::snap_source_impl(int port,
 		GR_LOG_INFO(d_logger, msg_stream.str());
 	}
 
-	min_pcap_queue_size = 16;
+	min_pcap_queue_size = (d_channel_diff / channels_per_packet) * 4;
+
+	std::cout << "min_pcap_queue_size: " << min_pcap_queue_size << std::endl;
+	std::cout << "d_channel_diff: " << d_channel_diff << std::endl;
+	std::cout << "channels_per_packet: " << channels_per_packet << std::endl;
+
+	if (min_pcap_queue_size == 0) {
+		min_pcap_queue_size = 4;
+	}
 
 	// We'll always produce blocks of 16 time vectors for voltage mode.
 	if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
@@ -513,7 +524,30 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			continue;
 		}
 
-		if ( b_one_packet || (hdr.channel_id == d_starting_channel) ) {
+		// hdr.channel_id < d_last_channel_block rather than == d_starting_channel
+		// solves the issue that the first block is not received.  < last channel block is enough
+		// to identify a new packet.
+		if ( b_one_packet || (hdr.channel_id < d_last_channel_block) ) { // (hdr.channel_id == d_starting_channel) ) {
+			if ( !b_one_packet && (d_last_channel_block != d_ending_channel_packet_channel_id) ) {
+				// We missed the last packet.
+				// Before we trigger a vector wipe, let's queue what we had.
+				// NOTE: This logic does assume we had at least one packet from the previous set that
+				// triggered the wipe and that d_last_timestamp was set from the last set.
+				for (int this_time_start=0;this_time_start<16;this_time_start++) {
+					int block_start = this_time_start * d_veclen;
+
+					data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
+					x_vector_queue.push_back(x_cur_vector);
+
+					if (!d_packed_output) {
+						// If we're packed output, everything is in x_pol output.
+						data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
+						y_vector_queue.push_back(y_cur_vector);
+					}
+
+					seq_num_queue.push_back(d_last_timestamp);
+				}
+			}
 			// We're starting a new vector, so zero out what we have.
 			memset(x_vector_buffer,0x00,vector_buffer_size);
 			if (!d_packed_output)
