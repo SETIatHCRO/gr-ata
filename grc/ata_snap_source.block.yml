@@ -3,21 +3,21 @@ label: ATA SNAP Source
 category: '[ATA]'
 
 parameters:
--   id: use_pcap
+-   id: data_source
     label: Data Source
     dtype: enum
-    options: ['False', 'True']
-    option_labels: [Network, PCAP]
+    options: ['1', '2', '3']
+    option_labels: ['Network UDP', 'Network Multicast', 'PCAP']
 -   id: file
     label: File
     dtype: file_open
-    hide: ${ 'part' if use_pcap=='True' else 'all' }
+    hide: ${ 'part' if data_source=='3' else 'all' }
 -   id: repeat_file
     label: Repeat
     dtype: enum
     options: ['False', 'True']
     option_labels: ['No', 'Yes']
-    hide: ${ 'part' if use_pcap=='True' else 'all' }
+    hide: ${ 'part' if data_source=='3' else 'all' }
 -   id: header
     label: Stream Type
     dtype: enum
@@ -27,6 +27,11 @@ parameters:
         size: [gr.sizeof_char, gr.sizeof_float]
         type: [byte, float]
         multiplier: [2, 1]
+-   id: mcast_group
+    label: Multicast Group IP
+    dtype: string
+    default: '224.1.1.10'
+    hide: ${ 'part' if data_source == '2' else 'all' }
 -   id: port
     label: Port
     dtype: int
@@ -91,7 +96,7 @@ outputs:
     
 templates:
     imports: import ata
-    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6},${starting_channel},${ending_channel},${use_pcap}, ${file}, ${repeat_file}, ${packed_output})
+    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6},${starting_channel},${ending_channel},${data_source}, ${file}, ${repeat_file}, ${packed_output}, ${mcast_group})
 
 documentation: "This block listens for ATA SNAP traffic on the specified UDP port and outputs\
     \ the channel vector appropriate for the selected type.  Voltage blocks output 512 byte\

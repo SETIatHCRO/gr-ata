@@ -67,6 +67,7 @@ bool output_packed = false;
 int starting_channel = 1792;
 int num_channels = 1024;
 int port = 10000;
+std::string mcast_group="";
 
 #define THREAD_RECEIVE
 
@@ -102,9 +103,21 @@ bool testSNAPSource() {
 	int ending_channel = starting_channel + num_channels - 1;
 	int data_size = sizeof(char); // GR size
 
+	int data_source;
+	if (use_pcap) {
+		data_source = 3;
+	}
+	else {
+		if (mcast_group.empty()) {
+			data_source = 1;
+		}
+		else {
+			data_source = 2;
+		}
+	}
 	// The one specifies output triangular order rather than full matrix.
 	test = new gr::ata::snap_source_impl(port,1, // voltage
-			false, false,false, starting_channel, ending_channel, data_size, use_pcap, pcap_filename, false, output_packed);
+			false, false,false, starting_channel, ending_channel, data_size, data_source, pcap_filename, false, output_packed, mcast_group);
 
 	int i;
 	std::chrono::time_point<std::chrono::steady_clock> start, end;
@@ -270,8 +283,9 @@ main (int argc, char **argv)
 		// 1 is the file name
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
-			std::cout << "Usage: test-snapsource [--packed] [--pcapfile=<file>] [--start-channel=<channel>]  [--num-channels=num-channels]  [--port=<port>]" << std::endl;
+			std::cout << "Usage: test-snapsource [--packed] [--start-channel=<channel>]  [--num-channels=num-channels]  [--pcapfile=<file>] [--mcast-group=<IPv4 Group>] [--port=<port>]" << std::endl;
 			std::cout << "If --pcapfile is not specified, live network packets will be captured." << std::endl;
+			std::cout << "If --mcast-group is specified, live network packets will listen for multicast packets on the specified group." << std::endl;
 			std::cout << "--start-channel = first channel in the set.  Default is 1792." << std::endl <<
 					     "--num-channels = total number of channels. Default is 1024. " << std::endl <<
 						 "--port = UDP port number. " << std::endl;
@@ -299,6 +313,10 @@ main (int argc, char **argv)
 			else if (param.find("--num-channels") != std::string::npos) { // disabled
 				boost::replace_all(param,"--num-channels=","");
 				num_channels = atoi(param.c_str());
+			}
+			else if (param.find("--mcast-group") != std::string::npos) { // disabled
+				boost::replace_all(param,"--mcast-group=","");
+				mcast_group = param;
 			}
 			else if (param.find("--port") != std::string::npos) { // disabled
 				boost::replace_all(param,"--port=","");

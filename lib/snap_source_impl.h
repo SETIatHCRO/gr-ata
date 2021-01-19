@@ -208,6 +208,10 @@ protected:
 	boost::mutex fp_mutex;
 	long min_pcap_queue_size;
 
+	int d_data_source;
+	bool d_use_mcast;
+	std::string d_mcast_group;
+
 	bool d_packed_output;
 
 	int d_port;
@@ -351,7 +355,8 @@ public:
 	snap_source_impl(int port, int headerType,
 			bool notifyMissed, bool sourceZeros, bool ipv6,
 			int starting_channel, int ending_channel, int data_size,
-			bool use_pcap=false, std::string file="", bool repeat_file=false, bool packed_output=false);
+			int data_source, std::string file="", bool repeat_file=false, bool packed_output=false,
+			std::string mcast_group="");
 
 	~snap_source_impl();
 

@@ -42,6 +42,10 @@
 
 #define THREAD_RECEIVE
 
+#define DS_NETWORK 1
+#define DS_MCAST 2
+#define DS_PCAP 3
+
 namespace gr {
 namespace ata {
 
@@ -50,7 +54,7 @@ snap_source::sptr snap_source::make(int port,
 		bool notifyMissed,
 		bool sourceZeros, bool ipv6,
 		int starting_channel, int ending_channel,
-		bool use_pcap, std::string file, bool repeat_file, bool packed_output) {
+		int data_source, std::string file, bool repeat_file, bool packed_output,std::string mcast_group) {
 	int data_size;
 	if (headerType == SNAP_PACKETTYPE_VOLTAGE) {
 		data_size = sizeof(char);
@@ -60,7 +64,8 @@ snap_source::sptr snap_source::make(int port,
 	}
 	return gnuradio::get_initial_sptr(
 			new snap_source_impl(port, headerType,
-					notifyMissed, sourceZeros, ipv6, starting_channel, ending_channel, data_size, use_pcap, file, repeat_file, packed_output));
+					notifyMissed, sourceZeros, ipv6, starting_channel, ending_channel, data_size, data_source, file, repeat_file,
+					packed_output, mcast_group));
 }
 
 /*
@@ -71,18 +76,35 @@ snap_source_impl::snap_source_impl(int port,
 		bool notifyMissed,
 		bool sourceZeros, bool ipv6,
 		int starting_channel, int ending_channel, int data_size,
-		bool use_pcap, std::string file, bool repeat_file, bool packed_output)
+		int data_source, std::string file, bool repeat_file, bool packed_output,
+		std::string mcast_group)
 : gr::sync_block("snap_source",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(1, 4,
 				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1))) {
 
-	d_use_pcap = use_pcap;
+	if (data_source == DS_PCAP) {
+		d_use_pcap = true;
+	}
+	else {
+		d_use_pcap = false;
+	}
+
 	d_file = file;
 	d_repeat_file = repeat_file;
 	pcap_file_done = false;
 
-	if (d_use_pcap) {
+	d_data_source = data_source;
+	d_mcast_group = mcast_group;
+
+	if (d_data_source == DS_MCAST) {
+		d_use_mcast = true;
+	}
+	else {
+		d_use_mcast = false;
+	}
+
+	if (data_source == DS_PCAP) {
 		if (d_file.length() == 0) {
 			std::stringstream msg;
 			msg << "No PCAP file name provided.  Please provide a filename.";
@@ -231,12 +253,43 @@ snap_source_impl::snap_source_impl(int port,
 
 	if (!d_use_pcap) {
 		// Initialize receiving socket
+		boost::asio::ip::address mcast_addr;
 		if (is_ipv6)
 			d_endpoint =
 					boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v6(), port);
-		else
-			d_endpoint =
-					boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port);
+		else {
+			if (d_data_source == DS_NETWORK) {
+				// Standard UDP
+				d_endpoint =
+						boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port);
+			}
+			else {
+				// Multicast group
+				try {
+					mcast_addr = boost::asio::ip::address::from_string(d_mcast_group, ec);
+				}
+				catch (const std::exception &ex) {
+					std::stringstream msg_stream;
+					msg_stream << "Error converting  " << d_mcast_group << " to address object.  Check address is valid.";
+					GR_LOG_ERROR(d_logger, msg_stream.str());
+
+					throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
+							ex.what());
+				}
+
+				try {
+					d_endpoint = boost::asio::ip::udp::endpoint(mcast_addr, port);
+				}
+				catch (const std::exception &ex) {
+					std::stringstream msg_stream;
+					msg_stream << "Error opening  " << d_mcast_group << " on port " << port;
+					GR_LOG_ERROR(d_logger, msg_stream.str());
+
+					throw std::runtime_error(std::string("[SNAP Source] Multicast Error occurred: ") +
+							ex.what());
+				}
+			}
+		}
 
 		try {
 			d_udpsocket = new boost::asio::ip::udp::socket(d_io_service, d_endpoint);
@@ -245,8 +298,23 @@ snap_source_impl::snap_source_impl(int port,
 					ex.what());
 		}
 
+		if (d_use_mcast) {
+			try {
+				boost::asio::ip::multicast::join_group option(mcast_addr);
+				d_udpsocket->set_option(option);
+			} catch (const std::exception &ex) {
+				throw std::runtime_error(std::string("[SNAP Source] Multicast Error occurred: ") +
+						ex.what());
+			}
+		}
+
 		std::stringstream msg_stream;
-		msg_stream << "Listening for data on UDP port " << port << ".";
+		if (d_use_mcast) {
+			msg_stream << "Listening for data on multicast group " << d_mcast_group << " on port " << port << ".";
+		}
+		else {
+			msg_stream << "Listening for data on UDP port " << port << ".";
+		}
 		GR_LOG_INFO(d_logger, msg_stream.str());
 	}
 
@@ -294,7 +362,9 @@ snap_source_impl::snap_source_impl(int port,
 /*
  * Our destructor.
  */
-snap_source_impl::~snap_source_impl() { stop(); }
+snap_source_impl::~snap_source_impl() {
+	stop();
+}
 
 void snap_source_impl::openPCAP() {
 	gr::thread::scoped_lock lock(fp_mutex);
@@ -338,6 +408,12 @@ bool snap_source_impl::stop() {
 	closePCAP();
 
 	if (d_udpsocket) {
+		if (d_use_mcast) {
+			boost::system::error_code ec;
+			boost::asio::ip::address mcast_addr = boost::asio::ip::address::from_string(d_mcast_group, ec);
+			boost::asio::ip::multicast::leave_group option(mcast_addr);
+			d_udpsocket->set_option(option);
+		}
 		d_udpsocket->close();
 
 		d_udpsocket = NULL;

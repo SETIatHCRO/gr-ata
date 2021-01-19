@@ -1,12 +1,12 @@
 #!/usr/bin/python3
-from scapy.all import UDP,rdpcap, PcapReader
+from scapy.all import UDP,PcapReader
 import numpy as np
 import argparse
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='ATA SNAP Voltage PCAP Tool')
     parser.add_argument('--inputfile', '-i', type=str, help="SNAP PCAP recording file",  required=True)
-    parser.add_argument('--port', '-p', type=int, help="SNAP PCAP recording file",  required=True)
+    parser.add_argument('--port', '-p', type=int, help="SNAP PCAP recording file.  If not provided, any UDP destination will be processed.",  default=0, required=False)
     parser.add_argument('--num-packets', '-n', type=int, help="Number of packets to print (use 0 for all), default=32",  default=32,  required=False)
     parser.add_argument('--start-channel', '-s', type=int, help="Starting channel number.  If this is set, channels will be validated. default is to only print packets.",  default = -1,  required=False)
     parser.add_argument('--num-channels', '-c', type=int, help="Number of frame channels",  default=-1, required=False)
@@ -31,13 +31,7 @@ if __name__ == '__main__':
             
     try:
         print("Reading pcap file...")
-        if args.num_packets == 0:
-            print("WARNING: Reading the entire file may take considerable time and memory if the file is large.")
-            # packets = rdpcap(args.inputfile)
-            pcapreader = PcapReader(args.inputfile)
-        else:
-            # packets = rdpcap(args.inputfile,  count=args.num_packets)
-            pcapreader = PcapReader(args.inputfile)
+        pcapreader = PcapReader(args.inputfile)
     except KeyboardInterrupt:
         print("Read interrupted.  Exiting.")
         exit(0)
@@ -48,8 +42,11 @@ if __name__ == '__main__':
     # v2 (November 2020) header format
     header_len = 16  # bytes
 
-    print("UDP port to monitor: " + str(args.port))
-    
+    if args.port > 0:
+        print("UDP port to monitor: " + str(args.port))
+    else:
+        print("Monitoring all UDP ports.")
+        
     if args.errors_only:
         print("INFO: Only printing errors.")
         
@@ -69,14 +66,14 @@ if __name__ == '__main__':
                 # Ignore non-UDP packets
                 continue
                 
-            if curPacket[UDP].dport != args.port:
+            if args.port > 0 and curPacket[UDP].dport != args.port:
                 # Ignore packets that aren't destined for the correct port
                 continue
                 
             # Load the header bytes
             header_bytes=bytes[0:header_len]
 
-            # Estract the fields
+            # Extract the fields
             fw_version = int(header_bytes[0])
             type = int(header_bytes[1])
             n_chans = int(np.ndarray(shape=(1,),dtype='>u2',buffer=header_bytes[2:4])[0])
@@ -113,7 +110,7 @@ if __name__ == '__main__':
                         
             # Print out what we got
             if not args.errors_only:
-                print("Packet #: " + str(i) + ", Sample #/timestamp: " + str(sample_number) + ", Starting channel: " + str(channel) + ", num channels: " + str(n_chans) +", antenna: " + str(antenna) + ", fw_version: " + str(fw_version))
+                print("Packet #: " + str(i) + ", UDP Port: " + str(curPacket[UDP].dport) + ", Sample #/timestamp: " + str(sample_number) + ", Starting channel: " + str(channel) + ", num channels: " + str(n_chans) +", antenna: " + str(antenna) + ", fw_version: " + str(fw_version))
             
             i+= 1
             last_seq_num = sample_number

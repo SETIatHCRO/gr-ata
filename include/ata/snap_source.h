@@ -65,7 +65,8 @@ public:
    */
   static sptr make(int port, int headerType, bool notifyMissed,
                    bool sourceZeros, bool ipv6, int starting_channel, int ending_channel,
-				   bool use_pcap=false, std::string file="", bool repeat_file=false, bool packed_output=false);
+				   int data_source, std::string file="", bool repeat_file=false, bool packed_output=false,
+				   std::string mcast_group="");
 };
 
 } // namespace ata 

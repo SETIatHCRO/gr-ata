@@ -1,0 +1,25 @@
+{
+    "observation_start": "2020-10-06 14:54:00 EST",
+	"antenna_coord_relative_telescopescope_itrf_m": [[-172.73166, -56.759799, -159.80786],[-172.73166, -56.759799, -159.80786]],
+	"instrument": "gnuradio1",
+	"telescope_name": "ATA",
+	"telescope_location": [40.8174, -121.472, 1043],
+	"object_name": "3C286",
+	"object_comment": "Can also provide object_ra and object_dec if it's not a catalogued object",
+	"comments": "",
+	"antenna_names": ["1h","4g"],
+    "baseline_uvw_vectors_comment": "For the ATA, the antenna names are sufficient to build the baseline vectors with a lookup, or a matrix can be provided in 'baseline_uvw_vectors'",
+    "baseline_uvw_vectors_hold": [ [0.0, 0.0, 0.0],
+                                      [1.0, 2.0, 3.0],
+                                      [0.0, 0.0, 0.0]
+                                    ],
+	"polarizations": 2,
+	"num_baselines": 3,
+    "channel_width": 250000.0,
+    "first_channel_center_freq": 100e6,
+    "integration_time_seconds": 0.001,
+	"input_dir": "/opt/tmp/ata",
+	"observation_base_name": "xengine_output_ch1792-2815_xy_int1024_4bit_input",
+	"output_dir": "/opt/tmp/ata"
+}
+
