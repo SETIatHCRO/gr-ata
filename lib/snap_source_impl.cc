@@ -252,10 +252,6 @@ snap_source_impl::snap_source_impl(int port,
 
 	min_pcap_queue_size = (d_channel_diff / channels_per_packet) * 4;
 
-	std::cout << "min_pcap_queue_size: " << min_pcap_queue_size << std::endl;
-	std::cout << "d_channel_diff: " << d_channel_diff << std::endl;
-	std::cout << "channels_per_packet: " << channels_per_packet << std::endl;
-
 	if (min_pcap_queue_size == 0) {
 		min_pcap_queue_size = 4;
 	}
