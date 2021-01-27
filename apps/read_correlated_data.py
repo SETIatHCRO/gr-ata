@@ -17,7 +17,7 @@ from astropy.coordinates import SkyCoord
 
 def read_antenna_coordinates(filename=None):
     if filename == None:
-        filename = 'antenna_coordinates.txt'
+        filename = 'antenna_coordinates_ecef.txt'
         
     try:
         f = open(filename, 'r')
@@ -32,8 +32,9 @@ def read_antenna_coordinates(filename=None):
     for cur_line in lines:
         line_vals = cur_line.split(',')
 
-        if len(line_vals) == 3:
-            antenna_details[line_vals[0].upper()] = {"N": float(line_vals[1]), "E":float(line_vals[2])}
+        if len(line_vals) == 4:
+            antenna_details[line_vals[0].upper()] = {"x": float(line_vals[1]), "y":float(line_vals[2]), "z":float(line_vals[3])}
+            # antenna_details[line_vals[0].upper()] = {"N": float(line_vals[2]), "E":float(line_vals[1]), "U":float(line_vals[3])}
         else:
             print("Couldn't split line on commas: " + cur_line)
             
@@ -107,7 +108,7 @@ if __name__ == '__main__':
         exit(1)
         
     # Validate the file looks correct
-    expected_top_level_keys = ['antenna_coord_relative_telescopescope_itrf_m', 'num_baselines','instrument', 'telescope_name', 'telescope_location', 'object_name', 'antenna_names','channel_width','first_channel_center_freq','integration_time_seconds','polarizations','input_dir', 'observation_base_name', 'output_dir']
+    expected_top_level_keys = ['num_baselines','instrument', 'telescope_name', 'telescope_location', 'object_name', 'antenna_names','channel_width','first_channel_center_freq','integration_time_seconds','polarizations','input_dir', 'observation_base_name', 'output_dir']
     expected_data_keys = ['first_seq_num','num_baselines', 'first_channel', 'channels', 'polarizations', 'antennas', 'ntime', 'samples_per_block']
     
     for expected_key in expected_top_level_keys:
@@ -165,32 +166,38 @@ if __name__ == '__main__':
             UV.antenna_names.append(cur_name.upper())
         UV.antenna_numbers = numpy.array(numpy.arange(len(metadata['antenna_names'])))
         # UV.antenna_positions = numpy.array([numpy.zeros(len(metadata['baseline_m'])), metadata['baseline_m']], dtype = 'float')
-        UV.antenna_positions = numpy.array( metadata['antenna_coord_relative_telescopescope_itrf_m'], dtype = 'float')
+        
+        if metadata['telescope_name'] != 'ATA' and 'antenna_coord_relative_telescope_itrf_m' not in metadata.keys():
+            print("ERROR: Telescope is not the ATA and 'antenna_coord_relative_telescope_itrf_m' was not provided.")
+            exit(2)
+
         UV.Nbls = metadata['num_baselines']
         UV.channel_width = metadata['channel_width']
         first_channel_center_freq = metadata['first_channel_center_freq']
         integration_time_seconds = metadata['integration_time_seconds']
-        
+        antenna_details = None
         if 'baseline_uvw_vectors' in metadata.keys():
             baseline_vectors = numpy.asarray(metadata['baseline_uvw_vectors'])
         else:
             antenna_details = read_antenna_coordinates()
             
             if antenna_details is None:
-                print("ERROR reading antenna file antenna_coordinates.txt")
+                print("ERROR reading antenna file antenna_coordinates_ecef.txt")
                 exit(1)
 
             baseline_vectors = numpy.zeros((UV.Nbls, 3), dtype=float)
             current_index = 0
-            w = 0.0
             try:
                 for i in range(0, len(UV.antenna_names)):
                     coord1 = antenna_details[UV.antenna_names[i]]
                     for j in range(0, i+1):
                         coord2 = antenna_details[UV.antenna_names[j]]
                         
-                        u = coord2["N"] - coord1["N"]
-                        v = coord2["E"] - coord1["E"]
+                        # According to https://pyuvdata.readthedocs.io/en/latest/uvdata_parameters.html,
+                        # uvw_array needs to be ant1-ant2 to be AIS/FITS compliant.  Myriad does ant2-ant1.
+                        u = coord1["x"] - coord2["x"]
+                        v = coord1["y"] - coord2["y"]
+                        w = coord1["z"] - coord2["z"]
                         
                         baseline_vectors[current_index][0] = u
                         baseline_vectors[current_index][1] = v
@@ -199,6 +206,25 @@ if __name__ == '__main__':
                 print("ERROR processing antenna names: " + str(e))
                 exit(1)
             
+        if metadata['telescope_name'] != 'ATA':
+            UV.antenna_positions = numpy.array( metadata['antenna_coord_relative_telescope_itrf_m'], dtype = 'float')
+        else:
+            ant_pos = []
+            if not antenna_details:
+                print("ERROR: no antenna details loaded.")
+                exit(11)
+                
+            try:
+                for cur_name in metadata['antenna_names']:
+                    cur_ant = antenna_details[cur_name.upper()]
+                    ant_pos.append([cur_ant['x'], cur_ant['y'], cur_ant['z']])
+            except Exception as e:
+                print("ERROR parsing antenna names: " + str(e))
+                print("Valid antennas are: " + str(antenna_details.keys()))
+                exit(12)
+                
+            UV.antenna_positions = numpy.array(ant_pos, dtype = 'float')
+                
         UV.flex_spw = False # This controls whether or not individual channel mappings needs to be defined.
         
         UV.Nblts = 0
@@ -216,6 +242,7 @@ if __name__ == '__main__':
     for obs_descriptor_file in obs_file_list:
         try:
             with  open(obs_descriptor_file) as f:
+                print("Loading " + obs_descriptor_file)
                 obs_metadata = json.load(f)
         except Exception as e:
             print("ERROR parsing " + obs_descriptor_file + ": " + str(e))
