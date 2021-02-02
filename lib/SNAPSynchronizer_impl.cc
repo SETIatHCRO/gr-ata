@@ -276,7 +276,7 @@ SNAPSynchronizer_impl::work(int noutput_items,
 		// if (print_counter > 200) {
 		// 	print_counter = 0;
 		// }
-		#pragma omp parallel for num_threads(2)
+		// #pragma omp parallel for num_threads(2)
 		for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 			const char *in = (const char *) input_items[cur_input];
 			char *out = (char *) output_items[cur_input];
@@ -299,7 +299,8 @@ SNAPSynchronizer_impl::work(int noutput_items,
 	// If we're here, we have synchronization issues to align
 	// ------------------------------------------------------
 	// Queue up the data we received
-	#pragma omp parallel for num_threads(2)
+	// The multi-threading here causes a thread contention issue with push_back().
+	//#pragma omp parallel for num_threads(2)
 	for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 		// Go through each of the inputs,
 		// Grab its tag vectors
