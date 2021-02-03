@@ -507,7 +507,12 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 		} else {
 			// Returning 0 causes GNU Radio to call work again in 0.1s
-			return 0;
+			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
+				usleep(10);
+
+				num_packets_available = packets_available();
+			}
+			//return 0;
 		}
 	}
 
@@ -1184,6 +1189,7 @@ void snap_source_impl::queue_pcap_data() {
 
 	// Lets try to keep 16 packets queued up at a time.
 	long queue_size = packets_available();
+	static int reload_size = 32;
 
 	if (queue_size < min_pcap_queue_size) {
 		long queue_diff = min_pcap_queue_size - queue_size;
@@ -1193,7 +1199,9 @@ void snap_source_impl::queue_pcap_data() {
 		const u_char *p=NULL;
 		pcap_pkthdr header;
 
-		while ( (matchingPackets < queue_diff) && (p = pcap_next(pcapFile, &header)) ) {
+		while ( (matchingPackets < reload_size) && (p = pcap_next(pcapFile, &header)) ) {
+			gr::thread::scoped_lock guard(d_net_mutex);
+
 			if (header.len != header.caplen) {
 				continue;
 			}
@@ -1232,13 +1240,12 @@ void snap_source_impl::queue_pcap_data() {
 
 				data_vector<unsigned char> new_data((unsigned char *)pData,len);
 
-				gr::thread::scoped_lock guard(d_net_mutex);
-
 				d_localqueue->push_back(new_data);
 			} // if ports match
 		} // while read
 
-		if ((!p) && (matchingPackets < queue_diff)) {
+		// if ((!p) && (matchingPackets < queue_diff)) {
+		if (!p) {
 			// We've reached the end of the file.  restart it if necessary.
 			if (d_repeat_file) {
 				closePCAP();
