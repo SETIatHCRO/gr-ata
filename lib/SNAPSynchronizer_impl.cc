@@ -137,7 +137,7 @@ SNAPSynchronizer_impl::work_bypass_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items)
 {
-#pragma omp parallel for num_threads(2)
+//#pragma omp parallel for num_threads(2)
 	for (int i=0;i<d_num_inputs;i++) {
 		const char *in = (const char *) input_items[i];
 		char *out = (char *) output_items[i];

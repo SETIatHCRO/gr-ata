@@ -692,7 +692,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
 
 		if (d_packed_output) {
-			#pragma omp parallel for num_threads(2) collapse(2)
+			// #pragma omp parallel for num_threads(2) collapse(2)
 			for (t=0;t<16;t++) {
 				for (sample=0;sample<256;sample++) {
 					// This moves us in the packet memory to the correct time row
@@ -715,7 +715,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			}
 		}
 		else {
-			#pragma omp parallel for num_threads(2) collapse(2)
+			//#pragma omp parallel for num_threads(2) collapse(2)
 			for (t=0;t<16;t++) {
 				for (sample=0;sample<256;sample++) {
 					// This moves us in the packet memory to the correct time row
