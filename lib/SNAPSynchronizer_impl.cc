@@ -137,7 +137,7 @@ SNAPSynchronizer_impl::work_bypass_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items)
 {
-	#pragma omp parallel for num_threads(2)
+#pragma omp parallel for num_threads(2)
 	for (int i=0;i<d_num_inputs;i++) {
 		const char *in = (const char *) input_items[i];
 		char *out = (char *) output_items[i];
@@ -181,7 +181,7 @@ SNAPSynchronizer_impl::work_bypass_mode(int noutput_items,
 				std::cout << "Stream " << i << ": WARNING - No tag found." << std::endl;
 			}
 		}
-		*/
+		 */
 
 		if (!tags_synchronized) {
 			std::cout << "WARNING streams are not synchronized on start." << std::endl;
@@ -201,7 +201,7 @@ SNAPSynchronizer_impl::work(int noutput_items,
 {
 	gr::thread::scoped_lock guard(d_setlock);
 
-	#ifdef _TIMEWORK
+#ifdef _TIMEWORK
 	static int current_iteration = 0;
 
 	std::chrono::time_point<std::chrono::steady_clock> start, end;
@@ -210,9 +210,9 @@ SNAPSynchronizer_impl::work(int noutput_items,
 	if (current_iteration == 0) {
 		std::cout << "Starting timing..." << std::endl;
 	}
-	*/
+	 */
 	start = std::chrono::steady_clock::now();
-	#endif
+#endif
 
 	// If we're in bypass mode, just copy the data and on the first pass,
 	// put up a notice on synchronization state.
@@ -235,7 +235,7 @@ SNAPSynchronizer_impl::work(int noutput_items,
 	long tag_matrix[noutput_items][d_num_inputs];
 	bool b_tags_match = true;
 
-	#pragma omp parallel for num_threads(2)
+	// #pragma omp parallel for num_threads(2)
 	for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 		std::vector<gr::tag_t> tags;
 		this->get_tags_in_window(tags, cur_input, 0, noutput_items);
@@ -293,6 +293,7 @@ SNAPSynchronizer_impl::work(int noutput_items,
 			}
 		}
 
+		// std::cout << "Queues empty and tags match" << std::endl;
 		return noutput_items;
 	}
 
@@ -334,7 +335,7 @@ SNAPSynchronizer_impl::work(int noutput_items,
 		// know if we emptied it below till the next cycle.
 		for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 			if (queueList[cur_input].size() == 0) {
-				// std::cout << "[SNAP Synchronizer] At least one queue was empty.  Waiting till next call to process more data."  << std::endl;
+				// std::cout << "[SNAP Synchronizer] At least one queue was empty.  Waiting till next call to process more data.  Work returning " << filled_blocks << std::endl;
 				return filled_blocks;
 			}
 		}
@@ -405,9 +406,9 @@ SNAPSynchronizer_impl::work(int noutput_items,
 		std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
 		std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
 		std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
-					"Total throughput: " << std::setprecision(2) << throughput << " byte complex samples/sec" << std::endl <<
-					"Individual stream throughput: " << std::setprecision(2) << throughput / d_num_inputs << " byte complex samples/sec" << std::endl <<
-					"Projected processing rate: " << bits_throughput << " bps" << std::endl;
+				"Total throughput: " << std::setprecision(2) << throughput << " byte complex samples/sec" << std::endl <<
+				"Individual stream throughput: " << std::setprecision(2) << throughput / d_num_inputs << " byte complex samples/sec" << std::endl <<
+				"Projected processing rate: " << bits_throughput << " bps" << std::endl;
 	}
 #endif
 

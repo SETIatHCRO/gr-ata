@@ -318,10 +318,10 @@ snap_source_impl::snap_source_impl(int port,
 		GR_LOG_INFO(d_logger, msg_stream.str());
 	}
 
-	min_pcap_queue_size = (d_channel_diff / channels_per_packet) * 4;
+	min_pcap_queue_size = (d_channel_diff / channels_per_packet) * 16;
 
 	if (min_pcap_queue_size == 0) {
-		min_pcap_queue_size = 4;
+		min_pcap_queue_size = 16;
 	}
 
 	// We'll always produce blocks of 16 time vectors for voltage mode.
@@ -507,6 +507,12 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 		} else {
 			// Returning 0 causes GNU Radio to call work again in 0.1s
+
+			/*
+			if (d_found_start_channel) {
+				std::cout << "Starving for packets" << std::endl;
+			}
+			*/
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
 				usleep(10);
 
@@ -518,60 +524,77 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	snap_header hdr;
 
-	if (!d_found_start_channel) {
-		// synchronize on start of vector
-		while ( (!d_found_start_channel) && (num_packets_available > 0)) {
-			header_to_local_buffer();
+	// When we get here, the loop above will have ensured num_packets_available > 0
 
-			get_voltage_header(hdr);
+	// if (!d_found_start_channel) {
+	while ( !d_found_start_channel && !stop_thread && !( pcap_file_done && (num_packets_available == 0) ) ) {
+		// If I haven't found the start frame,
+		// Haven't been told to stop (stop_thread)
+		// And I'm not out of PCAP data in pcap mode,
+		// Keep looking for the start frame and don't return 0 since it'll cause too long a delay to reenter work.
 
-			if ( b_one_packet || (hdr.channel_id == d_starting_channel) ) {
-				// We found our start channel packet.
-				// Set that we're synchronized and exit our loop here.
-				d_found_start_channel = true;
-				std::stringstream msg_stream;
-				if (d_use_pcap) {
-					msg_stream << "Data block alignment achieved for " << d_file << " with timestamp " << hdr.sample_number << " as first block";
-				}
-				else {
-					msg_stream << "Data block alignment achieved for port " << d_port << " with timestamp " << hdr.sample_number << " as first block";
-				}
+		header_to_local_buffer();
 
-				GR_LOG_INFO(d_logger, msg_stream.str());
+		get_voltage_header(hdr);
 
-				if (liveWork) {
-					pmt::pmt_t meta = pmt::make_dict();
-
-					meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
-					meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
-					meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
-					meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
-
-					pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
-					message_port_pub(pmt::mp("sync_header"), pdu);
-				}
-
-				break;
+		if ( b_one_packet || (hdr.channel_id == d_starting_channel) ) {
+			// We found our start channel packet.
+			// Set that we're synchronized and exit our loop here.
+			d_found_start_channel = true;
+			std::stringstream msg_stream;
+			if (d_use_pcap) {
+				msg_stream << "Data block alignment achieved for " << d_file << " with timestamp " << hdr.sample_number << " as first block";
 			}
 			else {
-				// We found a packet that wasn't the first one of the vector.
-				// Just dump it till we're synchronized.
-				{
-#ifdef THREAD_RECEIVE
-					gr::thread::scoped_lock guard(d_net_mutex);
-#endif
-					d_localqueue->pop_front();
+				msg_stream << "Data block alignment achieved for port " << d_port << " with timestamp " << hdr.sample_number << " as first block";
+			}
 
-					num_packets_available = d_localqueue->size();
-				}
+			GR_LOG_INFO(d_logger, msg_stream.str());
+
+			if (liveWork) {
+				pmt::pmt_t meta = pmt::make_dict();
+
+				meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
+				meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
+				meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
+				meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
+
+				pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
+				message_port_pub(pmt::mp("sync_header"), pdu);
+			}
+
+			break;
+		}
+		else {
+			// We found a packet that wasn't the first one of the vector.
+			// Just dump it till we're synchronized.
+			{
+#ifdef THREAD_RECEIVE
+				gr::thread::scoped_lock guard(d_net_mutex);
+#endif
+				d_localqueue->pop_front();
+
+				num_packets_available = d_localqueue->size();
 			}
 		}
 
-		// We're still looking for the vector start packet and we haven't found it yet.
 		if (!d_found_start_channel) {
-			return 0;
+			// We didn't find the start packet.  So unless we're told to end,
+			// wait for more packets, and run the tests here again.
+			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
+				usleep(10);
+
+				num_packets_available = packets_available();
+			}
 		}
+
 	}
+
+	if (!d_found_start_channel) {
+		// If we're here, something above was told to exit.  So return 0 here is correct.
+		return 0;
+	}
+
 	// If we're here, it's not a partial hanging frame
 	d_partialFrameCounter = 0;
 
@@ -869,7 +892,12 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 
 		} else {
 			// Returning 0 causes GNU Radio to call work again in 0.1s
-			return 0;
+			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
+				usleep(10);
+
+				num_packets_available = packets_available();
+			}
+			//return 0;
 		}
 	}
 
@@ -1189,7 +1217,7 @@ void snap_source_impl::queue_pcap_data() {
 
 	// Lets try to keep 16 packets queued up at a time.
 	long queue_size = packets_available();
-	static int reload_size = 32;
+	static int reload_size = min_pcap_queue_size * 4;
 
 	if (queue_size < min_pcap_queue_size) {
 		long queue_diff = min_pcap_queue_size - queue_size;
@@ -1265,12 +1293,13 @@ void snap_source_impl::runThread() {
 		if (!d_use_pcap) {
 			// Getting data from the network
 			queue_data();
+			usleep(10);
 		}
 		else {
 			queue_pcap_data();
+			usleep(4);
 		}
 
-		usleep(25);
 	}
 
 	threadRunning = false;
