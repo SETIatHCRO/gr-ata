@@ -207,6 +207,8 @@ protected:
 	pcap_t *pcapFile = NULL;
 	boost::mutex fp_mutex;
 	long min_pcap_queue_size;
+	long reload_size;
+	pcap_pkthdr pcap_header;
 
 	int d_data_source;
 	bool d_use_mcast;

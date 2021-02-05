@@ -31,9 +31,6 @@
 #include <sstream>
 
 #include <ata/snap_headers.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -316,12 +313,18 @@ snap_source_impl::snap_source_impl(int port,
 			msg_stream << "Listening for data on UDP port " << port << ".";
 		}
 		GR_LOG_INFO(d_logger, msg_stream.str());
+
+		// Just to not leave this uninitialized:
+		min_pcap_queue_size = 1;
 	}
+	else {
+		min_pcap_queue_size = (d_channel_diff / channels_per_packet) * 16;
 
-	min_pcap_queue_size = (d_channel_diff / channels_per_packet) * 16;
+		if (min_pcap_queue_size == 0) {
+			min_pcap_queue_size = 16;
+		}
 
-	if (min_pcap_queue_size == 0) {
-		min_pcap_queue_size = 16;
+		reload_size = min_pcap_queue_size * 4;
 	}
 
 	// We'll always produce blocks of 16 time vectors for voltage mode.
@@ -339,20 +342,6 @@ snap_source_impl::snap_source_impl(int port,
 	}
 
 	message_port_register_out(pmt::mp("sync_header"));
-
-#ifdef _OPENMP
-	/*
-	num_procs = omp_get_num_procs()/2;
-	if (num_procs < 1)
-		num_procs = 1;
-	 */
-	// Seems like we can hard-code this.
-	// Two seems to do fine.
-	num_procs = 2;
-#else
-	num_procs = 1;
-	GR_LOG_WARN(d_logger, "OMP not enabled.  Performance may be degraded.  Please install libomp and recompile.");
-#endif
 
 #ifdef THREAD_RECEIVE
 	proc_thread = new boost::thread(boost::bind(&snap_source_impl::runThread, this));
@@ -514,7 +503,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			}
 			*/
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(10);
+				usleep(5);
 
 				num_packets_available = packets_available();
 			}
@@ -582,13 +571,12 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			// We didn't find the start packet.  So unless we're told to end,
 			// wait for more packets, and run the tests here again.
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(10);
+				usleep(5);
 
 				num_packets_available = packets_available();
 			}
 		}
-
-	}
+	} // end aligning on start channel
 
 	if (!d_found_start_channel) {
 		// If we're here, something above was told to exit.  So return 0 here is correct.
@@ -609,9 +597,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	// Queue all the data we have into our local queue
 
-	int noutput_items_x2 = noutput_items * 2;
+	//int noutput_items_x2 = noutput_items * 2;
 
-	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items_x2)) {
+	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items)) {
 		fill_local_buffer();
 		num_packets_available--;
 
@@ -677,9 +665,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		// Store what we saw as the "last" packet we received.
 		d_last_channel_block = hdr.channel_id;
 
-		unsigned char *pData;  // Pointer to our UDP payload after the header.
+		// Pointer to our UDP payload after the header.
 		// Move to the beginning of our packet data section
-		pData = (unsigned char *)&localBuffer[d_header_size];
+		unsigned char *pData = (unsigned char *)&localBuffer[d_header_size];
 
 		voltage_packet *vp;
 		vp = (voltage_packet *)pData;
@@ -893,7 +881,7 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 		} else {
 			// Returning 0 causes GNU Radio to call work again in 0.1s
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(10);
+				usleep(5);
 
 				num_packets_available = packets_available();
 			}
@@ -967,9 +955,7 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 	// Queue all the data we have into our local queue
 	int snapshot_packets_available = packets_available();
 
-	int noutput_items_x2 = noutput_items * 2;
-
-	while ((snapshot_packets_available > 0) && (xx_vector_queue.size() < noutput_items_x2)) {
+	while ((snapshot_packets_available > 0) && (xx_vector_queue.size() < noutput_items)) {
 		fill_local_buffer();
 		snapshot_packets_available--;
 
@@ -1091,11 +1077,11 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 		if (output_items.size() > 2) {
 			// xy is tagged as an optional output.
 			memcpy(&xy_real_out[d_veclen*i],xy_real_cur_vector.data_pointer(),vector_buffer_size);
-		}
 
-		if (output_items.size() > 3) {
-			// xy is tagged as an optional output.
-			memcpy(&xy_imag_out[d_veclen*i],xy_imag_cur_vector.data_pointer(),vector_buffer_size);
+			if (output_items.size() > 3) {
+				// xy is tagged as an optional output.
+				memcpy(&xy_imag_out[d_veclen*i],xy_imag_cur_vector.data_pointer(),vector_buffer_size);
+			}
 		}
 
 		// Add sequence number start tag for down-stream coherence
@@ -1217,20 +1203,21 @@ void snap_source_impl::queue_pcap_data() {
 
 	// Lets try to keep 16 packets queued up at a time.
 	long queue_size = packets_available();
-	static int reload_size = min_pcap_queue_size * 4;
 
+	// while (!pcap_file_done && !stop_thread && (queue_size < min_pcap_queue_size) ) {
 	if (queue_size < min_pcap_queue_size) {
 		long queue_diff = min_pcap_queue_size - queue_size;
 		long matchingPackets = 0;
 
-		int sizeUDPHeader = sizeof(struct udphdr);
-		const u_char *p=NULL;
-		pcap_pkthdr header;
+		static int sizeUDPHeader = sizeof(struct udphdr);
+		const u_char *p;
+		int etherIPHeaderSize;
+		uint16_t destPort;
+		size_t len;
+		unsigned char *pData;
 
-		while ( (matchingPackets < reload_size) && (p = pcap_next(pcapFile, &header)) ) {
-			gr::thread::scoped_lock guard(d_net_mutex);
-
-			if (header.len != header.caplen) {
+		while ( (matchingPackets < reload_size) && (p = pcap_next(pcapFile, &pcap_header)) && !stop_thread ) {
+			if (pcap_header.len != pcap_header.caplen) {
 				continue;
 			}
 			auto eth = reinterpret_cast<const ether_header *>(p);
@@ -1254,21 +1241,24 @@ void snap_source_impl::queue_pcap_data() {
 
 			// IP Header length is defined in a packet field (IHL).  IHL represents
 			// the # of 32-bit words So header size is ihl * 4 [bytes]
-			int etherIPHeaderSize = sizeof(ether_header) + ip->ihl * 4;
+			etherIPHeaderSize = sizeof(ether_header) + ip->ihl * 4;
 
 			auto udp = reinterpret_cast<const udphdr *>(p + etherIPHeaderSize);
 
-			uint16_t destPort = ntohs(udp->dest);
-			size_t len = ntohs(udp->len) - sizeUDPHeader;
+			destPort = ntohs(udp->dest);
+			len = ntohs(udp->len) - sizeUDPHeader;
 
 			if ((destPort == d_port) && (len == total_packet_size)) {
 				matchingPackets++;
 
-				const u_char *pData = &p[etherIPHeaderSize + sizeUDPHeader];
+				pData = (u_char *)&p[etherIPHeaderSize + sizeUDPHeader];
 
-				data_vector<unsigned char> new_data((unsigned char *)pData,len);
+				data_vector<unsigned char> new_data(pData,len);
 
-				d_localqueue->push_back(new_data);
+				{
+					gr::thread::scoped_lock guard(d_net_mutex);
+					d_localqueue->push_back(new_data);
+				}
 			} // if ports match
 		} // while read
 
@@ -1283,7 +1273,9 @@ void snap_source_impl::queue_pcap_data() {
 				pcap_file_done = true;
 			}
 		}
-	} // if queue_size < min_queue_size
+		// Refresh the queue size counter (work() will be consuming while we're filling here)
+		// queue_size = packets_available();
+	} // queue_size < min_queue_size
 }
 
 void snap_source_impl::runThread() {
