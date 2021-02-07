@@ -120,7 +120,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '1024'
+    value: '2048'
   states:
     bus_sink: false
     bus_source: false
@@ -192,7 +192,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '1792'
+    value: '1024'
   states:
     bus_sink: false
     bus_source: false
@@ -227,19 +227,20 @@ blocks:
     affinity: '0'
     alias: ''
     comment: ''
+    data_source: '3'
     ending_channel: ending_channel
-    file: ''
+    file: /opt/tmp/ata/new_snap_format/4g.pcap
     header: '1'
     ipv6: 'False'
     maxoutbuf: '0'
+    mcast_group: 224.1.1.10
     minoutbuf: '0'
     notifyMissed: 'True'
     packed_output: 'False'
-    port: '4030'
+    port: '10000'
     repeat_file: 'False'
-    srcZeros: 'True'
+    srcZeros: 'False'
     starting_channel: starting_channel
-    use_pcap: 'False'
   states:
     bus_sink: false
     bus_source: false
@@ -583,7 +584,7 @@ blocks:
     comment: ''
     deviceId: '0'
     devices: '1'
-    fft_dir: '-1'
+    fft_dir: '1'
     fft_size: data_vector_len
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -748,7 +749,7 @@ blocks:
     x_units: Hz
     y_axis_label: Power
     y_units: '""'
-    ymax: '80'
+    ymax: '16'
     ymin: '0'
   states:
     bus_sink: false
