@@ -33,6 +33,8 @@ namespace ata {
 
 #define SNAPFORMAT_2_0_0
 
+const int VP_DATA_STRIDE=256*16*2;
+
 #ifdef SNAPFORMAT_2_0_0
 struct voltage_header {
 	uint8_t version;

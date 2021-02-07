@@ -179,7 +179,7 @@ snap_source_impl::snap_source_impl(int port,
 		// GR output vector length will be number of total channels * 2
 		// In all modes.
 		// Unpacked mode: since we expand the packed 8-bit to separate bytes for I and Q.
-		// Packed mode: 4-bit IQ X, 4-bit IQ Y
+		// Packed mode: 4-bits each for I & Q X [1-byte total], 4-bits each for I & Q Y [1-byte total], so still 2 bytes.
 
 		d_veclen = d_channel_diff * 2;
 
@@ -503,7 +503,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			}
 			*/
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(5);
+				usleep(8);
 
 				num_packets_available = packets_available();
 			}
@@ -571,7 +571,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			// We didn't find the start packet.  So unless we're told to end,
 			// wait for more packets, and run the tests here again.
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(5);
+				usleep(8);
 
 				num_packets_available = packets_available();
 			}
@@ -676,47 +676,50 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 		int t;
 		int sample;
-
+		int vector_start;
 		int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
 
 		if (d_packed_output) {
+			unsigned char *x_pol;
 			// #pragma omp parallel for num_threads(2) collapse(2)
 			for (t=0;t<16;t++) {
-				for (sample=0;sample<256;sample++) {
-					// This moves us in the packet memory to the correct time row
-					int vector_start = t * d_veclen  + channel_offset_within_time_block;
-					unsigned char *x_pol;
-					// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
-					// Both go in the x_pol output.
-					x_pol = (unsigned char *)&x_vector_buffer[vector_start];
+				// This moves us in the packet memory to the correct time row
+				vector_start = t * d_veclen  + channel_offset_within_time_block;
+				// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
+				// Both go in the x_pol output.
+				x_pol = (unsigned char *)&x_vector_buffer[vector_start];
 
+				for (sample=0;sample<256;sample++) {
 					int TwoS = 2*sample;
-					int TwoS1 = TwoS + 1;
 #ifdef SNAPFORMAT_2_0_0
 					x_pol[TwoS] = vp->data[sample][t][0];
-					x_pol[TwoS1] = vp->data[sample][t][1];
+					// In packed mode, this is actually y to put it in a single block output
+					x_pol[TwoS + 1] = vp->data[sample][t][1];
 #else
 					x_pol[TwoS] = vp->data[t][sample][0];
-					x_pol[TwoS1] = vp->data[t][sample][1];
+					x_pol[TwoS + 1] = vp->data[t][sample][1];
 #endif
 				}
 			}
 		}
 		else {
+			// Note these are char rather than unsigned char because in this unpacking
+			// mode, we actually two's complement extract the signed input.
+			char *x_pol;
+			char *y_pol;
 			//#pragma omp parallel for num_threads(2) collapse(2)
 			for (t=0;t<16;t++) {
-				for (sample=0;sample<256;sample++) {
-					// This moves us in the packet memory to the correct time row
-					int vector_start = t * d_veclen  + channel_offset_within_time_block;
-					char *x_pol;
-					char *y_pol;
-					x_pol = &x_vector_buffer[vector_start];
-					y_pol = &y_vector_buffer[vector_start];
+				// This moves us in the packet memory to the correct time row
+				vector_start = t * d_veclen  + channel_offset_within_time_block;
+				x_pol = &x_vector_buffer[vector_start];
+				y_pol = &y_vector_buffer[vector_start];
 
+				for (sample=0;sample<256;sample++) {
 					int TwoS = 2*sample;
 					int TwoS1 = TwoS + 1;
 
 #ifdef SNAPFORMAT_2_0_0
+					// The 2.0 format reverses the [t][sample] index position to [sample][t].
 					x_pol[TwoS] = (char)(vp->data[sample][t][0] >> 4); // I
 					// Need to adjust twos-complement
 					x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
@@ -881,7 +884,7 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 		} else {
 			// Returning 0 causes GNU Radio to call work again in 0.1s
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(5);
+				usleep(8);
 
 				num_packets_available = packets_available();
 			}
@@ -1285,11 +1288,11 @@ void snap_source_impl::runThread() {
 		if (!d_use_pcap) {
 			// Getting data from the network
 			queue_data();
-			usleep(10);
+			usleep(8);
 		}
 		else {
 			queue_pcap_data();
-			usleep(4);
+			usleep(8);
 		}
 
 	}
