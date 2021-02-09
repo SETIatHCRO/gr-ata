@@ -150,6 +150,8 @@ namespace gr {
     	pmt::pmt_t d_pmt_seqnum;
     	pmt::pmt_t d_block_name;
 
+    	long *tag_list;
+
     	pmt::pmt_t pmt_sequence_number_minus_one;
     	std::vector<std::deque<TaggedS8IQData>> queueList;
 

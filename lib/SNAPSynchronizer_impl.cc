@@ -73,6 +73,8 @@ SNAPSynchronizer_impl::SNAPSynchronizer_impl(int num_inputs, int num_channels, b
 
 	pmt_sequence_number_minus_one =pmt::from_long(-1);
 
+	tag_list = new long[d_num_inputs];
+
 	// We'll set tags ourselves, since they may change if we have to realign.
 	if (d_bypass)
 		set_tag_propagation_policy(TPP_ONE_TO_ONE);
@@ -85,6 +87,7 @@ SNAPSynchronizer_impl::SNAPSynchronizer_impl(int num_inputs, int num_channels, b
  */
 SNAPSynchronizer_impl::~SNAPSynchronizer_impl()
 {
+	delete[] tag_list;
 }
 
 bool SNAPSynchronizer_impl::tags_match(int noutput_items, gr_vector_const_void_star &input_items) {
@@ -292,25 +295,25 @@ SNAPSynchronizer_impl::work(int noutput_items,
 		// Make sure we have data in all queues.  We have to do this check
 		// After every cycle where we pop from the queue because we won't
 		// know if we emptied it below till the next cycle.
+
+		// Initialize with the first item id
+		lowest_num = queueList[0].front().get_tag();
+
 		for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 			if (queueList[cur_input].size() == 0) {
 				// std::cout << "[SNAP Synchronizer] At least one queue was empty.  Waiting till next call to process more data.  Work returning " << filled_blocks << std::endl;
 				return filled_blocks;
 			}
-		}
-
-		filled_blocks++;
-
-		// Initialize with the first item
-		lowest_num = queueList[0].front().get_tag();
-
-		for (cur_input=1;cur_input<d_num_inputs;cur_input++) {
 			cur_tag = queueList[cur_input].front().get_tag();
+			// This saves some function calls below
+			tag_list[cur_input] = cur_tag;
 
 			if (cur_tag < lowest_num) {
 				lowest_num = cur_tag;
 			}
 		}
+
+		filled_blocks++;
 
 		// Now we know the lowest number, so we know what sequence
 		// number to synchronize on.
@@ -321,14 +324,14 @@ SNAPSynchronizer_impl::work(int noutput_items,
 		for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 			char * output_stream = (char *)output_items[cur_input];
 
-			cur_tag = queueList[cur_input].front().get_tag();
+			cur_tag = tag_list[cur_input];
 
 			if (cur_tag == lowest_num) {
 				// Output the data
 				TaggedS8IQData full_data = queueList[cur_input].front();
 				queueList[cur_input].pop_front();
 
-				pmt::pmt_t pmt_sequence_number =pmt::from_long(full_data.get_tag());
+				pmt::pmt_t pmt_sequence_number =pmt::from_long(cur_tag);
 				add_item_tag(cur_input, nitems_written(0) + cur_item, d_pmt_seqnum, pmt_sequence_number,d_block_name);
 				memcpy(&output_stream[d_num_channels_x2*cur_item], full_data.data_pointer(), d_num_channels_x2);
 			}
