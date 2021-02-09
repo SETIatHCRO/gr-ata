@@ -71,6 +71,8 @@ SNAPSynchronizer_impl::SNAPSynchronizer_impl(int num_inputs, int num_channels, b
 
 	d_block_name = pmt::string_to_symbol(identifier());
 
+	pmt_sequence_number_minus_one =pmt::from_long(-1);
+
 	// We'll set tags ourselves, since they may change if we have to realign.
 	if (d_bypass)
 		set_tag_propagation_policy(TPP_ONE_TO_ONE);
@@ -155,34 +157,6 @@ SNAPSynchronizer_impl::work_bypass_mode(int noutput_items,
 
 		bool tags_synchronized = tags_match(noutput_items,input_items);
 
-		/*
-		int tag_val;
-		int sync_val;
-		bool tags_synchronized = true;
-
-		// std::cout << "Synchronizer Bypass Mode. Initial stream identifiers:" << std::endl;
-		for (int i=0;i<d_num_inputs;i++) {
-			std::vector<gr::tag_t> tags;
-			this->get_tags_in_window(tags, i, 0, noutput_items);
-
-			tag_val = pmt::to_long(tags[0].value);
-
-			if (i == 0) {
-				sync_val = tag_val;
-			}
-
-			if (tags.size() > 0) {
-				// std::cout << "Stream " << i << ": " << tag_val << std::endl;
-
-				if (tag_val != sync_val)
-					tags_synchronized = false;
-			}
-			else {
-				std::cout << "Stream " << i << ": WARNING - No tag found." << std::endl;
-			}
-		}
-		 */
-
 		if (!tags_synchronized) {
 			std::cout << "WARNING streams are not synchronized on start." << std::endl;
 		}
@@ -233,9 +207,8 @@ SNAPSynchronizer_impl::work(int noutput_items,
 	// If we need to queue the data or not.
 
 	long tag_matrix[noutput_items][d_num_inputs];
-	bool b_tags_match = true;
+	// bool b_tags_match = true;
 
-	// #pragma omp parallel for num_threads(2)
 	for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 		std::vector<gr::tag_t> tags;
 		this->get_tags_in_window(tags, cur_input, 0, noutput_items);
@@ -247,6 +220,7 @@ SNAPSynchronizer_impl::work(int noutput_items,
 		}
 	}
 
+	/* Commented out for performance
 	cur_input=0;
 
 	while ((cur_input<d_num_inputs) && b_tags_match) {
@@ -265,18 +239,6 @@ SNAPSynchronizer_impl::work(int noutput_items,
 	// Fast track data pipeline: If the queues are empty and the tags match,
 	// We're good just continue copying for speed.  No need to queue.
 	if (queues_empty() && b_tags_match) {
-		// static int print_counter=0;
-
-		// print_counter++;
-
-		// if (print_counter == 1) {
-		// 	std::cout << "Full alignment.  Fast-tracking data." << std::endl;
-		// }
-
-		// if (print_counter > 200) {
-		// 	print_counter = 0;
-		// }
-		// #pragma omp parallel for num_threads(2)
 		for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 			const char *in = (const char *) input_items[cur_input];
 			char *out = (char *) output_items[cur_input];
@@ -293,22 +255,19 @@ SNAPSynchronizer_impl::work(int noutput_items,
 			}
 		}
 
-		// std::cout << "Queues empty and tags match" << std::endl;
 		return noutput_items;
 	}
+	*/
 
 	// If we're here, we have synchronization issues to align
 	// ------------------------------------------------------
 	// Queue up the data we received
-	// The multi-threading here causes a thread contention issue with push_back().
-	//#pragma omp parallel for num_threads(2)
 	for (cur_input=0;cur_input<d_num_inputs;cur_input++) {
 		// Go through each of the inputs,
 		// Grab its tag vectors
 		// Go through its input items and queue them up.
 		const char * input_stream = (const char *)input_items[cur_input];
 		for (cur_item=0;cur_item < noutput_items;cur_item++) {
-
 			cur_tag = tag_matrix[cur_item][cur_input];
 
 			// If the tag value is -1, the block sourced zeros which we don't want to
@@ -375,8 +334,7 @@ SNAPSynchronizer_impl::work(int noutput_items,
 			}
 			else {
 				// Output a blank frame for this output
-				pmt::pmt_t pmt_sequence_number =pmt::from_long(-1);
-				add_item_tag(cur_input, nitems_written(0) + cur_item, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+				add_item_tag(cur_input, nitems_written(0) + cur_item, d_pmt_seqnum, pmt_sequence_number_minus_one,d_block_name);
 				memset(&output_stream[d_num_channels_x2*cur_item], 0x00, d_num_channels_x2);
 			}
 		}
