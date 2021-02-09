@@ -24,19 +24,16 @@
 
 #include <gnuradio/io_signature.h>
 #include "SNAPSynchronizer_impl.h"
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 // #define _TIMEWORK
 
 #ifdef _TIMEWORK
 #include <chrono>
 #include <ctime>
-
 #define iterations 100
-
 #endif
+
+#include <limits>
 
 namespace gr {
 namespace ata {
@@ -59,13 +56,23 @@ SNAPSynchronizer_impl::SNAPSynchronizer_impl(int num_inputs, int num_channels, b
 		d_num_inputs(num_inputs), d_num_channels(num_channels),d_bypass(bypass)
 {
 	if (!d_bypass) {
-		for (int i=0;i<num_inputs;i++) {
-			std::deque<TaggedS8IQData> newQueue;
+		queueList.reserve(d_num_inputs);
+
+		for (int i=0;i<d_num_inputs;i++) {
+			// std::deque<TaggedS8IQData> newQueue;
+			std::deque<char *> *newQueue;
+			newQueue = new std::deque<char *>;
 			queueList.push_back(newQueue);
 		}
 	}
 
 	d_num_channels_x2 = 2*d_num_channels;
+
+	// frame size is used to take a sixteen time frame block in as a single unit.
+	// The * 16 here comes from the SNAP packet format.
+	size_long = sizeof(long);
+	frame_size = size_long + d_num_channels_x2 * 16;
+	frame_size_16 = d_num_channels_x2 * 16;
 
 	d_pmt_seqnum = pmt::string_to_symbol("sample_num");
 
@@ -80,6 +87,9 @@ SNAPSynchronizer_impl::SNAPSynchronizer_impl(int num_inputs, int num_channels, b
 		set_tag_propagation_policy(TPP_ONE_TO_ONE);
 	else
 		set_tag_propagation_policy(TPP_DONT);
+
+	// The SNAP outputs packets in 16-time step blocks.  So let's take advantage of that here.
+	set_output_multiple(16);
 }
 
 /*
@@ -88,6 +98,19 @@ SNAPSynchronizer_impl::SNAPSynchronizer_impl(int num_inputs, int num_channels, b
 SNAPSynchronizer_impl::~SNAPSynchronizer_impl()
 {
 	delete[] tag_list;
+
+	// Have to clear any lingering memory
+	if (!d_bypass) {
+		for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
+			while (queueList[cur_input]->size() > 0) {
+				char *full_data = queueList[cur_input]->front();
+				queueList[cur_input]->pop_front();
+				delete [] full_data;
+			}
+
+			delete queueList[cur_input];
+		}
+	}
 }
 
 bool SNAPSynchronizer_impl::tags_match(int noutput_items, gr_vector_const_void_star &input_items) {
@@ -142,7 +165,7 @@ SNAPSynchronizer_impl::work_bypass_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items)
 {
-//#pragma omp parallel for num_threads(2)
+	gr::thread::scoped_lock guard(d_setlock);
 	for (int i=0;i<d_num_inputs;i++) {
 		const char *in = (const char *) input_items[i];
 		char *out = (char *) output_items[i];
@@ -171,8 +194,9 @@ SNAPSynchronizer_impl::work_bypass_mode(int noutput_items,
 	return noutput_items;
 }
 
+#ifdef OLD_SLOW_VERSION
 int
-SNAPSynchronizer_impl::work(int noutput_items,
+SNAPSynchronizer_impl::work_slow_version(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items)
 {
@@ -206,7 +230,7 @@ SNAPSynchronizer_impl::work(int noutput_items,
 	// get_tags does a lot of vector work, so we can avoid it
 	// by grabbing them once.  This saves us noutput_items many
 	// additional calls to get_tags and all the vector work
-	// further down since we need them here anyway to deterimine
+	// further down since we need them here anyway to determine
 	// If we need to queue the data or not.
 
 	long tag_matrix[noutput_items][d_num_inputs];
@@ -339,6 +363,169 @@ SNAPSynchronizer_impl::work(int noutput_items,
 				// Output a blank frame for this output
 				add_item_tag(cur_input, nitems_written(0) + cur_item, d_pmt_seqnum, pmt_sequence_number_minus_one,d_block_name);
 				memset(&output_stream[d_num_channels_x2*cur_item], 0x00, d_num_channels_x2);
+			}
+		}
+	}
+
+#ifdef _TIMEWORK
+	end = std::chrono::steady_clock::now();
+
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	float throughput;
+	long input_buffer_total_bytes;
+	float bits_throughput;
+
+	elapsed_seconds = end-start;
+
+	elapsed_time += elapsed_seconds.count() / noutput_items; // let's get a per-vector time
+
+	current_iteration++;
+
+	if (current_iteration == 100) {
+		elapsed_time = elapsed_time / (float)iterations;
+		throughput = d_num_channels * d_num_inputs  / elapsed_time;
+		input_buffer_total_bytes = d_num_channels_x2;
+		bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+
+		std::cout << std::endl << "GNURadio work() performance:" << std::endl;
+		std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+		std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
+		std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
+				"Total throughput: " << std::setprecision(2) << throughput << " byte complex samples/sec" << std::endl <<
+				"Individual stream throughput: " << std::setprecision(2) << throughput / d_num_inputs << " byte complex samples/sec" << std::endl <<
+				"Projected processing rate: " << bits_throughput << " bps" << std::endl;
+	}
+#endif
+
+	return noutput_items;
+}
+#endif
+
+int
+SNAPSynchronizer_impl::work(int noutput_items,
+		gr_vector_const_void_star &input_items,
+		gr_vector_void_star &output_items)
+{
+	// If we're in bypass mode, just copy the data and on the first pass,
+	// put up a notice on synchronization state.
+	if (d_bypass) {
+		return work_bypass_mode(noutput_items, input_items, output_items);
+	}
+
+	int num_blocks = noutput_items / 16;
+	gr::thread::scoped_lock guard(d_setlock);
+
+#ifdef _TIMEWORK
+	static int current_iteration = 0;
+
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+	static float elapsed_time = 0.0;
+	/*
+	if (current_iteration == 0) {
+		std::cout << "Starting timing..." << std::endl;
+	}
+	 */
+	start = std::chrono::steady_clock::now();
+#endif
+
+	// Iterate through num_blocks (a block is 16 input items) for each input
+	// Create a frame_size buffer
+	// Grab the first tag (since they'll all be the same for a 16-block set) and copy that to the beginning of the buffer
+	// Then copy the remaining 16 time entries in.
+	// Queue that up
+
+	for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
+		std::vector<gr::tag_t> tags;
+		this->get_tags_in_window(tags, cur_input, 0, noutput_items);
+		// Here's where we make an optimization assumption.
+		// The SNAP block is outputting 16 time entries per frame all with the same sequence number
+		// We're "assuming" here that 16 entries at a clip are all the same.  So we can just
+		// Grab the first of a 16-block set as the number we care about.
+		const char * input_stream = (const char *)input_items[cur_input];
+		for (int cur_block=0;cur_block<num_blocks;cur_block++) {
+			unsigned long cur_tag = pmt::to_long(tags[cur_block*16].value);
+			char *buff;
+			buff = new char[frame_size];
+			memcpy(buff,(void *)&cur_tag,size_long);
+			memcpy(&buff[size_long],&input_stream[frame_size_16*cur_block],frame_size_16);
+
+			queueList[cur_input]->push_back(buff);
+		}
+	}
+
+	// Now that we're queued up, let's see how we align and fill the outbound data.
+	// Note, it's very likely queues will not be aligned:
+	// queue Id: 1 2 3 4 5 6
+	// queue Id: 2 3 4 5 6 7
+	// queue Id: 1 3 4 5 7 8
+	// ...
+	// So let's loop through how many output blocks we need
+	// Check on each block cycle what the lowest id is
+	// Use that lowest block number to fill the output for this output block
+	// If a queue doesn't have that id (misaligned), we'll fill the output for that block with zeros
+	// We're responsible here for deleting any buffer we created when we pop from a queue
+
+	unsigned long lowest_num;
+
+	for (int cur_block=0;cur_block<num_blocks;cur_block++) {
+		// Go through each block in each queue and grab the lowest number.
+		// Make sure we have data in all queues.  We have to do this check
+		// After every cycle where we pop from the queue because we won't
+		// know if we emptied it below till the next cycle.
+
+		bool lowest_set = false;
+
+		// We have to loop all the way through the queues here to find the lowest value for each block we need.
+		for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
+			if (queueList[cur_input]->size() > 0) {
+				unsigned long cur_tag = *((unsigned long *)queueList[cur_input]->front());
+
+				// So here we have to be a bit careful as sequence numbers can go to LONG_MAX and roll over.
+				// Since we don't have NAN for long (it's all float/double), we have to track it manually here.
+				if (!lowest_set || (cur_tag < lowest_num) ) {
+					lowest_num = cur_tag;
+					lowest_set = true;
+				}
+			}
+			else {
+				// This is our check that one of the queues may have been emptied.
+
+				// We can't keep processing since we don't know what may come in next.  So
+				// We're going to have to exit with what we have.
+				// We ran out and only filled the previous block, so that's all we can say we produced.
+				return cur_block * 16;
+			}
+		}
+
+		// Now we know the lowest number still in each queue, so we know what sequence
+		// number to synchronize on.
+		// Loop through the inputs and for the current block,
+		// Output either: the data for the lowest sequence number, or zero's.
+		for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
+			char * output_stream = (char *)output_items[cur_input];
+			if (queueList[cur_input]->size() > 0) {
+				char *buff = queueList[cur_input]->front();
+				unsigned long cur_tag = *((unsigned long *)buff);
+
+				if (cur_tag == lowest_num) {
+					// Output the data
+					pmt::pmt_t pmt_sequence_number = pmt::from_long(cur_tag);
+					// I only need to output the tag once now for the xengine to pick it up.  We can just output
+					// it at the beginning of the block
+					add_item_tag(cur_input, nitems_written(0) + cur_block*frame_size_16, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+
+					memcpy(&output_stream[cur_block*frame_size_16], &buff[size_long], frame_size_16);
+
+					// clean up memory
+					queueList[cur_input]->pop_front();
+					delete [] buff;
+				}
+				else {
+					// Output a blank frame for this output
+					add_item_tag(cur_input, nitems_written(0) + cur_block*frame_size_16, d_pmt_seqnum, pmt_sequence_number_minus_one,d_block_name);
+
+					memset(&output_stream[cur_block*frame_size_16], 0x00, frame_size_16);
+				}
 			}
 		}
 	}

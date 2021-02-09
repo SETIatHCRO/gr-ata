@@ -146,6 +146,9 @@ namespace gr {
     	int d_num_channels;
     	bool d_bypass;
     	int d_num_channels_x2;
+    	int frame_size;
+    	int frame_size_16;
+    	int size_long;
 
     	pmt::pmt_t d_pmt_seqnum;
     	pmt::pmt_t d_block_name;
@@ -153,11 +156,12 @@ namespace gr {
     	long *tag_list;
 
     	pmt::pmt_t pmt_sequence_number_minus_one;
-    	std::vector<std::deque<TaggedS8IQData>> queueList;
+    	// std::vector<std::deque<TaggedS8IQData>> queueList;
+    	std::vector<std::deque<char *> *> queueList;
 
     	bool queues_empty() {
     		for (int i=0;i<d_num_inputs;i++) {
-    			if (queueList[i].size() > 0) {
+    			if (queueList[i]->size() > 0) {
     				return false;
     			}
     		}
