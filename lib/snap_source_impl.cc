@@ -772,15 +772,18 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 					// If it's > 10, something may have gone wrong with the skipped packets calculation.
 					for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
 						// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
-						data_vector<char> x_cur_vector(d_veclen);
-						x_vector_queue.push_back(x_cur_vector);
-						if (!d_packed_output) {
-							// If we're packed output, everything is in x_pol output.
-							data_vector<char> y_cur_vector(d_veclen);
-							y_vector_queue.push_back(y_cur_vector);
-						}
+						// Gotta push back 16 time entries for each missing timestamp.
+						for (int i=0;i<16;i++) {
+							data_vector<char> x_cur_vector(d_veclen);
+							x_vector_queue.push_back(x_cur_vector);
+							if (!d_packed_output) {
+								// If we're packed output, everything is in x_pol output.
+								data_vector<char> y_cur_vector(d_veclen);
+								y_vector_queue.push_back(y_cur_vector);
+							}
 
-						seq_num_queue.push_back(missed_timestamp);
+							seq_num_queue.push_back(missed_timestamp);
+						}
 					}
 				}
 			}
