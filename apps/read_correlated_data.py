@@ -10,9 +10,10 @@ import argparse
 import glob
 from os import path
 from pyuvdata import UVData
+from pyuvdata import utils as pyuv_utils
 from pathlib import Path
 from dateutil import parser as dateparser
-
+import pymap3d
 from astropy.coordinates import SkyCoord
 
 def read_antenna_coordinates(filename=None):
@@ -92,6 +93,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='X-Engine Data Extractor')
     parser.add_argument('--inputfile', '-i', type=str, help="Observation JSON descriptor file", required=True)
     parser.add_argument('--outputfile', '-o', type=str, help="UVFITS output file", required=True)
+    parser.add_argument('--check-uvfits', '-c', help="This will enable validating UVFITS data on writing.", action='store_true', required=False)
     
     args = parser.parse_args()
     
@@ -135,14 +137,96 @@ if __name__ == '__main__':
     # Set up top-level UVFITS information
     try:
         UV = UVData()
+        num_antennas = len(metadata['antenna_names'])
+        UV.Nants_data = num_antennas
+        UV.Nants_telescope = num_antennas
+        UV.Nbls = metadata['num_baselines']
+        UV.Nblts = 0 # incremented with each observation file
+        UV.Nfreqs = 0 # set with first observation file
+        # Polarizations: since we have XX, XY, YX, and YY data, we have to set the number of
+        # polarizations in the array to 4 (d_npol * d_npol with d_npol = 2)
+        d_npol = metadata['polarizations']
+        d_npol_sq = d_npol * d_npol
+        UV.Npols = d_npol_sq
+        UV.Nspws = 1  # Number of non-contiguous spectral windows.  1 is the only value supported, but it's not set by default.
+        # UV.Ntimes incremented with observation files.
+        UV.Ntimes = 0
+        
+        UV.ant_1_array = []
+        UV.ant_2_array = []
+        UV.antenna_names = metadata['antenna_names']
+        UV.antenna_numbers = numpy.array(list(range(0,num_antennas)))
+    except Exception as e:
+        print("ERROR setting UVFITS object initial parameters: " + str(e))
+        exit(10)
+
+    uvw_provided = False
+    if 'uvw_file' in metadata.keys():
+        uvw_provided = True
+        try:
+            uvw_from_file = numpy.fromfile(metadata['uvw_file'], dtype = 'float64')
+        except Exception as e:
+            print("ERROR loading uvw file: " + str(e))
+            exit(10)
+        
+    try:
+        antenna_details = None
+        
         UV.telescope_location_lat_lon_alt_degrees = numpy.array(metadata['telescope_location'])
+        [telescope_x, telescope_y, telescope_z] = pymap3d.geodetic2ecef(metadata['telescope_location'][0],metadata['telescope_location'][1],metadata['telescope_location'][2])
+        # [telescope_x, telescope_y, telescope_z] = pyuv_utils.XYZ_from_LatLonAlt(metadata['telescope_location'][0],metadata['telescope_location'][1],metadata['telescope_location'][2])
+    except Exception as e:
+        print("ERROR Converting telescope location to ITRF coordinates: " + str(e))
+        exit(10)
+        
+    try:
+        if metadata['telescope_name'] != 'ATA':
+            UV.antenna_positions = numpy.array( metadata['antenna_coord_relative_telescope_itrf_m'], dtype = 'float')
+        else:
+            if not antenna_details:
+                antenna_details = read_antenna_coordinates()
+            
+            if antenna_details is None:
+                print("ERROR reading antenna file antenna_coordinates_ecef.txt")
+                exit(1)
+                
+            ant_pos = []
+            if not antenna_details:
+                print("ERROR: no antenna details loaded.")
+                exit(11)
+                
+            try:
+                for cur_name in metadata['antenna_names']:
+                    cur_ant = antenna_details[cur_name.upper()]
+                    ant_pos.append([cur_ant['x'] - telescope_x, cur_ant['y'] - telescope_y, cur_ant['z'] - telescope_z])
+            except Exception as e:
+                print("ERROR parsing antenna names: " + str(e))
+                print("Valid antennas are: " + str(antenna_details.keys()))
+                exit(12)
+                
+            UV.antenna_positions = numpy.array(ant_pos, dtype = 'float')
+            
+        if metadata['telescope_name'] != 'ATA' and 'antenna_coord_relative_telescope_itrf_m' not in metadata.keys():
+            print("ERROR: Telescope is not the ATA and 'antenna_coord_relative_telescope_itrf_m' was not provided.")
+            exit(2)
+
+        UV.channel_width = metadata['channel_width']
+        UV.flex_spw = False # This controls whether or not individual channel mappings needs to be defined.
+        
+        # See https://github.com/RadioAstronomySoftwareGroup/pyuvdata/blob/76b43ba09228e500c811c5f80319810baaea611b/pyuvdata/uvdata/uvdata.py#L154
+        # For a description of the polarization array.  This sequence -5...-8 specifies linear as defined here:
+        # linear -5:-8 (XX, YY, XY, YX)
+        UV.polarization_array = [-5, -6, -7, -8] 
+        UV.spw_array = [0]
+        
         UV.instrument = metadata['instrument']
         UV.telescope_name = metadata['telescope_name']
         UV.object_name = metadata['object_name']
         UV.history = ''
         UV.vis_units = 'UNCALIB'
         # UV._set_unphased()
-        UV.set_drift()
+        # UV.set_drift()
+        UV.set_phased()
         
         try:
             coords = SkyCoord.from_name(UV.object_name)
@@ -159,27 +243,14 @@ if __name__ == '__main__':
         UV.phase_center_epoch = 2000.0
         obs_start = dateparser.parse(metadata['observation_start'])
         jullian_start = julian.to_jd(obs_start, fmt='jd')
-        UV.Nants_data = len(metadata['antenna_names'])
-        UV.Nants_telescope = metadata['polarizations']
-        UV.antenna_names = []
-        for cur_name in metadata['antenna_names']:
-            UV.antenna_names.append(cur_name.upper())
-        UV.antenna_numbers = numpy.array(numpy.arange(len(metadata['antenna_names'])))
-        # UV.antenna_positions = numpy.array([numpy.zeros(len(metadata['baseline_m'])), metadata['baseline_m']], dtype = 'float')
         
-        if metadata['telescope_name'] != 'ATA' and 'antenna_coord_relative_telescope_itrf_m' not in metadata.keys():
-            print("ERROR: Telescope is not the ATA and 'antenna_coord_relative_telescope_itrf_m' was not provided.")
-            exit(2)
-
-        UV.Nbls = metadata['num_baselines']
-        UV.channel_width = metadata['channel_width']
         first_channel_center_freq = metadata['first_channel_center_freq']
         integration_time_seconds = metadata['integration_time_seconds']
-        antenna_details = None
         if 'baseline_uvw_vectors' in metadata.keys():
             baseline_vectors = numpy.asarray(metadata['baseline_uvw_vectors'])
         else:
-            antenna_details = read_antenna_coordinates()
+            if not antenna_details:
+                antenna_details = read_antenna_coordinates()
             
             if antenna_details is None:
                 print("ERROR reading antenna file antenna_coordinates_ecef.txt")
@@ -189,9 +260,9 @@ if __name__ == '__main__':
             current_index = 0
             try:
                 for i in range(0, len(UV.antenna_names)):
-                    coord1 = antenna_details[UV.antenna_names[i]]
+                    coord1 = antenna_details[UV.antenna_names[i].upper()]
                     for j in range(0, i+1):
-                        coord2 = antenna_details[UV.antenna_names[j]]
+                        coord2 = antenna_details[UV.antenna_names[j].upper()]
                         
                         # According to https://pyuvdata.readthedocs.io/en/latest/uvdata_parameters.html,
                         # uvw_array needs to be ant1-ant2 to be AIS/FITS compliant.  Myriad does ant2-ant1.
@@ -206,32 +277,6 @@ if __name__ == '__main__':
                 print("ERROR processing antenna names: " + str(e))
                 exit(1)
             
-        if metadata['telescope_name'] != 'ATA':
-            UV.antenna_positions = numpy.array( metadata['antenna_coord_relative_telescope_itrf_m'], dtype = 'float')
-        else:
-            ant_pos = []
-            if not antenna_details:
-                print("ERROR: no antenna details loaded.")
-                exit(11)
-                
-            try:
-                for cur_name in metadata['antenna_names']:
-                    cur_ant = antenna_details[cur_name.upper()]
-                    ant_pos.append([cur_ant['x'], cur_ant['y'], cur_ant['z']])
-            except Exception as e:
-                print("ERROR parsing antenna names: " + str(e))
-                print("Valid antennas are: " + str(antenna_details.keys()))
-                exit(12)
-                
-            UV.antenna_positions = numpy.array(ant_pos, dtype = 'float')
-                
-        UV.flex_spw = False # This controls whether or not individual channel mappings needs to be defined.
-        
-        UV.Nblts = 0
-        UV.Nfreqs = 0
-        UV.Ntimes = 0
-        UV.ant_1_array = []
-        UV.ant_2_array = []
         UV.baseline_array = []
         
     except Exception as e:
@@ -267,8 +312,6 @@ if __name__ == '__main__':
             
         d_num_inputs = obs_metadata['antennas']
         
-        d_npol = obs_metadata['polarizations']
-        d_npol_sq = d_npol * d_npol
         d_num_channels = obs_metadata['channels']
         d_num_baselines = obs_metadata['num_baselines']
         samples_per_block = obs_metadata['samples_per_block']
@@ -281,18 +324,6 @@ if __name__ == '__main__':
             for i in range(0, d_num_channels):
                 UV.freq_array[0][i] = first_channel_center_freq + i*UV.channel_width
                 
-            # In this case, since we have XX, XY, YX, and YY data, we have to set the number of
-            # polarizations in the array to 4 (d_npol * d_npol with d_npol = 2)
-            UV.Npols = d_npol_sq
-            UV.Nants_data = 1
-            
-            # See https://github.com/RadioAstronomySoftwareGroup/pyuvdata/blob/76b43ba09228e500c811c5f80319810baaea611b/pyuvdata/uvdata/uvdata.py#L154
-            # For a description of the polarization array.  This sequence -5...-8 specifies linear as defined here:
-            # linear -5:-8 (XX, YY, XY, YX)
-            UV.polarization_array = [-5, -6, -7, -8] 
-            UV.Nspws = 1  # Number of non-contiguous spectral windows.  1 is the only value supported, but it's not set by default.
-            UV.spw_array = [0]
-            
         file_size = Path(data_file).stat().st_size
         
         num_time_blocks = file_size // bytes_per_block
@@ -301,14 +332,20 @@ if __name__ == '__main__':
         Nblts = num_time_blocks * d_num_baselines 
         
         UV.Nblts += Nblts
+        # Ant arrays are the indices of the first antennas in the baselines
+        for t in range(0, num_time_blocks):
+            for a1 in range(0, num_antennas):
+                for a2 in range(0, num_antennas):
+                    if a2 <= a1:
+                        UV.ant_1_array.append(a1)
+                        UV.ant_2_array.append(a2)
+                
         if UV.integration_time is not None:
             UV.integration_time = UV.integration_time.concatenate((UV.integration_time, numpy.full((Nblts), integration_time_seconds, dtype=float)))
         else:
+            # Create an array of size Nblts filled with the value integration_time_seconds
             UV.integration_time = numpy.full((Nblts), integration_time_seconds, dtype=float)
             
-        UV.ant_1_array = numpy.concatenate((UV.ant_1_array, numpy.zeros((Nblts)).astype(dtype=int))).astype(dtype=int)
-        UV.ant_2_array = numpy.concatenate((UV.ant_2_array, numpy.ones((Nblts)).astype(dtype=int))).astype(dtype=int)
-        
         cur_block = 0
         
         for i in range(0, num_time_blocks):
@@ -371,10 +408,11 @@ if __name__ == '__main__':
                 
             UV.Ntimes = len(numpy.unique(UV.time_array))
             
-            if UV.uvw_array is not None:
-                UV.uvw_array = numpy.concatenate((UV.uvw_array, numpy.asarray(baseline_vectors)))
-            else:
-                UV.uvw_array = numpy.asarray(baseline_vectors)
+            if not uvw_provided:
+                if UV.uvw_array is not None:
+                    UV.uvw_array = numpy.concatenate((UV.uvw_array, numpy.asarray(baseline_vectors)))
+                else:
+                    UV.uvw_array = numpy.asarray(baseline_vectors)
                 
             cur_block += 1
             
@@ -385,9 +423,32 @@ if __name__ == '__main__':
             
         f.close()
         
-    UV.Ntimes = len(UV.time_array)
-    UV.set_lsts_from_time_array()
-    UV.write_uvfits(args.outputfile, spoof_nonessential=True,  write_lst=False, run_check=False,  force_phase=True,  check_extra=False)
+    UV.Ntimes = len(numpy.unique(UV.time_array))
     
-    print("Done.")
+    # Fill in the lst_array values from the time array
+    UV.set_lsts_from_time_array()
+    
+    # Finish making sure necessary arrays are numpy arrays
+    UV.ant_1_array = numpy.array(UV.ant_1_array)
+    UV.ant_2_array = numpy.array(UV.ant_2_array)
+    
+    if 'uvw_file' in metadata.keys():
+        try:
+            uvw_from_file = uvw_from_file.reshape(Nblts, 3)
+            UV.uvw_array = uvw_from_file
+        except Exception as e:
+            print("ERROR reshaping uvw file: " + str(e))
+            exit(10)
+            
+    successful_save = True
+    
+    print("Writing UVFITS file...")
+    try:
+        UV.write_uvfits(args.outputfile, spoof_nonessential=True,  write_lst=False, run_check=args.check_uvfits,  force_phase=True,  check_extra=False)
+    except Exception as e:
+        print("ERROR in write_uvfits call: " + str(e))
+        successful_save = False
+        
+    if successful_save:
+        print("Done.")
     
