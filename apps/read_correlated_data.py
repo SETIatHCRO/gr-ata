@@ -225,6 +225,7 @@ if __name__ == '__main__':
         exit(10)
         
     try:
+        UV.antenna_names = metadata['antenna_names']
         if metadata['telescope_name'] != 'ATA':
             UV.antenna_positions = numpy.array( metadata['antenna_coord_relative_telescope_itrf_m'], dtype = 'float')
         else:
