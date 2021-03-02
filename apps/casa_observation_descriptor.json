@@ -1,5 +1,5 @@
 {
-	"observation_start": "2021-01-04 22:07:14 EST",
+	"observation_start": "2021-01-04 22:07:14 UTC-5",
 	"instrument": "SNAPs",
 	"telescope_name": "ATA",
 	"telescope_location": [40.8174, -121.472, 1043],

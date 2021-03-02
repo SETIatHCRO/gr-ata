@@ -10,11 +10,14 @@ import argparse
 import glob
 from os import path
 from pyuvdata import UVData
-from pyuvdata import utils as pyuv_utils
+#from pyuvdata import utils as pyuv_utils
+from astropy.time import Time, TimeDelta
 from pathlib import Path
 from dateutil import parser as dateparser
 import pymap3d
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, ITRS
+from astropy import units as astro_units
+import astropy.constants as const
 
 def read_antenna_coordinates(filename=None):
     if filename == None:
@@ -43,6 +46,19 @@ def read_antenna_coordinates(filename=None):
         return None
     else:
         return antenna_details
+    
+def read_ecef_coordinates2(path=None):
+    if path == None:
+        path = 'antenna_coordinates_ecef.txt'
+        
+    with open(path) as f:
+        l = f.readlines()[1:]
+    
+    ants = [ll.split(',')[0] for ll in l]
+    ecef = numpy.empty((len(ants), 3))
+    for j in range(3):
+        ecef[:,j] = numpy.array([float(ll.split(',')[j+1]) for ll in l])
+    return {a.lower() : e * astro_units.m for a, e in zip(ants, ecef)}
     
 # This routine is translated from xGPU.
 # It takes the triangular order Hermitian matrix and outputs the full NSTATION*NSTATION*NFREQ*NPOL*NPOL matrix.
@@ -89,6 +105,35 @@ def reorderFreqPerBaseline(data,num_frequencies,  num_baselines, npol):
     # [baseline][frequency][npol^2]
     return reordered_matrix
     
+def stop_baseline(t0, cross, freq, source, baseline, T, ch_fs,
+                      ant_coordinates, ant_delays_ns):
+    ant1, ant2 = baseline.split('-')
+    delay_offset = (ant_delays_ns[ant1] - ant_delays_ns[ant2]) * 1e-9
+    baseline_itrs = ant_coordinates[ant1] - ant_coordinates[ant2]
+    north_radec = [source.ra.deg, source.dec.deg + 90]
+    if north_radec[1] > 90:
+        north_radec[1] = 180 - north_radec[1]
+        north_radec[0] = 180 + north_radec[0]
+        
+    north = SkyCoord(ra = north_radec[0]*astro_units.deg, dec = north_radec[1]*astro_units.deg)
+    
+    f_obs = freq * astro_units.Hz
+    ts = t0 + TimeDelta(T, format = 'sec') * numpy.arange(cross.shape[0])
+    source_itrs = source.transform_to(ITRS(obstime = Time(ts))).cartesian
+    north_itrs = north.transform_to(ITRS(obstime = Time(ts))).cartesian
+    east_itrs = north_itrs.cross(source_itrs)
+    ww = source_itrs.xyz.T.dot(baseline_itrs)
+    vv = north_itrs.xyz.T.dot(baseline_itrs)
+    uu = east_itrs.xyz.T.dot(baseline_itrs)
+    w_cycles = (ww/const.c*f_obs).to(1).value
+    w_seconds = (ww/const.c).to(astro_units.s).value
+    phase_corr = numpy.exp(-1j*2*numpy.pi*w_cycles)[:,numpy.newaxis,numpy.newaxis]
+    nfft = cross.shape[1]
+    ch_idx = numpy.arange(-nfft//2,nfft//2)[:,numpy.newaxis]
+    delay_corr = numpy.exp(1j*2*numpy.pi*(delay_offset - w_seconds[:,numpy.newaxis,numpy.newaxis])*ch_idx*ch_fs)
+    return (cross * phase_corr * delay_corr, 
+            numpy.array([uu.value,vv.value,ww.value]))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='X-Engine Data Extractor')
     parser.add_argument('--inputfile', '-i', type=str, help="Observation JSON descriptor file", required=True)
@@ -185,6 +230,7 @@ if __name__ == '__main__':
         else:
             if not antenna_details:
                 antenna_details = read_antenna_coordinates()
+                antenna_ecef_phasing_coordinates = read_ecef_coordinates2()
             
             if antenna_details is None:
                 print("ERROR reading antenna file antenna_coordinates_ecef.txt")
@@ -228,14 +274,17 @@ if __name__ == '__main__':
         # UV.set_drift()
         UV.set_phased()
         
+        coords = None
         try:
             coords = SkyCoord.from_name(UV.object_name)
             UV.phase_center_ra = coords.ra.rad
             UV.phase_center_dec = coords.dec.rad
         except Exception as e:
             if 'object_ra' in metadata.keys():
-                UV.phase_center_ra = metadata['object_ra']
-                UV.phase_center_dec = metadata['object_dec']
+                UV.phase_center_ra_degrees = metadata['object_ra']
+                UV.phase_center_dec_degrees = metadata['object_dec']
+                
+                coords = SkyCoord(ra=metadata['object_ra']*astro_units.degree, dec=metadata['object_dec']*astro_units.degree, frame='icrs')
             else:
                 print("ERROR: Unable to get coordinates for " + metadata['object_name'] + ": " + str(e))
                 exit(1)
@@ -364,9 +413,9 @@ if __name__ == '__main__':
         tmp_array = numpy.zeros((num_time_blocks* d_num_baselines, 1, d_num_channels,  d_npol_sq), dtype=numpy.complex64)
         
         if UV.flag_array is None:
-            UV.flag_array = numpy.ones((num_time_blocks* d_num_baselines, 1, d_num_channels,  d_npol_sq), dtype=bool)
+            UV.flag_array = numpy.zeros((num_time_blocks* d_num_baselines, 1, d_num_channels,  d_npol_sq), dtype=bool)
         else:
-            UV.flag_array = numpy.concatenate((UV.flag_array, numpy.ones((num_time_blocks* d_num_baselines, 1, d_num_channels,  d_npol_sq), dtype=bool))).astype(dtype=bool)
+            UV.flag_array = numpy.concatenate((UV.flag_array, numpy.zeros((num_time_blocks* d_num_baselines, 1, d_num_channels,  d_npol_sq), dtype=bool))).astype(dtype=bool)
             
         if UV.nsample_array is None:
             UV.nsample_array = numpy.full((num_time_blocks* d_num_baselines, 1, d_num_channels,  d_npol_sq), integrated_samples,  dtype=float)
@@ -423,6 +472,40 @@ if __name__ == '__main__':
             
         f.close()
         
+    if 'antenna_delays' in metadata:
+        # We need to phase the inputs
+        delays = metadata['antenna_delays']
+        n = d_num_baselines * d_npol * d_num_channels
+        chan_fs = metadata['channel_width']
+        f_first = metadata['first_channel_center_freq']
+        f = d_num_channels/2*chan_fs + f_first
+        t_sync = Time(obs_start)
+        
+        x = UV.data_array
+        x = x[:x.size//n*n].reshape((-1, d_num_channels, d_num_baselines, d_npol**2))
+        t0 = t_sync + TimeDelta(obs_metadata['first_seq_num'] / chan_fs, format = 'sec')
+        T = obs_metadata['ntime'] / chan_fs
+
+        x_stop = numpy.empty_like(x)
+        # axes for uvw are (time, baseline, uvw)
+        uvw = numpy.zeros((x.shape[0], x.shape[2], 3), dtype = 'float64')
+
+        ants = metadata['antenna_names']
+        baselines = [f'{a}-{b}' for j,a in enumerate(ants) for b in ants[:j+1]]
+
+        for j, baseline in enumerate(baselines):
+            if baseline.split('-')[0] == baseline.split('-')[1]:
+                # autocorrelation. no need to do anything
+                x_stop[:,:,j] = x[:,:,j]
+            else:
+                stop = stop_baseline(t0, x[:, :, j], f,
+                                     coords, baseline,
+                                     T, chan_fs, antenna_ecef_phasing_coordinates, delays)
+                x_stop[:,:,j] = stop[0]
+                uvw[:,j,:] = stop[1].T
+                
+        UV.data_array = x.flatten()
+            
     UV.Ntimes = len(numpy.unique(UV.time_array))
     
     # Fill in the lst_array values from the time array
