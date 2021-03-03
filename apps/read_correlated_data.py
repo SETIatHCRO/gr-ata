@@ -508,6 +508,7 @@ if __name__ == '__main__':
                 uvw[:,j,:] = stop[1].T
                 
         UV.data_array = x_stop.flatten()
+        UV.uvw_array = uvw.reshape(Nblts, 3)
             
     UV.Ntimes = len(numpy.unique(UV.time_array))
     
