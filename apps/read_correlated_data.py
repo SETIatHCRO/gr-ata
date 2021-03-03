@@ -88,7 +88,7 @@ def reorderInnerLoop(data,  reordered_matrix, num_frequencies,  num_baselines, c
 def reorderFreqPerBaseline(data,num_frequencies,  num_baselines, npol):
     # xGPU output is f0 [baselines 0..n], f1 [baselines 0..n]... fn[baselines 0..n]
     # The returned matrix is laid out as:
-    # [frequency][baseline][npol^2]
+    # [baseline][frequency][npol^2]
     # Need to switch this to baseline0[frequencies 0..n],...
     reordered_matrix = numpy.zeros(len(data)).astype(numpy.complex64)
     
@@ -483,13 +483,15 @@ if __name__ == '__main__':
         t_sync = Time(obs_start)
         
         x = UV.data_array
-        x = x[:x.size//n*n].reshape((-1, d_num_channels, d_num_baselines, d_npol**2))
+        # This is swapped from Daniel's original.  The reordered UVFITS matrix indices
+        # Run baselines, channels, pol rather than channel, baseline, pol
+        x = x[:x.size//n*n].reshape((-1, d_num_baselines, d_num_channels, d_npol**2))
         t0 = t_sync + TimeDelta(obs_metadata['first_seq_num'] / chan_fs, format = 'sec')
         T = obs_metadata['ntime'] / chan_fs
 
         x_stop = numpy.empty_like(x)
         # axes for uvw are (time, baseline, uvw)
-        uvw = numpy.zeros((x.shape[0], x.shape[2], 3), dtype = 'float64')
+        uvw = numpy.zeros((x.shape[0], x.shape[1], 3), dtype = 'float64')
 
         ants = metadata['antenna_names']
         baselines = [f'{a}-{b}' for j,a in enumerate(ants) for b in ants[:j+1]]
@@ -497,15 +499,15 @@ if __name__ == '__main__':
         for j, baseline in enumerate(baselines):
             if baseline.split('-')[0] == baseline.split('-')[1]:
                 # autocorrelation. no need to do anything
-                x_stop[:,:,j] = x[:,:,j]
+                x_stop[:,j, :] = x[:,j, :]
             else:
-                stop = stop_baseline(t0, x[:, :, j], f,
+                stop = stop_baseline(t0, x[:, j, :], f,
                                      coords, baseline,
                                      T, chan_fs, antenna_ecef_phasing_coordinates, delays)
-                x_stop[:,:,j] = stop[0]
+                x_stop[:,j, :] = stop[0]
                 uvw[:,j,:] = stop[1].T
                 
-        UV.data_array = x.flatten()
+        UV.data_array = x_stop.flatten()
             
     UV.Ntimes = len(numpy.unique(UV.time_array))
     
