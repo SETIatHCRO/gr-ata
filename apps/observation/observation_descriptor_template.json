@@ -1,0 +1,31 @@
+{
+	"observation_start": "2021-02-09 21:15:35 EST",
+	"instrument": "SNAPs",
+	"telescope_name": "ATA",
+	"telescope_location": [40.8174, -121.472, 1043],
+	"object_name": "3C461",
+	"comments": "",
+	"antenna_names": ["1f","2a","4g","1k","5c"],
+	"antenna_delays": {
+		"1a" : -149,
+		"1c" : 0,
+		"2a" : -347,
+		"4g" : -904,
+		"4j" : -984,
+		"1f" : -171,
+		"1h" : -178,
+		"1k" : -260,
+		"2b" : -233,
+		"2h" : -244,
+		"5c" : -1650
+	},
+	"polarizations": 2,
+	"num_baselines": 15,
+	"channel_width": 250000.0,
+	"first_channel_center_freq": 2968000000.0,
+	"integration_time_seconds": 0.04,
+	"input_dir": "/home/mpiscopo/xengine_output/2021_Feb_09",
+	"observation_base_name": "casa_2021_Feb_9_sync",
+	"output_dir": "/home/mpiscopo/xengine_output/2021_Feb_09"
+}
+
