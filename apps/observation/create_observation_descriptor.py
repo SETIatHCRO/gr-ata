@@ -58,6 +58,7 @@ if __name__ == '__main__':
     
     # File locations
     obs_desc['input_dir'] = args.xdir
+    obs_desc['output_dir'] = args.xdir
     obs_desc['observation_base_name'] = args.basename
     
     # Output
