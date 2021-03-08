@@ -19,7 +19,14 @@ parameters:
   options: [online, offline]
   option_labels: [Observing Mode, Offline Mode]
 #  default: 0.0
-  
+
+- id: lo
+  label: LO Tuning
+  dtype: string
+  options: [a, b, c, d]
+  option_labels: [A, B, C, D]
+  default: d
+
 #- id: ant_list
 #  label: List of antennas
 #  dtype: string
@@ -58,7 +65,7 @@ inputs:
 
 templates:
     imports: import ata
-    make: ata.control(${username}, ${mode}) #, ${ant_list}, ${src_list}, ${dur_list})
+    make: ata.control(${username}, ${mode}, ${lo}) #, ${ant_list}, ${src_list}, ${dur_list})
     
 documentation: |-
     This block sends commands to the Allen Telescope Array and takes 

@@ -38,8 +38,6 @@ from ATATools import ata_positions as ap
 FREQ_OFF = 179.0
 FREQ_OFF = 0.0 #Not needed anymore
 
-USRP_LO = 'd' #The tuning that is connected to the USRP
-
 obs_info = {}
 
 class control(gr.basic_block):
@@ -48,7 +46,7 @@ class control(gr.basic_block):
     observations with the ATA, and point and track a subset of
     the antennas on a given source if commanded to do so.
     """
-    def __init__(self, username, mode):
+    def __init__(self, username, mode, lo):
         gr.basic_block.__init__(self,
                                 name="ATA Control",
                                 in_sig=None,
@@ -57,6 +55,7 @@ class control(gr.basic_block):
         self.hat_creek = EarthLocation(lat='40d49.05m', lon='-121d28.40m', height=986.0*u.meter)
         self.pos = ap.ATAPositions()
         self.mode = mode
+        self.lo = lo
         self.obs_info = {}
         self.ant_list = []
         self.my_ants = []
@@ -123,10 +122,10 @@ class control(gr.basic_block):
             if cfreq and self.my_ants:
                 if self.is_user:
                     ac.try_on_lnas(self.my_ants)
-                    ac.set_freq(cfreq-FREQ_OFF, self.my_ants, lo=USRP_LO)
+                    ac.set_freq(cfreq-FREQ_OFF, self.my_ants, lo=self.lo)
                 else:
                     ac.try_on_lnas(self.my_ants)
-                    ac.set_freq_focus(cfreq-FREQ_OFF, self.my_ants, lo=USRP_LO)
+                    ac.set_freq_focus(cfreq-FREQ_OFF, self.my_ants, lo=self.lo)
 
             elif cfreq and not self.my_ants:
                 print("No antenna list specified. You must specify \n"
