@@ -756,7 +756,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			// Queue up our vectors.  Again always 16 discrete time entries.
 
 			// First, check if we missed any sequence numbers.  If we did,
-			// Let's fill in the mising with zeros to keep things aligned.
+			// Let's fill in the missing with zeros to keep things aligned.
 			// d_last_timestamp = -1 on first pass, so ignore that.
 			// if hdr.sample_number < d_last_timestamp our counter may have wrapped.  So ignore that.
 			if ( (d_last_timestamp >= 0) && (hdr.sample_number > d_last_timestamp) && ((hdr.sample_number - d_last_timestamp) > 16) ) {
@@ -768,8 +768,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 					skippedPackets += missed_sets;
 				}
 
-				if (missed_sets < 10) {
-					// If it's > 10, something may have gone wrong with the skipped packets calculation.
+				if (missed_sets <= 1000) {
 					for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
 						// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
 						// Gotta push back 16 time entries for each missing timestamp.

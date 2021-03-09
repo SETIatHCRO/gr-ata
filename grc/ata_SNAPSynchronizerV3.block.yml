@@ -1,5 +1,5 @@
-id: ata_SNAPSynchronizer
-label: ATA SNAP Synchronizer
+id: ata_SNAPSynchronizerV3
+label: SNAPSynchronizerV3
 category: '[ATA]'
 
 parameters:
@@ -11,12 +11,6 @@ parameters:
     label: Num Streams
     dtype: int
     default: '2'
-    hide: part
--   id: bypass
-    label: Bypass
-    dtype: enum
-    options: ['False', 'True']
-    option_labels: ['No', 'Yes']
     hide: part
 
 inputs:
@@ -33,7 +27,7 @@ outputs:
 
 templates:
   imports: import ata
-  make: ata.SNAPSynchronizer(${num_inputs}, ${num_channels},${bypass})
+  make: ata.SNAPSynchronizerV3(${num_inputs}, ${num_channels})
 
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.

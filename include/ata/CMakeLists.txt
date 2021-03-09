@@ -25,5 +25,6 @@ install(FILES
     api.h
     snap_source.h
     snap_headers.h
-    SNAPSynchronizer.h DESTINATION include/ata
+    SNAPSynchronizer.h
+    SNAPSynchronizerV3.h DESTINATION include/ata
 )

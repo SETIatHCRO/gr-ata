@@ -10,9 +10,12 @@
 %{
 #include "ata/snap_source.h"
 #include "ata/SNAPSynchronizer.h"
+#include "ata/SNAPSynchronizerV3.h"
 %}
 
 %include "ata/snap_source.h"
 GR_SWIG_BLOCK_MAGIC2(ata, snap_source);
 %include "ata/SNAPSynchronizer.h"
 GR_SWIG_BLOCK_MAGIC2(ata, SNAPSynchronizer);
+%include "ata/SNAPSynchronizerV3.h"
+GR_SWIG_BLOCK_MAGIC2(ata, SNAPSynchronizerV3);
