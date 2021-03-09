@@ -236,22 +236,21 @@ blocks:
     coordinate: [426, 12]
     rotation: 0
     state: true
-- name: ata_SNAPSynchronizer_0
-  id: ata_SNAPSynchronizer
+- name: ata_SNAPSynchronizerV3_0
+  id: ata_SNAPSynchronizerV3
   parameters:
     affinity: ''
     alias: ''
-    bypass: 'False'
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    num_channels: '256'
+    num_channels: num_channels
     num_inputs: '4'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [600, 416.0]
+    coordinate: [560, 440.0]
     rotation: 0
     state: true
 - name: ata_snap_source_0
@@ -432,14 +431,14 @@ blocks:
     state: true
 
 connections:
-- [ata_SNAPSynchronizer_0, '0', clenabled_clXEngine_0, '0']
-- [ata_SNAPSynchronizer_0, '1', clenabled_clXEngine_0, '1']
-- [ata_SNAPSynchronizer_0, '2', clenabled_clXEngine_0, '2']
-- [ata_SNAPSynchronizer_0, '3', clenabled_clXEngine_0, '3']
-- [ata_snap_source_0, '0', ata_SNAPSynchronizer_0, '0']
-- [ata_snap_source_0_0, '0', ata_SNAPSynchronizer_0, '1']
-- [ata_snap_source_0_0_0, '0', ata_SNAPSynchronizer_0, '2']
-- [ata_snap_source_0_0_0_0, '0', ata_SNAPSynchronizer_0, '3']
+- [ata_SNAPSynchronizerV3_0, '0', clenabled_clXEngine_0, '0']
+- [ata_SNAPSynchronizerV3_0, '1', clenabled_clXEngine_0, '1']
+- [ata_SNAPSynchronizerV3_0, '2', clenabled_clXEngine_0, '2']
+- [ata_SNAPSynchronizerV3_0, '3', clenabled_clXEngine_0, '3']
+- [ata_snap_source_0, '0', ata_SNAPSynchronizerV3_0, '0']
+- [ata_snap_source_0_0, '0', ata_SNAPSynchronizerV3_0, '1']
+- [ata_snap_source_0_0_0, '0', ata_SNAPSynchronizerV3_0, '2']
+- [ata_snap_source_0_0_0_0, '0', ata_SNAPSynchronizerV3_0, '3']
 
 metadata:
   file_format: 1

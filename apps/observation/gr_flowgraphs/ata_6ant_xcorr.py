@@ -57,25 +57,25 @@ class ata_6ant_xcorr(gr.top_block):
         self.ata_snap_source_0_0_0 = ata.snap_source(10002, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0 = ata.snap_source(10001, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_5_ant_2a.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0 = ata.snap_source(10000, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_2_ant_1f.pcap', False, True, '224.1.1.10')
-        self.ata_SNAPSynchronizer_0 = ata.SNAPSynchronizer(6, 256,False)
+        self.ata_SNAPSynchronizerV3_0 = ata.SNAPSynchronizerV3(6, num_channels)
 
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.ata_SNAPSynchronizer_0, 1), (self.clenabled_clXEngine_0, 1))
-        self.connect((self.ata_SNAPSynchronizer_0, 3), (self.clenabled_clXEngine_0, 3))
-        self.connect((self.ata_SNAPSynchronizer_0, 4), (self.clenabled_clXEngine_0, 4))
-        self.connect((self.ata_SNAPSynchronizer_0, 0), (self.clenabled_clXEngine_0, 0))
-        self.connect((self.ata_SNAPSynchronizer_0, 5), (self.clenabled_clXEngine_0, 5))
-        self.connect((self.ata_SNAPSynchronizer_0, 2), (self.clenabled_clXEngine_0, 2))
-        self.connect((self.ata_snap_source_0, 0), (self.ata_SNAPSynchronizer_0, 0))
-        self.connect((self.ata_snap_source_0_0, 0), (self.ata_SNAPSynchronizer_0, 1))
-        self.connect((self.ata_snap_source_0_0_0, 0), (self.ata_SNAPSynchronizer_0, 2))
-        self.connect((self.ata_snap_source_0_0_0_0, 0), (self.ata_SNAPSynchronizer_0, 3))
-        self.connect((self.ata_snap_source_0_0_0_0_0, 0), (self.ata_SNAPSynchronizer_0, 5))
-        self.connect((self.ata_snap_source_0_0_0_0_0_0, 0), (self.ata_SNAPSynchronizer_0, 4))
+        self.connect((self.ata_SNAPSynchronizerV3_0, 1), (self.clenabled_clXEngine_0, 1))
+        self.connect((self.ata_SNAPSynchronizerV3_0, 5), (self.clenabled_clXEngine_0, 5))
+        self.connect((self.ata_SNAPSynchronizerV3_0, 4), (self.clenabled_clXEngine_0, 4))
+        self.connect((self.ata_SNAPSynchronizerV3_0, 3), (self.clenabled_clXEngine_0, 3))
+        self.connect((self.ata_SNAPSynchronizerV3_0, 2), (self.clenabled_clXEngine_0, 2))
+        self.connect((self.ata_SNAPSynchronizerV3_0, 0), (self.clenabled_clXEngine_0, 0))
+        self.connect((self.ata_snap_source_0, 0), (self.ata_SNAPSynchronizerV3_0, 0))
+        self.connect((self.ata_snap_source_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 1))
+        self.connect((self.ata_snap_source_0_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 2))
+        self.connect((self.ata_snap_source_0_0_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 3))
+        self.connect((self.ata_snap_source_0_0_0_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 5))
+        self.connect((self.ata_snap_source_0_0_0_0_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 4))
 
 
     def get_starting_channel(self):
