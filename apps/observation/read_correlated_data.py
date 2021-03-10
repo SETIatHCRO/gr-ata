@@ -297,10 +297,18 @@ if __name__ == '__main__':
             
         UV.phase_center_epoch = 2000.0
         obs_start = dateparser.parse(metadata['observation_start'])
-        jullian_start = julian.to_jd(obs_start, fmt='jd')
+        t_sync = Time(obs_start)
         
         first_channel_center_freq = metadata['first_channel_center_freq']
         integration_time_seconds = metadata['integration_time_seconds']
+        if 'antenna_delays' in metadata.keys():
+            delays = metadata['antenna_delays']
+        else:
+            delays = None
+            
+        chan_fs = metadata['channel_width']
+        f_first = first_channel_center_freq
+        
         if 'baseline_uvw_vectors' in metadata.keys():
             baseline_vectors = numpy.asarray(metadata['baseline_uvw_vectors'])
         else:
@@ -374,6 +382,12 @@ if __name__ == '__main__':
         samples_per_block = obs_metadata['samples_per_block']
         bytes_per_block = obs_metadata['bytes_per_block']
         integrated_samples = obs_metadata['ntime']
+        n =  d_num_baselines * d_npol * d_num_channels
+        frq = d_num_channels/2*chan_fs + f_first
+
+        # Adjust actual_start = obs_start + timestamp_offset
+        actual_start = obs_start + timedelta(seconds=obs_metadata['first_seq_num'] / chan_fs)
+        jullian_start = julian.to_jd(actual_start, fmt='jd')
         
         if UV.Nfreqs == 0:
             UV.Nfreqs = d_num_channels
@@ -435,12 +449,7 @@ if __name__ == '__main__':
         if 'antenna_delays' in metadata.keys():
             print("Phasing data based on antenna delays...")
             # We need to phase the inputs
-            delays = metadata['antenna_delays']
             n = d_num_baselines * d_npol * d_num_channels
-            chan_fs = metadata['channel_width']
-            f_first = metadata['first_channel_center_freq']
-            frq = d_num_channels/2*chan_fs + f_first
-            t_sync = Time(obs_start)
             
             x = numpy.fromfile(data_file, dtype = 'complex64')
             # This is swapped from Daniel's original.  The reordered UVFITS matrix indices
@@ -511,7 +520,7 @@ if __name__ == '__main__':
                     tmp_array[cur_block*d_num_baselines + cur_baseline][0][cur_freq][3] = reordered_matrix[cur_baseline*d_num_channels*d_npol_sq+cur_freq*d_npol_sq+2]
                       
             if UV.time_array is not None:
-                cur_julian = julian.to_jd(obs_start + timedelta(seconds=cur_block*integration_time_seconds), fmt='jd')
+                cur_julian = julian.to_jd(actual_start + timedelta(seconds=cur_block*integration_time_seconds), fmt='jd')
                 UV.time_array = numpy.concatenate((UV.time_array, numpy.full((d_num_baselines), cur_julian, dtype=float)))
             else:
                 UV.time_array = numpy.full((d_num_baselines), jullian_start, dtype=float)
