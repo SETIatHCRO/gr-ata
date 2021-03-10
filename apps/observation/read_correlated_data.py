@@ -9,6 +9,7 @@ import julian
 import argparse
 import glob
 from os import path
+import os
 from pyuvdata import UVData
 import pyuvdata
 #from pyuvdata import utils as pyuv_utils
@@ -140,6 +141,7 @@ if __name__ == '__main__':
     parser.add_argument('--inputfile', '-i', type=str, help="Observation JSON descriptor file", required=True)
     parser.add_argument('--outputfile', '-o', type=str, help="UVFITS output file", required=True)
     parser.add_argument('--check-uvfits', '-c', help="This will enable validating UVFITS data on writing.", action='store_true', required=False)
+    parser.add_argument('--save-phased', '-s', help="If antenna delays are provided, a temporary phased file is created that is cleaned up when it's done being used.  This flag will indicate not to delete it.", action='store_true', required=False)
     
     args = parser.parse_args()
     
@@ -173,7 +175,9 @@ if __name__ == '__main__':
         exit(2)
         
     # Get the files in the directory, and sort by date so they're in cronological order
-    obs_file_list = glob.glob(metadata['input_dir'] + "/" + metadata['observation_base_name'] + "*.json")
+    # obs_file_list = glob.glob(metadata['input_dir'] + "/" + metadata['observation_base_name'] + "*.json")
+    # NOTE: This change breaks multiple files in a set and requires separate runs.
+    obs_file_list = glob.glob(metadata['input_dir'] + "/" + metadata['observation_base_name'] + ".json")
     obs_file_list.sort(key=path.getmtime)
     
     if len(obs_file_list) == 0:
@@ -335,6 +339,8 @@ if __name__ == '__main__':
         exit(10)
     
     # Loop through observation files
+    print("Processing " + str(len(obs_file_list)) + " descriptor files: " + str(obs_file_list))
+    
     for obs_descriptor_file in obs_file_list:
         try:
             with  open(obs_descriptor_file) as f:
@@ -392,7 +398,7 @@ if __name__ == '__main__':
                         UV.ant_2_array.append(a2)
                 
         if UV.integration_time is not None:
-            UV.integration_time = UV.integration_time.concatenate((UV.integration_time, numpy.full((Nblts), integration_time_seconds, dtype=float)))
+            UV.integration_time = numpy.concatenate((UV.integration_time, numpy.full((Nblts), integration_time_seconds, dtype=float)))
         else:
             # Create an array of size Nblts filled with the value integration_time_seconds
             UV.integration_time = numpy.full((Nblts), integration_time_seconds, dtype=float)
@@ -402,7 +408,7 @@ if __name__ == '__main__':
         for i in range(0, num_time_blocks):
             UV.baseline_array = numpy.concatenate((UV.baseline_array, list(range(0, d_num_baselines)))).astype(dtype=int)
             
-        print("Reading " + data_file + ":")
+        # print("Reading " + data_file + ":")
         print("Num stations: " + str(d_num_inputs))
         print("Num channels: " + str(d_num_channels))
         print("Num baselines: " + str(d_num_baselines))
@@ -424,6 +430,59 @@ if __name__ == '__main__':
         else:
             UV.nsample_array = numpy.concatenate((UV.flag_array, numpy.full((num_time_blocks* d_num_baselines, 1, d_num_channels,  d_npol_sq), integrated_samples,  dtype=float)))
             
+        phased_file = None
+        
+        if 'antenna_delays' in metadata.keys():
+            print("Phasing data based on antenna delays...")
+            # We need to phase the inputs
+            delays = metadata['antenna_delays']
+            n = d_num_baselines * d_npol * d_num_channels
+            chan_fs = metadata['channel_width']
+            f_first = metadata['first_channel_center_freq']
+            frq = d_num_channels/2*chan_fs + f_first
+            t_sync = Time(obs_start)
+            
+            x = numpy.fromfile(data_file, dtype = 'complex64')
+            # This is swapped from Daniel's original.  The reordered UVFITS matrix indices
+            # Run baselines, channels, pol rather than channel, baseline, pol
+            x = x[:x.size//n*n].reshape((-1, d_num_channels, d_num_baselines, d_npol**2))
+            t0 = t_sync + TimeDelta(obs_metadata['first_seq_num'] / chan_fs, format = 'sec')
+            T = obs_metadata['ntime'] / chan_fs
+
+            x_stop = numpy.empty_like(x)
+            # axes for uvw are (time, baseline, uvw)
+            uvw = numpy.zeros((x.shape[0], x.shape[2], 3), dtype = 'float64')
+
+            ants = metadata['antenna_names']
+            baselines = [f'{a}-{b}' for j,a in enumerate(ants) for b in ants[:j+1]]
+
+            for j, baseline in enumerate(baselines):
+                if baseline.split('-')[0] == baseline.split('-')[1]:
+                    # autocorrelation. no need to do anything
+                    x_stop[:,:,j] = x[:,:,j]
+                else:
+                    stop = stop_baseline(t0, x[:,:,j], frq,
+                                         coords, baseline,
+                                         T, chan_fs, antenna_ecef_phasing_coordinates, delays)
+                    x_stop[:,:,j] = stop[0]
+                    uvw[:,j,:] = stop[1].T
+
+            # Write to phased file, then reset the f pointer
+            phased_file = data_file + "_phased"
+            x_stop.tofile(phased_file)
+
+            # TODO this only works with 1 input file.  
+            UV.uvw_array = uvw.reshape(Nblts, 3)
+
+            # reset the pointer to use our phased data:
+            f.close()
+            try:
+                f = open(phased_file, 'rb')
+            except Exception as e:
+                print("Error opening " + phased_file + ": " + str(e))
+                continue
+                
+        print("Processing data...")
         # Loop through the individual integrated blocks
         while True:
             try:
@@ -459,7 +518,7 @@ if __name__ == '__main__':
                 
             UV.Ntimes = len(numpy.unique(UV.time_array))
             
-            if not uvw_provided:
+            if not uvw_provided and 'antenna_delays' not in metadata.keys():
                 if UV.uvw_array is not None:
                     UV.uvw_array = numpy.concatenate((UV.uvw_array, numpy.asarray(baseline_vectors)))
                 else:
@@ -474,43 +533,12 @@ if __name__ == '__main__':
             
         f.close()
         
-    if 'antenna_delays' in metadata:
-        # We need to phase the inputs
-        delays = metadata['antenna_delays']
-        n = d_num_baselines * d_npol * d_num_channels
-        chan_fs = metadata['channel_width']
-        f_first = metadata['first_channel_center_freq']
-        f = d_num_channels/2*chan_fs + f_first
-        t_sync = Time(obs_start)
+        if ('antenna_delays' in metadata.keys()) and (phased_file is not None) and (not args.save_phased): 
+            try:
+                os.remove(phased_file)
+            except Exception as e:
+                print("ERROR: could not delete " + phased_file + ".  " + str(e))
         
-        x = UV.data_array
-        # This is swapped from Daniel's original.  The reordered UVFITS matrix indices
-        # Run baselines, channels, pol rather than channel, baseline, pol
-        x = x[:x.size//n*n].reshape((-1, d_num_baselines, d_num_channels, d_npol**2))
-        t0 = t_sync + TimeDelta(obs_metadata['first_seq_num'] / chan_fs, format = 'sec')
-        T = obs_metadata['ntime'] / chan_fs
-
-        x_stop = numpy.empty_like(x)
-        # axes for uvw are (time, baseline, uvw)
-        uvw = numpy.zeros((x.shape[0], x.shape[1], 3), dtype = 'float64')
-
-        ants = metadata['antenna_names']
-        baselines = [f'{a}-{b}' for j,a in enumerate(ants) for b in ants[:j+1]]
-
-        for j, baseline in enumerate(baselines):
-            if baseline.split('-')[0] == baseline.split('-')[1]:
-                # autocorrelation. no need to do anything
-                x_stop[:,j, :] = x[:,j, :]
-            else:
-                stop = stop_baseline(t0, x[:, j, :], f,
-                                     coords, baseline,
-                                     T, chan_fs, antenna_ecef_phasing_coordinates, delays)
-                x_stop[:,j, :] = stop[0]
-                uvw[:,j,:] = stop[1].T
-                
-        UV.data_array = x_stop.flatten()
-        UV.uvw_array = uvw.reshape(Nblts, 3)
-            
     UV.Ntimes = len(numpy.unique(UV.time_array))
     
     # Fill in the lst_array values from the time array
