@@ -10,6 +10,7 @@ import argparse
 import glob
 from os import path
 from pyuvdata import UVData
+import pyuvdata
 #from pyuvdata import utils as pyuv_utils
 from astropy.time import Time, TimeDelta
 from pathlib import Path
@@ -528,10 +529,14 @@ if __name__ == '__main__':
             exit(10)
             
     successful_save = True
-    
+
+    # correct for weird rotECEF convention
+    UV.antenna_positions = pyuvdata.utils.ECEF_from_rotECEF(UV.antenna_positions,
+                                                        UV.telescope_location_lat_lon_alt[1])
+                                                        
     print("Writing UVFITS file...")
     try:
-        UV.write_uvfits(args.outputfile, spoof_nonessential=True,  write_lst=False, run_check=args.check_uvfits,  force_phase=True,  check_extra=False)
+        UV.write_uvfits(args.outputfile,  force_phase=True, spoof_nonessential=True,  run_check=args.check_uvfits)
     except Exception as e:
         print("ERROR in write_uvfits call: " + str(e))
         successful_save = False
