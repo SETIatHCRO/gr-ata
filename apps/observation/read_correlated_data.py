@@ -474,7 +474,6 @@ if __name__ == '__main__':
                                          coords, baseline,
                                          T, chan_fs, antenna_ecef_phasing_coordinates, delays)
                     x_stop[:,:,j] = stop[0]
-                    uvw[:,j,:] = stop[1].T
 
             # Write to phased file, then reset the f pointer
             phased_file = data_file + "_phased"
