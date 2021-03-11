@@ -486,9 +486,11 @@ if __name__ == '__main__':
             phased_file = data_file + "_phased"
             x_stop.tofile(phased_file)
 
-            # TODO this only works with 1 input file.  
-            UV.uvw_array = uvw.reshape(Nblts, 3)
-
+            if UV.uvw_array is None:
+                UV.uvw_array = uvw.reshape(Nblts, 3)
+            else:
+                UV.uvw_array = numpy.concatenate((UV.uvw_array, uvw.reshape(Nblts, 3)))
+                
             # reset the pointer to use our phased data:
             f.close()
             try:
