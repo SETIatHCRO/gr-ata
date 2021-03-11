@@ -108,7 +108,7 @@ def reorderFreqPerBaseline(data,num_frequencies,  num_baselines, npol):
     return reordered_matrix
     
 def stop_baseline(t0, cross, freq, source, baseline, T, ch_fs,
-                      ant_coordinates, ant_delays_ns):
+                      ant_coordinates, ant_delays_ns,  correct_for_delay=True):
     ant1, ant2 = baseline.split('-')
     delay_offset = (ant_delays_ns[ant1] - ant_delays_ns[ant2]) * 1e-9
     baseline_itrs = ant_coordinates[ant1] - ant_coordinates[ant2]
@@ -132,10 +132,13 @@ def stop_baseline(t0, cross, freq, source, baseline, T, ch_fs,
     phase_corr = numpy.exp(-1j*2*numpy.pi*w_cycles)[:,numpy.newaxis,numpy.newaxis]
     nfft = cross.shape[1]
     ch_idx = numpy.arange(-nfft//2,nfft//2)[:,numpy.newaxis]
-    delay_corr = numpy.exp(1j*2*numpy.pi*(delay_offset - w_seconds[:,numpy.newaxis,numpy.newaxis])*ch_idx*ch_fs)
-    return (cross * phase_corr * delay_corr, 
-            numpy.array([uu.value,vv.value,ww.value]))
-
+    
+    if correct_for_delay:
+        delay_corr = numpy.exp(1j*2*numpy.pi*(delay_offset - w_seconds[:,numpy.newaxis,numpy.newaxis])*ch_idx*ch_fs)
+        return (cross * phase_corr * delay_corr, numpy.array([uu.value,vv.value,ww.value]))
+    else:
+        return (cross * phase_corr, numpy.array([uu.value,vv.value,ww.value]))
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='X-Engine Data Extractor')
     parser.add_argument('--inputfile', '-i', type=str, help="Observation JSON descriptor file", required=True)
@@ -447,6 +450,10 @@ if __name__ == '__main__':
         phased_file = None
         
         if 'antenna_delays' in metadata.keys():
+            if ['correct_for_delay'] in metadata.keys():
+                correct_for_delay = metadata['correct_for_delay']
+            else:
+                correct_for_delay = True
             print("Phasing data based on antenna delays...")
             # We need to phase the inputs
             n = d_num_baselines * d_npol * d_num_channels
@@ -472,7 +479,7 @@ if __name__ == '__main__':
                 else:
                     stop = stop_baseline(t0, x[:,:,j], frq,
                                          coords, baseline,
-                                         T, chan_fs, antenna_ecef_phasing_coordinates, delays)
+                                         T, chan_fs, antenna_ecef_phasing_coordinates, delays, correct_for_delay)
                     x_stop[:,:,j] = stop[0]
 
             # Write to phased file, then reset the f pointer
