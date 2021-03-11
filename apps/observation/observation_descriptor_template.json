@@ -19,6 +19,7 @@
 		"2h" : -244,
 		"5c" : -1650
 	},
+	"correct_for_delay": true,
 	"polarizations": 2,
 	"num_baselines": 15,
 	"channel_width": 250000.0,
