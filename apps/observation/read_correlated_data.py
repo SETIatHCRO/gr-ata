@@ -450,7 +450,7 @@ if __name__ == '__main__':
         phased_file = None
         
         if 'antenna_delays' in metadata.keys():
-            if ['correct_for_delay'] in metadata.keys():
+            if 'correct_for_delay' in metadata.keys():
                 correct_for_delay = metadata['correct_for_delay']
             else:
                 correct_for_delay = True
