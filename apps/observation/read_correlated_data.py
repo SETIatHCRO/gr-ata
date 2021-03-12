@@ -16,6 +16,7 @@ import pyuvdata
 from astropy.time import Time, TimeDelta
 from pathlib import Path
 from dateutil import parser as dateparser
+from datetime import datetime
 import pymap3d
 from astropy.coordinates import SkyCoord, ITRS
 from astropy import units as astro_units
@@ -232,6 +233,8 @@ if __name__ == '__main__':
         print("ERROR Converting telescope location to ITRF coordinates: " + str(e))
         exit(10)
         
+    antenna_ecef_phasing_coordinates = None
+    
     try:
         UV.antenna_names = metadata['antenna_names']
         if metadata['telescope_name'] != 'ATA':
@@ -299,7 +302,10 @@ if __name__ == '__main__':
                 exit(1)
             
         UV.phase_center_epoch = 2000.0
-        obs_start = dateparser.parse(metadata['observation_start'])
+        if 'observation_start_timestamp' in metadata.keys():
+            obs_start = datetime.fromtimestamp(metadata['observation_start_timestamp'])
+        else:
+            obs_start = dateparser.parse(metadata['observation_start'])
         t_sync = Time(obs_start)
         
         first_channel_center_freq = metadata['first_channel_center_freq']
@@ -449,12 +455,16 @@ if __name__ == '__main__':
             
         phased_file = None
         
-        if 'antenna_delays' in metadata.keys():
-            if 'correct_for_delay' in metadata.keys():
-                correct_for_delay = metadata['correct_for_delay']
+        if 'correct_for_delay' in metadata.keys():
+            correct_for_delay = metadata['correct_for_delay']
+        else:
+            correct_for_delay = True
+                
+        if 'antenna_delays' in metadata.keys() or (antenna_ecef_phasing_coordinates is not None and correct_for_delay == False):
+            if correct_for_delay:
+                print("Processing antenna delays and phasing...")
             else:
-                correct_for_delay = True
-            print("Phasing data based on antenna delays...")
+                print("Processing data for phasing...")
             # We need to phase the inputs
             n = d_num_baselines * d_npol * d_num_channels
             
@@ -477,9 +487,7 @@ if __name__ == '__main__':
                     # autocorrelation. no need to do anything
                     x_stop[:,:,j] = x[:,:,j]
                 else:
-                    stop = stop_baseline(t0, x[:,:,j], frq,
-                                         coords, baseline,
-                                         T, chan_fs, antenna_ecef_phasing_coordinates, delays, correct_for_delay)
+                    stop = stop_baseline(t0, x[:,:,j], frq, coords, baseline, T, chan_fs, antenna_ecef_phasing_coordinates, delays, correct_for_delay)
                     x_stop[:,:,j] = stop[0]
 
             # Write to phased file, then reset the f pointer

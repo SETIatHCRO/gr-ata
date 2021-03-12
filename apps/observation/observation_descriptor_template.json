@@ -1,5 +1,6 @@
 {
 	"observation_start": "2021-02-09 21:15:35 EST",
+	"observation_start_timestamp_comment": "A unix timestamp can also be used instead of a time string.  Just add observation_start_timestamp and it will be preferred",
 	"instrument": "SNAPs",
 	"telescope_name": "ATA",
 	"telescope_location": [40.8174, -121.472, 1043],

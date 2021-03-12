@@ -10,4 +10,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     t = datetime.fromtimestamp(args.synctime)
-    print(str(t))
+    print(t.strftime("%Y-%m-%d %H:%M:%S.%f"))

@@ -123,6 +123,8 @@ This script is the primary script to take the xengine output and generate the UV
 }
 ```
 
+Two optional parameters are also available.  If "observation_start_timestamp" is provided, it will be the preferred mechanism to get the observation start time.  "correct_for_delay" (bool true/false) can also be added.  If added and set to false, it will disable adding the antenna delays to the phasing routine.  This should be set if delays are compensated for in another process such as at the SNAPs or in a GNURadio flowgraph.
+
 This script really only has 2 required parameters: the input JSON descriptor, and the output UVFITS file.  
 ```
 usage: read_correlated_data.py [-h] --inputfile INPUTFILE --outputfile OUTPUTFILE [--check-uvfits]

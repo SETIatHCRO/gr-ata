@@ -40,7 +40,8 @@ if __name__ == '__main__':
 
     # Timestamp
     obs_time = datetime.fromtimestamp(args.synctime)
-    obs_desc['observation_start'] = str(obs_time) + "Z"
+    obs_desc['observation_start'] = obs_time.strftime("%Y-%m-%d %H:%M:%S.%f") + "Z"
+    obs_desc['observation_start_timestamp'] = args.synctime
     
     # Object
     obs_desc['object_name'] = args.object_name
