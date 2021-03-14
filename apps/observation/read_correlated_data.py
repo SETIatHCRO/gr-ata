@@ -21,6 +21,8 @@ import pymap3d
 from astropy.coordinates import SkyCoord, ITRS
 from astropy import units as astro_units
 import astropy.constants as const
+from tzlocal import get_localzone
+local_tz = get_localzone() 
 
 def read_antenna_coordinates(filename=None):
     if filename == None:
@@ -146,8 +148,11 @@ if __name__ == '__main__':
     parser.add_argument('--outputfile', '-o', type=str, help="UVFITS output file", required=True)
     parser.add_argument('--check-uvfits', '-c', help="This will enable validating UVFITS data on writing.", action='store_true', required=False)
     parser.add_argument('--save-phased', '-s', help="If antenna delays are provided, a temporary phased file is created that is cleaned up when it's done being used.  This flag will indicate not to delete it.", action='store_true', required=False)
+    parser.add_argument('--no-delay-correct', '-s', help="If set, delay calculations will be disabled when phasing.", action='store_true', required=False)
     
     args = parser.parse_args()
+    
+    param_delay_correct = not args.no_delay_correct
     
     # pp = pprint.PrettyPrinter(indent=4)
 
@@ -303,7 +308,7 @@ if __name__ == '__main__':
             
         UV.phase_center_epoch = 2000.0
         if 'observation_start_timestamp' in metadata.keys():
-            obs_start = datetime.fromtimestamp(metadata['observation_start_timestamp'])
+            obs_start = datetime.fromtimestamp(metadata['observation_start_timestamp'], local_tz)
         else:
             obs_start = dateparser.parse(metadata['observation_start'])
         t_sync = Time(obs_start)
@@ -458,7 +463,7 @@ if __name__ == '__main__':
         if 'correct_for_delay' in metadata.keys():
             correct_for_delay = metadata['correct_for_delay']
         else:
-            correct_for_delay = True
+            correct_for_delay = param_delay_correct
                 
         if 'antenna_delays' in metadata.keys() or (antenna_ecef_phasing_coordinates is not None and correct_for_delay == False):
             if correct_for_delay:
