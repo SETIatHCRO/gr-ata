@@ -768,7 +768,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 					skippedPackets += missed_sets;
 				}
 
-				if (missed_sets <= 1000) {
+				if (missed_sets <= 10000) {
 					for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
 						// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
 						// Gotta push back 16 time entries for each missing timestamp.
