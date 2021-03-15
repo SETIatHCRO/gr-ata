@@ -9,7 +9,7 @@ if __name__ == '__main__':
     parser.add_argument('--port', '-p', type=int, help="unicast UDP port to forward.",  required=True)
     parser.add_argument('--num-packets', '-n', type=int, help="Number of packets to send.  Default is all.",  default=0,  required=False)
     parser.add_argument('--destination', '-d', type=str, help="IP of target",  required=True)
-    parser.add_argument('--destination-port', '-d', type=int, help="UDP port to send to",  required=True)
+    parser.add_argument('--destination-port', '-e', type=int, help="UDP port to send to",  required=True)
     parser.add_argument('-v',"--verbose",help="Stdout message when a packet is transmitted",  action='store_true')
     
     args = parser.parse_args()
