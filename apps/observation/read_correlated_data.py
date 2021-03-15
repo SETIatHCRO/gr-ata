@@ -148,7 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('--outputfile', '-o', type=str, help="UVFITS output file", required=True)
     parser.add_argument('--check-uvfits', '-c', help="This will enable validating UVFITS data on writing.", action='store_true', required=False)
     parser.add_argument('--save-phased', '-s', help="If antenna delays are provided, a temporary phased file is created that is cleaned up when it's done being used.  This flag will indicate not to delete it.", action='store_true', required=False)
-    parser.add_argument('--no-delay-correct', '-s', help="If set, delay calculations will be disabled when phasing.", action='store_true', required=False)
+    parser.add_argument('--no-delay-correct', '-n', help="If set, delay calculations will be disabled when phasing.", action='store_true', required=False)
     
     args = parser.parse_args()
     
