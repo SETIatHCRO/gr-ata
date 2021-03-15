@@ -236,23 +236,6 @@ blocks:
     coordinate: [426, 12]
     rotation: 0
     state: true
-- name: ata_SNAPSynchronizerV3_0
-  id: ata_SNAPSynchronizerV3
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    num_channels: num_channels
-    num_inputs: '8'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [600, 424.0]
-    rotation: 0
-    state: true
 - name: ata_snap_source_0
   id: ata_snap_source
   parameters:
@@ -480,6 +463,7 @@ blocks:
     file_base: output_file
     first_channel: starting_channel
     integration: '10000'
+    internal_synchronizer: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
     num_channels: num_channels
@@ -495,7 +479,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [984, 416.0]
+    coordinate: [608, 368.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -539,22 +523,14 @@ blocks:
     state: true
 
 connections:
-- [ata_SNAPSynchronizerV3_0, '0', clenabled_clXEngine_0, '0']
-- [ata_SNAPSynchronizerV3_0, '1', clenabled_clXEngine_0, '1']
-- [ata_SNAPSynchronizerV3_0, '2', clenabled_clXEngine_0, '2']
-- [ata_SNAPSynchronizerV3_0, '3', clenabled_clXEngine_0, '3']
-- [ata_SNAPSynchronizerV3_0, '4', clenabled_clXEngine_0, '4']
-- [ata_SNAPSynchronizerV3_0, '5', clenabled_clXEngine_0, '5']
-- [ata_SNAPSynchronizerV3_0, '6', clenabled_clXEngine_0, '6']
-- [ata_SNAPSynchronizerV3_0, '7', clenabled_clXEngine_0, '7']
-- [ata_snap_source_0, '0', ata_SNAPSynchronizerV3_0, '0']
-- [ata_snap_source_0_0, '0', ata_SNAPSynchronizerV3_0, '1']
-- [ata_snap_source_0_0_0, '0', ata_SNAPSynchronizerV3_0, '2']
-- [ata_snap_source_0_0_0_0, '0', ata_SNAPSynchronizerV3_0, '3']
-- [ata_snap_source_0_0_0_0_0, '0', ata_SNAPSynchronizerV3_0, '5']
-- [ata_snap_source_0_0_0_0_0_0, '0', ata_SNAPSynchronizerV3_0, '4']
-- [ata_snap_source_0_0_0_0_0_1, '0', ata_SNAPSynchronizerV3_0, '6']
-- [ata_snap_source_0_0_0_0_0_1_0, '0', ata_SNAPSynchronizerV3_0, '7']
+- [ata_snap_source_0, '0', clenabled_clXEngine_0, '0']
+- [ata_snap_source_0_0, '0', clenabled_clXEngine_0, '1']
+- [ata_snap_source_0_0_0, '0', clenabled_clXEngine_0, '2']
+- [ata_snap_source_0_0_0_0, '0', clenabled_clXEngine_0, '3']
+- [ata_snap_source_0_0_0_0_0, '0', clenabled_clXEngine_0, '5']
+- [ata_snap_source_0_0_0_0_0_0, '0', clenabled_clXEngine_0, '4']
+- [ata_snap_source_0_0_0_0_0_1, '0', clenabled_clXEngine_0, '6']
+- [ata_snap_source_0_0_0_0_0_1_0, '0', clenabled_clXEngine_0, '7']
 
 metadata:
   file_format: 1

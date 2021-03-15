@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: GPL-3.0
 #
 # GNU Radio Python Flow Graph
-# Title: ATA 3 Antenna XEngine
+# Title: ATA 9 Antenna XEngine
 # Author: ghostop14
 # GNU Radio version: 3.8.2.0
 
@@ -21,10 +21,10 @@ import ata
 import clenabled
 
 
-class ata_3ant_xcorr(gr.top_block):
+class ata_9ant_xcorr(gr.top_block):
 
     def __init__(self):
-        gr.top_block.__init__(self, "ATA 3 Antenna XEngine")
+        gr.top_block.__init__(self, "ATA 9 Antenna XEngine")
 
         ##################################################
         # Variables
@@ -50,7 +50,13 @@ class ata_3ant_xcorr(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
-        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, 3, 1, starting_channel, num_channels, 10000, True,output_file,0,True)
+        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, 9, 1, starting_channel, num_channels, 10000, True,output_file,0,True)
+        self.ata_snap_source_0_0_0_0_0_1_0_0 = ata.snap_source(10008, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
+        self.ata_snap_source_0_0_0_0_0_1_0 = ata.snap_source(10007, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
+        self.ata_snap_source_0_0_0_0_0_1 = ata.snap_source(10006, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
+        self.ata_snap_source_0_0_0_0_0_0 = ata.snap_source(10004, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
+        self.ata_snap_source_0_0_0_0_0 = ata.snap_source(10005, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
+        self.ata_snap_source_0_0_0_0 = ata.snap_source(10003, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0_0 = ata.snap_source(10002, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0 = ata.snap_source(10001, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_5_ant_2a.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0 = ata.snap_source(10000, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_2_ant_1f.pcap', False, True, '224.1.1.10')
@@ -63,6 +69,12 @@ class ata_3ant_xcorr(gr.top_block):
         self.connect((self.ata_snap_source_0, 0), (self.clenabled_clXEngine_0, 0))
         self.connect((self.ata_snap_source_0_0, 0), (self.clenabled_clXEngine_0, 1))
         self.connect((self.ata_snap_source_0_0_0, 0), (self.clenabled_clXEngine_0, 2))
+        self.connect((self.ata_snap_source_0_0_0_0, 0), (self.clenabled_clXEngine_0, 3))
+        self.connect((self.ata_snap_source_0_0_0_0_0, 0), (self.clenabled_clXEngine_0, 5))
+        self.connect((self.ata_snap_source_0_0_0_0_0_0, 0), (self.clenabled_clXEngine_0, 4))
+        self.connect((self.ata_snap_source_0_0_0_0_0_1, 0), (self.clenabled_clXEngine_0, 6))
+        self.connect((self.ata_snap_source_0_0_0_0_0_1_0, 0), (self.clenabled_clXEngine_0, 7))
+        self.connect((self.ata_snap_source_0_0_0_0_0_1_0_0, 0), (self.clenabled_clXEngine_0, 8))
 
 
     def get_starting_channel(self):
@@ -189,7 +201,7 @@ class ata_3ant_xcorr(gr.top_block):
 
 
 
-def main(top_block_cls=ata_3ant_xcorr, options=None):
+def main(top_block_cls=ata_9ant_xcorr, options=None):
     if gr.enable_realtime_scheduling() != gr.RT_OK:
         print("Error: failed to enable real-time scheduling.")
     tb = top_block_cls()

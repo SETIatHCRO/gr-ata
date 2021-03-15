@@ -10,7 +10,7 @@ options:
     gen_linking: dynamic
     generate_options: no_gui
     hier_block_src_path: '.:'
-    id: ata_3ant_xcorr
+    id: ata_12ant_xcorr
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -21,7 +21,7 @@ options:
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: ATA 3 Antenna XEngine
+    title: ATA 12 Antenna XEngine
     window_size: ''
   states:
     bus_sink: false
@@ -317,6 +317,249 @@ blocks:
     coordinate: [59, 534]
     rotation: 0
     state: enabled
+- name: ata_snap_source_0_0_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10003'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 720.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_0_0_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10005'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [48, 1128.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_0_0_0_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10004'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [48, 936.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_0_0_0_0_1
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10006'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [344, 984.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_0_0_0_0_1_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10007'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [336, 1168.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_0_0_0_0_1_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10008'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [336, 1360.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_0_0_0_0_1_0_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10009'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [656, 1144.0]
+    rotation: 180
+    state: enabled
+- name: ata_snap_source_0_0_0_0_0_1_0_0_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10010'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [656, 960.0]
+    rotation: 180
+    state: enabled
+- name: ata_snap_source_0_0_0_0_0_1_0_0_0_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'True'
+    port: '10011'
+    repeat_file: 'False'
+    srcZeros: 'False'
+    starting_channel: starting_channel
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [688, 784.0]
+    rotation: 180
+    state: enabled
 - name: clenabled_clXEngine_0
   id: clenabled_clXEngine
   parameters:
@@ -332,7 +575,7 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     num_channels: num_channels
-    num_inputs: '3'
+    num_inputs: '12'
     openCLPlatform: '1'
     output_file: 'True'
     platformId: '0'
@@ -344,7 +587,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [624, 356.0]
+    coordinate: [648, 312.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -391,6 +634,15 @@ connections:
 - [ata_snap_source_0, '0', clenabled_clXEngine_0, '0']
 - [ata_snap_source_0_0, '0', clenabled_clXEngine_0, '1']
 - [ata_snap_source_0_0_0, '0', clenabled_clXEngine_0, '2']
+- [ata_snap_source_0_0_0_0, '0', clenabled_clXEngine_0, '3']
+- [ata_snap_source_0_0_0_0_0, '0', clenabled_clXEngine_0, '5']
+- [ata_snap_source_0_0_0_0_0_0, '0', clenabled_clXEngine_0, '4']
+- [ata_snap_source_0_0_0_0_0_1, '0', clenabled_clXEngine_0, '6']
+- [ata_snap_source_0_0_0_0_0_1_0, '0', clenabled_clXEngine_0, '7']
+- [ata_snap_source_0_0_0_0_0_1_0_0, '0', clenabled_clXEngine_0, '8']
+- [ata_snap_source_0_0_0_0_0_1_0_0_0, '0', clenabled_clXEngine_0, '9']
+- [ata_snap_source_0_0_0_0_0_1_0_0_0_0, '0', clenabled_clXEngine_0, '10']
+- [ata_snap_source_0_0_0_0_0_1_0_0_0_0_0, '0', clenabled_clXEngine_0, '11']
 
 metadata:
   file_format: 1

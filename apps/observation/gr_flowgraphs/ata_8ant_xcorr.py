@@ -50,7 +50,7 @@ class ata_8ant_xcorr(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
-        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, 8, 1, starting_channel, num_channels, 10000, True,output_file,0)
+        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, 8, 1, starting_channel, num_channels, 10000, True,output_file,0,True)
         self.ata_snap_source_0_0_0_0_0_1_0 = ata.snap_source(10007, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0_0_0_0_1 = ata.snap_source(10006, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0_0_0_0_0 = ata.snap_source(10004, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
@@ -59,29 +59,20 @@ class ata_8ant_xcorr(gr.top_block):
         self.ata_snap_source_0_0_0 = ata.snap_source(10002, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0 = ata.snap_source(10001, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_5_ant_2a.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0 = ata.snap_source(10000, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_2_ant_1f.pcap', False, True, '224.1.1.10')
-        self.ata_SNAPSynchronizerV3_0 = ata.SNAPSynchronizerV3(8, num_channels)
 
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.ata_SNAPSynchronizerV3_0, 4), (self.clenabled_clXEngine_0, 4))
-        self.connect((self.ata_SNAPSynchronizerV3_0, 6), (self.clenabled_clXEngine_0, 6))
-        self.connect((self.ata_SNAPSynchronizerV3_0, 5), (self.clenabled_clXEngine_0, 5))
-        self.connect((self.ata_SNAPSynchronizerV3_0, 3), (self.clenabled_clXEngine_0, 3))
-        self.connect((self.ata_SNAPSynchronizerV3_0, 1), (self.clenabled_clXEngine_0, 1))
-        self.connect((self.ata_SNAPSynchronizerV3_0, 2), (self.clenabled_clXEngine_0, 2))
-        self.connect((self.ata_SNAPSynchronizerV3_0, 7), (self.clenabled_clXEngine_0, 7))
-        self.connect((self.ata_SNAPSynchronizerV3_0, 0), (self.clenabled_clXEngine_0, 0))
-        self.connect((self.ata_snap_source_0, 0), (self.ata_SNAPSynchronizerV3_0, 0))
-        self.connect((self.ata_snap_source_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 1))
-        self.connect((self.ata_snap_source_0_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 2))
-        self.connect((self.ata_snap_source_0_0_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 3))
-        self.connect((self.ata_snap_source_0_0_0_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 5))
-        self.connect((self.ata_snap_source_0_0_0_0_0_0, 0), (self.ata_SNAPSynchronizerV3_0, 4))
-        self.connect((self.ata_snap_source_0_0_0_0_0_1, 0), (self.ata_SNAPSynchronizerV3_0, 6))
-        self.connect((self.ata_snap_source_0_0_0_0_0_1_0, 0), (self.ata_SNAPSynchronizerV3_0, 7))
+        self.connect((self.ata_snap_source_0, 0), (self.clenabled_clXEngine_0, 0))
+        self.connect((self.ata_snap_source_0_0, 0), (self.clenabled_clXEngine_0, 1))
+        self.connect((self.ata_snap_source_0_0_0, 0), (self.clenabled_clXEngine_0, 2))
+        self.connect((self.ata_snap_source_0_0_0_0, 0), (self.clenabled_clXEngine_0, 3))
+        self.connect((self.ata_snap_source_0_0_0_0_0, 0), (self.clenabled_clXEngine_0, 5))
+        self.connect((self.ata_snap_source_0_0_0_0_0_0, 0), (self.clenabled_clXEngine_0, 4))
+        self.connect((self.ata_snap_source_0_0_0_0_0_1, 0), (self.clenabled_clXEngine_0, 6))
+        self.connect((self.ata_snap_source_0_0_0_0_0_1_0, 0), (self.clenabled_clXEngine_0, 7))
 
 
     def get_starting_channel(self):
