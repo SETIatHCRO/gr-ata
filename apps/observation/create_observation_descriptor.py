@@ -80,6 +80,8 @@ if __name__ == '__main__':
         with  open(args.outputfile, "w") as f:
             json_str = pprint.pformat(obs_desc, indent=4)
             json_str = json_str.replace("'", '"')
+            json_str = json_str.replace("True", "true")
+            json_str = json_str.replace("False", "false")
             f.write(json_str)
     except Exception as e:
         print("ERROR writing file: " + str(e))
