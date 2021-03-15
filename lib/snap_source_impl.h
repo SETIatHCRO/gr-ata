@@ -122,17 +122,12 @@ public:
 	};
 
 	data_vector<T>& operator= ( const data_vector<T> & src) {
+		clear();
+
 		if (src.data && (src.data_size > 0)) {
 			data_size = src.data_size;
 			data = new T[data_size];
 			memcpy(data,src.data,data_size*sizeof(T));
-		}
-		else {
-			if (data) {
-				delete[] data;
-				data = NULL;
-				data_size = 0;
-			}
 		}
 
 		return *this;
@@ -181,6 +176,14 @@ public:
 
 
 	virtual size_t size() { return data_size; };
+
+	virtual void clear() {
+		if (data) {
+			delete[] data;
+			data = NULL;
+		}
+		data_size = 0;
+	}
 
 	virtual ~data_vector() {
 		if (data) {
@@ -246,6 +249,8 @@ protected:
 	boost::asio::ip::udp::socket *d_udpsocket = NULL;
 
 	boost::asio::streambuf d_read_buffer;
+	unsigned char *local_net_buffer = NULL;
+	long local_net_buffer_size;
 
 	// Separate receive thread
 	boost::thread *proc_thread=NULL;

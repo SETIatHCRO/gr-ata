@@ -75,7 +75,7 @@ snap_source_impl::snap_source_impl(int port,
 		int starting_channel, int ending_channel, int data_size,
 		int data_source, std::string file, bool repeat_file, bool packed_output,
 		std::string mcast_group)
-: gr::sync_block("snap_source",
+: gr::sync_block("snap_src_" + std::to_string(port) + "_",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(1, 4,
 				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1))) {
@@ -414,6 +414,12 @@ bool snap_source_impl::stop() {
 	if (localBuffer) {
 		delete[] localBuffer;
 		localBuffer = NULL;
+	}
+
+	if (local_net_buffer) {
+		delete[] local_net_buffer;
+		local_net_buffer = NULL;
+		local_net_buffer_size = 0;
 	}
 
 	if (x_vector_buffer) {
@@ -1175,18 +1181,33 @@ void snap_source_impl::queue_data() {
 		int num_packets = bytesAvailable / total_packet_size;
 
 		if (num_packets > 0) {
-			long bytes_to_read = num_packets * total_packet_size;
+			long bytes_to_read = num_packets * total_packet_size; // This makes sure we just do full packet blocks
 
-			boost::asio::streambuf::mutable_buffers_type buf = d_read_buffer.prepare(bytes_to_read);
-			size_t bytesRead = d_udpsocket->receive_from(buf, d_endpoint);
+			// This basically does what prepare does.
+			if (!local_net_buffer) {
+				local_net_buffer = new unsigned char[bytes_to_read];
+				local_net_buffer_size = bytes_to_read;
+			}
+			else {
+				if (bytes_to_read > local_net_buffer_size) {
+					delete[] local_net_buffer;
+					local_net_buffer = new unsigned char[bytes_to_read];
+					local_net_buffer_size = bytes_to_read;
+				}
+			}
+
+			// boost::asio::streambuf::mutable_buffers_type buf = d_read_buffer.prepare(bytes_to_read);
+			// size_t bytesRead = d_udpsocket->receive_from(buf, d_endpoint);
+			size_t bytesRead = d_udpsocket->receive_from(boost::asio::buffer(local_net_buffer,bytes_to_read), d_endpoint);
 
 			if (bytesRead > 0) {
-				d_read_buffer.commit(bytesRead);
+				//d_read_buffer.commit(bytesRead);
 
 				// Get the data and add it to our local queue.  We have to maintain a
 				// local queue in case we read more bytes than noutput_items is asking
 				// for.  In that case we'll only return noutput_items bytes
-				const char *readData = boost::asio::buffer_cast<const char *>(d_read_buffer.data());
+				//const char *readData = boost::asio::buffer_cast<const char *>(d_read_buffer.data());
+				const unsigned char *readData = local_net_buffer;
 				{
 					#ifdef THREAD_RECEIVE
 					gr::thread::scoped_lock guard(d_net_mutex);
@@ -1198,7 +1219,8 @@ void snap_source_impl::queue_data() {
 					}
 				}
 
-				d_read_buffer.consume(bytesRead);
+				// No need to worry about consume now.
+				// d_read_buffer.consume(bytesRead);
 			}
 		}
 	}
