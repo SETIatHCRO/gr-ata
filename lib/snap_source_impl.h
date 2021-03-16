@@ -74,7 +74,7 @@ struct spectrometer_packet {
 };
 
 // Make a vector data type that behaves like a native
-// data type for use with std::deque
+// data type for use with std lists (vectors/deques/etc)
 
 template <typename T>
 class data_vector {
@@ -336,6 +336,11 @@ protected:
 			std::stringstream msg_stream;
 			msg_stream << "[UDP source:" << d_port
 					<< "] missed  packets: " << skippedPackets;
+
+			if (d_localqueue->full()) {
+				msg_stream << " ERROR: Queue full.  Network packets are not being processed fast enough.";
+			}
+
 			GR_LOG_WARN(d_logger, msg_stream.str());
 		}
 	};
