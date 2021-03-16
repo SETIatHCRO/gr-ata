@@ -245,7 +245,7 @@ snap_source_impl::snap_source_impl(int port,
 	long maxCircBuffer;
 
 	// Compute reasonable buffer size
-	maxCircBuffer = 200000000; // 200 MB
+	maxCircBuffer = 500000; // This is number of packets now.  So memory is this * packet size.
 	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(maxCircBuffer);
 
 	if (!d_use_pcap) {
