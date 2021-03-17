@@ -70,6 +70,11 @@ parameters:
     options: ['False', 'True']
     option_labels: ['No', 'Yes']
 
+inputs:
+- label: sync
+  domain: message
+  optional: True
+
 outputs:
 -   label: x_pol
     domain: stream

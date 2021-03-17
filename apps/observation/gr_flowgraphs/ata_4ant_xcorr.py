@@ -61,6 +61,10 @@ class ata_4ant_xcorr(gr.top_block):
         ##################################################
         # Connections
         ##################################################
+        self.msg_connect((self.clenabled_clXEngine_0, 'sync'), (self.ata_snap_source_0, 'sync'))
+        self.msg_connect((self.clenabled_clXEngine_0, 'sync'), (self.ata_snap_source_0_0, 'sync'))
+        self.msg_connect((self.clenabled_clXEngine_0, 'sync'), (self.ata_snap_source_0_0_0, 'sync'))
+        self.msg_connect((self.clenabled_clXEngine_0, 'sync'), (self.ata_snap_source_0_0_0_0, 'sync'))
         self.connect((self.ata_snap_source_0, 0), (self.clenabled_clXEngine_0, 0))
         self.connect((self.ata_snap_source_0_0, 0), (self.clenabled_clXEngine_0, 1))
         self.connect((self.ata_snap_source_0_0_0, 0), (self.clenabled_clXEngine_0, 2))

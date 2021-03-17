@@ -65,6 +65,8 @@ SNAPSynchronizerV3_impl::SNAPSynchronizerV3_impl(int num_inputs, int num_channel
 
 	// The SNAP outputs packets in 16-time step blocks.  So let's take advantage of that here.
 	set_output_multiple(16);
+
+	message_port_register_out(pmt::mp("sync"));
 }
 
 /*
@@ -169,7 +171,12 @@ SNAPSynchronizerV3_impl::general_work (int noutput_items,
 			}
 			consume_each (noutput_items);
 
-			std::cout << "[Synchronizer] Synchronized on timestamp " << highest_tag << std::endl;
+	        pmt::pmt_t pdu = pmt::cons( pmt::intern("synctimestamp"), pmt::from_long(highest_tag) );
+			message_port_pub(pmt::mp("sync"),pdu);
+
+			std::stringstream msg_stream;
+			msg_stream << "Synchronized on timestamp " << highest_tag;
+			GR_LOG_INFO(d_logger, msg_stream.str());
 
 			// Tell runtime system how many output items we produced.
 			return noutput_items;

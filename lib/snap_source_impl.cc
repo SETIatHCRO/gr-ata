@@ -43,11 +43,17 @@
 #define DS_MCAST 2
 #define DS_PCAP 3
 
+
+// This is the maximum missed frames before we declare something went terribly wrong.
+// 10000 = 0.04 seconds
+// 25000 = 0.1 seconds
+const int MAX_MISSED_SETS=20000;
 // So the work function does naturally limit how big these buffers can get,
 // and it puts backpressure on d_localqueue.
-#define MAX_WORK_BUFF_SIZE 16000
+const int MAX_WORK_BUFF_SIZE=MAX_MISSED_SETS+8000;
 // This is number of packets now.  So memory is this * packet size.
 #define MAX_NET_CIRC_BUFFER 1000000
+
 
 namespace gr {
 namespace ata {
@@ -254,6 +260,7 @@ snap_source_impl::snap_source_impl(int port,
 
 	// Compute reasonable buffer size
 	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(MAX_NET_CIRC_BUFFER);
+	async_buffer = new unsigned char[total_packet_size];
 
 	if (!d_use_pcap) {
 		// Initialize receiving socket
@@ -320,8 +327,6 @@ snap_source_impl::snap_source_impl(int port,
 			msg_stream << "Listening for data on UDP port " << port << ".";
 		}
 
-		async_buffer = new unsigned char[total_packet_size];
-
 		GR_LOG_INFO(d_logger, msg_stream.str());
 
 		// Just to not leave this uninitialized:
@@ -352,48 +357,24 @@ snap_source_impl::snap_source_impl(int port,
 	}
 
 	message_port_register_out(pmt::mp("sync_header"));
+	message_port_register_in(pmt::mp("sync"));
+	set_msg_handler(pmt::mp("sync"), boost::bind(&snap_source_impl::handleSyncMsg, this, _1) );
 
-	/*
-	if (!d_use_pcap) {
-		start_receive();
-		d_io_service.run();
-	}
-	*/
 #ifdef THREAD_RECEIVE
 	proc_thread = new boost::thread(boost::bind(&snap_source_impl::runThread, this));
 #endif
 }
 
-void snap_source_impl::start_receive() {
-	if (stop_thread)
-		return;
-
-	d_udpsocket->async_receive_from(
-			boost::asio::buffer(async_buffer,total_packet_size), d_endpoint,
-			boost::bind(&snap_source_impl::handle_receive, this,
-					boost::asio::placeholders::error,
-					boost::asio::placeholders::bytes_transferred));
-}
-
-void snap_source_impl::handle_receive(const boost::system::error_code& error,
-		std::size_t bytes_transferred)
-{
-	// std::cout << "[" << identifier() << "] handle_receive called with " << bytes_transferred << " bytes" << std::endl;
-	if (bytes_transferred > 0)
-	{
-#ifdef THREAD_RECEIVE
-		gr::thread::scoped_lock guard(d_net_mutex);
-#endif
-
-		data_vector<unsigned char> new_data((unsigned char *)async_buffer,bytes_transferred);
-		d_localqueue->push_back(new_data);
-
+void snap_source_impl::handleSyncMsg(pmt::pmt_t msg) {
+	pmt::pmt_t data = pmt::cdr(msg);
+	try {
+		sync_timestamp = pmt::to_long(data);
 	}
-	else {
-		std::cout << "[" << identifier() << "] Network receive error code:" << error << std::endl;
+	catch(...) {
+		std::stringstream msg;
+		msg << "A sync PMT message was received that could not be converted to a long.";
+		GR_LOG_WARN(d_logger, msg.str());
 	}
-
-	start_receive();
 }
 
 /*
@@ -518,68 +499,93 @@ bool snap_source_impl::stop() {
 	return true;
 }
 
-void snap_source_impl::volt_sync_packet_stream(snap_header& hdr, int& num_packets_available, bool liveWork) {
-	while ( (num_packets_available > 0) && !d_found_start_channel && !stop_thread && !( pcap_file_done && (num_packets_available == 0) ) ) {
-		// If I haven't found the start frame,
-		// Haven't been told to stop (stop_thread)
-		// And I'm not out of PCAP data in pcap mode,
-		// Keep looking for the start frame and don't return 0 since it'll cause too long a delay to reenter work.
+void snap_source_impl::start_receive() {
+	if (stop_thread)
+		return;
 
-		header_to_local_buffer();
+	d_udpsocket->async_receive_from(
+			boost::asio::buffer(async_buffer,total_packet_size), d_endpoint,
+			boost::bind(&snap_source_impl::handle_receive, this,
+					boost::asio::placeholders::error,
+					boost::asio::placeholders::bytes_transferred));
+}
 
-		get_voltage_header(hdr);
-
-		if ( b_one_packet || (hdr.channel_id == d_starting_channel) ) {
-			// We found our start channel packet.
-			// Set that we're synchronized and exit our loop here.
-			d_found_start_channel = true;
-			std::stringstream msg_stream;
-			if (d_use_pcap) {
-				msg_stream << "Data block alignment achieved for " << d_file << " with timestamp " << hdr.sample_number << " as first block";
-			}
-			else {
-				msg_stream << "Data block alignment achieved for port " << d_port << " with timestamp " << hdr.sample_number << " as first block";
-			}
-
-			GR_LOG_INFO(d_logger, msg_stream.str());
-
-			if (liveWork) {
-				pmt::pmt_t meta = pmt::make_dict();
-
-				meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
-				meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
-				meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
-				meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
-
-				pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
-				message_port_pub(pmt::mp("sync_header"), pdu);
-			}
-
-			break;
-		}
-		else {
-			// We found a packet that wasn't the first one of the vector.
-			// Just dump it till we're synchronized.
-			{
+void snap_source_impl::handle_receive(const boost::system::error_code& error,
+		std::size_t bytes_transferred)
+{
+	// std::cout << "[" << identifier() << "] handle_receive called with " << bytes_transferred << " bytes" << std::endl;
+	if (!error && (bytes_transferred == total_packet_size)) {
 #ifdef THREAD_RECEIVE
-				gr::thread::scoped_lock guard(d_net_mutex);
+		gr::thread::scoped_lock guard(d_net_mutex);
 #endif
-				d_localqueue->pop_front();
-
-				num_packets_available = d_localqueue->size();
-			}
-		}
 
 		if (!d_found_start_channel) {
-			// We didn't find the start packet.  So unless we're told to end,
-			// wait for more packets, and run the tests here again.
-			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(16);
-
-				num_packets_available = packets_available();
+			// We're not synchronized on the first packet yet, so we're looking for it.
+			if (SNAP_PACKETTYPE_VOLTAGE) {
+				if (!voltage_async_synchronize()) {
+					// we're still not sync'd.  So don't bother queueing the packet.
+					start_receive();
+					return;
+				}
+			}
+			else {
+				if (!spect_async_synchronize()) {
+					// we're still not sync'd.  So don't bother queueing the packet.
+					start_receive();
+					return;
+				}
 			}
 		}
-	} // end aligning on start channel
+
+		// check for bad channel id first.
+		uint16_t channel_id;
+
+		if (SNAP_PACKETTYPE_VOLTAGE) {
+			struct voltage_header *v_hdr = (struct voltage_header *)async_buffer;
+			channel_id = be16toh(v_hdr->chan);
+		}
+		else {
+			uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+
+			// Convert from network format to host format.
+			uint64_t header = be64toh(*header_as_uint64);
+			channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val
+		}
+
+		if ((channel_id < d_starting_channel) || (channel_id > d_ending_channel_packet_channel_id) ) {
+			std::stringstream msg_stream;
+			msg_stream << "Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << channel_id;
+
+			if (b_one_packet) {
+				msg_stream << " expected " << d_starting_channel;
+			}
+			else {
+				msg_stream << " expected block channel between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id;
+			}
+
+			GR_LOG_ERROR(d_logger, msg_stream.str());
+
+			start_receive();
+			return;
+		}
+
+		// We'll only get here if we've sync'd and the id is good.  so the main work doesn't need to track this anymore.
+		data_vector<unsigned char> new_data((unsigned char *)async_buffer,total_packet_size);
+		d_localqueue->push_back(new_data);
+
+	}
+	else {
+		std::stringstream msg_stream;
+		if (error) {
+			msg_stream << "Network receive error code:" << error;
+		}
+		else {
+			msg_stream << "Network received an incorrect number of bytes:" << bytes_transferred << ".  Should be " << total_packet_size;
+		}
+		GR_LOG_ERROR(d_logger, msg_stream.str());
+	}
+
+	start_receive();
 }
 
 int snap_source_impl::work_volt_mode(int noutput_items,
@@ -601,26 +607,40 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 	int num_packets_available = packets_available();
 
 	// Handle case where no data is available
-	if ( (num_packets_available == 0) && (x_vector_queue.size() == 0) ) {
-		// There's just no data to process.
-		return 0;
+	while (!stop_thread && !pcap_file_done && (num_packets_available == 0) && (x_vector_queue.size() == 0) ) {
+		if (d_use_pcap) {
+			usleep(8);
+		}
+		else {
+			usleep(24);
+		}
+
+		num_packets_available = packets_available();
 	}
 
 	snap_header hdr;
 
-	if (!d_found_start_channel) {
-		volt_sync_packet_stream(hdr, num_packets_available, liveWork);
+	if (d_send_sync_pmt) {
+		// we just synchronized.
+		d_send_sync_pmt = false;
 
-		if (!d_found_start_channel) {
-			// If we're here, something above was told to exit.  So return 0 here is correct.
-			return 0;
+		memcpy((void *)&hdr,(void *)&async_volt_sync_hdr,sizeof(snap_header));
+
+		if (liveWork) {
+			pmt::pmt_t meta = pmt::make_dict();
+
+			meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(async_volt_sync_hdr.antenna_id));
+			meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(async_volt_sync_hdr.channel_id));
+			meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(async_volt_sync_hdr.sample_number));
+			meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(async_volt_sync_hdr.firmware_version));
+
+			pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
+			message_port_pub(pmt::mp("sync_header"), pdu);
 		}
 	}
 
-	// If we're here, it's not a partial hanging frame
+	// If we're here, async receive has synchronized and we have data to process.
 	d_partialFrameCounter = 0;
-
-	// Now if we're here we should have at least 1 block.
 
 	// Let's extract the vectors.  The total data is in a 16 time sample by 256 channel by 2 polarization
 	// packet.  Multiple packets will be required to make up a whole time set, so we need to buffer
@@ -629,28 +649,17 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 	bool found_last_packet = false;
 	int skippedPackets = 0;
 
-	// Queue all the data we have into our local queue
-
-	//int noutput_items_x2 = noutput_items * 2;
-
 	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items)) {
 		fill_local_buffer();
+		get_voltage_header(hdr);
 		num_packets_available--;
 
-		get_voltage_header(hdr);
-
-		// check for bad channel id first.
-		if ((hdr.channel_id < d_starting_channel) || (hdr.channel_id > d_ending_channel_packet_channel_id) ) {
-			std::cout << "[" << identifier() << "] ERROR: Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << hdr.channel_id <<
-					" expecting between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id << std::endl;
-			continue;
-		}
-
-		// hdr.channel_id < d_last_channel_block rather than == d_starting_channel
-		// solves the issue that the first block is not received.  < last channel block is enough
-		// to identify a new packet.
-		if ( b_one_packet || (hdr.channel_id < d_last_channel_block) ) { // (hdr.channel_id == d_starting_channel) ) {
-			if ( !b_one_packet && (d_last_channel_block != d_ending_channel_packet_channel_id) ) {
+		// Efficiency note:  For single packet frames, there's no need to zero out the vector buffer,
+		// 					 since we're just going to overwrite it anyway.
+		// If the channel id in a multi-packet frame rolled over (current channel id is less than the lest one we received)
+		// then we need to start a new packet.
+		if ( !b_one_packet && (hdr.channel_id < d_last_channel_block) ) {
+			if ( d_last_channel_block != d_ending_channel_packet_channel_id ) {
 				// We missed the last packet.
 				// Before we trigger a vector wipe, let's queue what we had.
 				// NOTE: This logic does assume we had at least one packet from the previous set that
@@ -667,7 +676,8 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 						y_vector_queue.push_back(y_cur_vector);
 					}
 
-					seq_num_queue.push_back(d_last_timestamp);
+					if (sync_timestamp == 0)
+						seq_num_queue.push_back(d_last_timestamp);
 				}
 			}
 			// We're starting a new vector, so zero out what we have.
@@ -715,7 +725,6 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 		if (d_packed_output) {
 			unsigned char *x_pol;
-			// #pragma omp parallel for num_threads(2) collapse(2)
 			for (t=0;t<16;t++) {
 				// This moves us in the packet memory to the correct time row
 				vector_start = t * d_veclen  + channel_offset_within_time_block;
@@ -737,7 +746,6 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			// mode, we actually two's complement extract the signed input.
 			char *x_pol;
 			char *y_pol;
-			//#pragma omp parallel for num_threads(2) collapse(2)
 			for (t=0;t<16;t++) {
 				// This moves us in the packet memory to the correct time row
 				vector_start = t * d_veclen  + channel_offset_within_time_block;
@@ -783,7 +791,8 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 					skippedPackets += missed_sets;
 				}
 
-				if (missed_sets <= 10000) {
+				// missed_sets could be < 0 if we rolled over.  So we'll just let that pass
+				if ((missed_sets > 0) && (missed_sets <= MAX_MISSED_SETS)) {
 					for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
 						// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
 						// Gotta push back 16 time entries for each missing timestamp.
@@ -796,7 +805,8 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 								y_vector_queue.push_back(y_cur_vector);
 							}
 
-							seq_num_queue.push_back(missed_timestamp);
+							if (sync_timestamp == 0)
+								seq_num_queue.push_back(missed_timestamp);
 						}
 					}
 				}
@@ -816,392 +826,23 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 					y_vector_queue.push_back(y_cur_vector);
 				}
 
-				seq_num_queue.push_back(hdr.sample_number);
+				if (sync_timestamp == 0)
+					seq_num_queue.push_back(hdr.sample_number);
 			}
 		}
 	}
 
-	int items_returned = noutput_items;
+	int items_returned;
 	// Move queue items to output items as needed
 	// both queues will be the same size, so can just pick one.
-	if (x_vector_queue.size() < noutput_items) {
-		items_returned = x_vector_queue.size();
-	}
-
-	for (int i=0;i<items_returned;i++) {
-		// This needs to come from the new queue
-		int out_index = d_veclen*i;
-
-		// Now move to work output vector.
-		memcpy(&x_out[out_index],x_vector_queue.front().data_pointer(),d_veclen);
-		x_vector_queue.pop_front();
-		if (!d_packed_output) {
-			memcpy(&y_out[out_index],y_vector_queue.front().data_pointer(),d_veclen);
-			y_vector_queue.pop_front();
-		}
-
-		uint64_t vector_seq_num = seq_num_queue.front();
-		seq_num_queue.pop_front();
-
-		// Add sequence number start tag for down-stream coherence
-		// Since each packet set contains 16 time samples for the same packet sequence number,
-		// You'll see output vectors in blocks of 16 with the same sequence number.
-		// This is expected.
-
-		if (liveWork) {
-			pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
-
-			add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
-			if (!d_packed_output) {
-				add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
-			}
-		}
-	}
-
-	// Notify on skipped packets
-	NotifyMissed(skippedPackets);
-
-	return items_returned;
-}
-
-
-/*
-int snap_source_impl::work_volt_mode(int noutput_items,
-		gr_vector_const_void_star &input_items,
-		gr_vector_void_star &output_items, bool liveWork) {
-	char *x_out = (char *)output_items[0];
-	char *y_out = (char *)output_items[1];
-
-#ifndef THREAD_RECEIVE
-	if (!d_use_pcap) {
-		// Getting data from the network
-		queue_data();
+	if (x_vector_queue.size() >= noutput_items) {
+		items_returned = noutput_items;
 	}
 	else {
-		queue_pcap_data();
-	}
-#endif
-
-	int num_packets_available = packets_available();
-
-	// Handle case where no data is available
-	if (num_packets_available == 0) {
-		d_partialFrameCounter = 0;
-
-		if (d_sourceZeros) {
-			// Just return 0's
-			unsigned int numRequested = noutput_items * d_veclen;
-			memset((void *)x_out, 0x00, numRequested);
-			memset((void *)y_out, 0x00, numRequested);
-
-			if (liveWork) {
-				// Since we're sourcing zeros, output a definable sequence number.
-				pmt::pmt_t pmt_sequence_number =pmt::from_long(-1);
-
-				for (int i=0;i<noutput_items;i++) {
-					add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
-					if (!d_packed_output) {
-						add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
-					}
-				}
-			}
-			return noutput_items;
-
-		} else {
-			// Returning 0 causes GNU Radio to call work again in 0.1s
-
-			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(8);
-
-				num_packets_available = packets_available();
-			}
-			//return 0;
-		}
-	}
-
-	snap_header hdr;
-
-	// When we get here, the loop above will have ensured num_packets_available > 0
-
-	// if (!d_found_start_channel) {
-	while ( !d_found_start_channel && !stop_thread && !( pcap_file_done && (num_packets_available == 0) ) ) {
-		// If I haven't found the start frame,
-		// Haven't been told to stop (stop_thread)
-		// And I'm not out of PCAP data in pcap mode,
-		// Keep looking for the start frame and don't return 0 since it'll cause too long a delay to reenter work.
-
-		header_to_local_buffer();
-
-		get_voltage_header(hdr);
-
-		if ( b_one_packet || (hdr.channel_id == d_starting_channel) ) {
-			// We found our start channel packet.
-			// Set that we're synchronized and exit our loop here.
-			d_found_start_channel = true;
-			std::stringstream msg_stream;
-			if (d_use_pcap) {
-				msg_stream << "Data block alignment achieved for " << d_file << " with timestamp " << hdr.sample_number << " as first block";
-			}
-			else {
-				msg_stream << "Data block alignment achieved for port " << d_port << " with timestamp " << hdr.sample_number << " as first block";
-			}
-
-			GR_LOG_INFO(d_logger, msg_stream.str());
-
-			if (liveWork) {
-				pmt::pmt_t meta = pmt::make_dict();
-
-				meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
-				meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
-				meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
-				meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
-
-				pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
-				message_port_pub(pmt::mp("sync_header"), pdu);
-			}
-
-			break;
-		}
-		else {
-			// We found a packet that wasn't the first one of the vector.
-			// Just dump it till we're synchronized.
-			{
-#ifdef THREAD_RECEIVE
-				gr::thread::scoped_lock guard(d_net_mutex);
-#endif
-				d_localqueue->pop_front();
-
-				num_packets_available = d_localqueue->size();
-			}
-		}
-
-		if (!d_found_start_channel) {
-			// We didn't find the start packet.  So unless we're told to end,
-			// wait for more packets, and run the tests here again.
-			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(8);
-
-				num_packets_available = packets_available();
-			}
-		}
-	} // end aligning on start channel
-
-	if (!d_found_start_channel) {
-		// If we're here, something above was told to exit.  So return 0 here is correct.
-		return 0;
-	}
-
-	// If we're here, it's not a partial hanging frame
-	d_partialFrameCounter = 0;
-
-	// Now if we're here we should have at least 1 block.
-
-	// Let's extract the vectors.  The total data is in a 16 time sample by 256 channel by 2 polarization
-	// packet.  Multiple packets will be required to make up a whole time set, so we need to buffer
-	// the chunks to a local temp buffer for each of the x and y data sets.  Once we have a complete set,
-	// we can queue each of the complete time entries to a queue for output consumption.
-	bool found_last_packet = false;
-	int skippedPackets = 0;
-
-	// Queue all the data we have into our local queue
-
-	//int noutput_items_x2 = noutput_items * 2;
-
-	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items)) {
-		fill_local_buffer();
-		num_packets_available--;
-
-		get_voltage_header(hdr);
-
-		// check for bad channel id first.
-		if ((hdr.channel_id < d_starting_channel) || (hdr.channel_id > d_ending_channel_packet_channel_id) ) {
-			std::cout << "ERROR: Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << hdr.channel_id <<
-					" expecting between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id << std::endl;
-			continue;
-		}
-
-		// hdr.channel_id < d_last_channel_block rather than == d_starting_channel
-		// solves the issue that the first block is not received.  < last channel block is enough
-		// to identify a new packet.
-		if ( b_one_packet || (hdr.channel_id < d_last_channel_block) ) { // (hdr.channel_id == d_starting_channel) ) {
-			if ( !b_one_packet && (d_last_channel_block != d_ending_channel_packet_channel_id) ) {
-				// We missed the last packet.
-				// Before we trigger a vector wipe, let's queue what we had.
-				// NOTE: This logic does assume we had at least one packet from the previous set that
-				// triggered the wipe and that d_last_timestamp was set from the last set.
-				for (int this_time_start=0;this_time_start<16;this_time_start++) {
-					int block_start = this_time_start * d_veclen;
-
-					data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
-					x_vector_queue.push_back(x_cur_vector);
-
-					if (!d_packed_output) {
-						// If we're packed output, everything is in x_pol output.
-						data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
-						y_vector_queue.push_back(y_cur_vector);
-					}
-
-					seq_num_queue.push_back(d_last_timestamp);
-				}
-			}
-			// We're starting a new vector, so zero out what we have.
-			memset(x_vector_buffer,0x00,vector_buffer_size);
-			if (!d_packed_output)
-				memset(y_vector_buffer,0x00,vector_buffer_size);
-		}
-
-		// Check if we skipped packets by missing a channel block.
-		// The if statement just checks that this isn't our very first packet we're processing.
-		// d_last_channel_block is set to -1 in the constructor, and 0 could be a valid start channel.
-		if ( (!b_one_packet) && (d_last_channel_block >= 0) ) {
-			if (hdr.channel_id > d_last_channel_block) {
-				int delta = (hdr.channel_id - d_last_channel_block) / channels_per_packet;
-
-				// Delta should be 1.  So anything more than 1 is a skipped packet.
-				skippedPackets += delta - 1;
-			}
-			else {
-				// channel id < last block so we wrapped around.
-				// int dist_to_end = (d_ending_channel_packet_channel_id - d_last_channel_block)/channels_per_packet;
-				// int dist_from_start = (hdr.channel_id - d_starting_channel)/channels_per_packet;
-
-				// skippedPackets += dist_to_end + dist_from_start;
-				skippedPackets += (d_ending_channel_packet_channel_id - d_last_channel_block + hdr.channel_id - d_starting_channel) / channels_per_packet;
-			}
-		}
-
-		// Store what we saw as the "last" packet we received.
-		d_last_channel_block = hdr.channel_id;
-
-		// Pointer to our UDP payload after the header.
-		// Move to the beginning of our packet data section
-		unsigned char *pData = (unsigned char *)&localBuffer[d_header_size];
-
-		voltage_packet *vp;
-		vp = (voltage_packet *)pData;
-
-		// cycle through the time entry rows in the packet. (will always be 16)
-
-		int t;
-		int sample;
-		int vector_start;
-		int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
-
-		if (d_packed_output) {
-			unsigned char *x_pol;
-			// #pragma omp parallel for num_threads(2) collapse(2)
-			for (t=0;t<16;t++) {
-				// This moves us in the packet memory to the correct time row
-				vector_start = t * d_veclen  + channel_offset_within_time_block;
-				// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
-				// Both go in the x_pol output.
-				x_pol = (unsigned char *)&x_vector_buffer[vector_start];
-
-				for (sample=0;sample<256;sample++) {
-					int TwoS = 2*sample;
-
-					x_pol[TwoS] = vp->data[sample][t][0];
-					// In packed mode, this is actually y to put it in a single block output
-					x_pol[TwoS + 1] = vp->data[sample][t][1];
-				}
-			}
-		}
-		else {
-			// Note these are char rather than unsigned char because in this unpacking
-			// mode, we actually two's complement extract the signed input.
-			char *x_pol;
-			char *y_pol;
-			//#pragma omp parallel for num_threads(2) collapse(2)
-			for (t=0;t<16;t++) {
-				// This moves us in the packet memory to the correct time row
-				vector_start = t * d_veclen  + channel_offset_within_time_block;
-				x_pol = &x_vector_buffer[vector_start];
-				y_pol = &y_vector_buffer[vector_start];
-
-				for (sample=0;sample<256;sample++) {
-					int TwoS = 2*sample;
-					int TwoS1 = TwoS + 1;
-
-					// The 2.0 format reverses the [t][sample] index position to [sample][t].
-					x_pol[TwoS] = (char)(vp->data[sample][t][0] >> 4); // I
-					// Need to adjust twos-complement
-					x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
-
-					x_pol[TwoS1] = (char)(vp->data[sample][t][0] & 0x0F);  // Q
-					x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
-
-					y_pol[TwoS] = (char)(vp->data[sample][t][1] >> 4); // I
-					y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
-
-					y_pol[TwoS1] = (char)(vp->data[sample][t][1] & 0x0F);  // Q
-					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
-				}
-			}
-		}
-
-		// Now check if we've completed a set.  If so, let's queue it up
-		// for output consumption.
-		if ( b_one_packet || (hdr.channel_id == d_ending_channel_packet_channel_id) ) {
-			// Queue up our vectors.  Again always 16 discrete time entries.
-
-			// First, check if we missed any sequence numbers.  If we did,
-			// Let's fill in the missing with zeros to keep things aligned.
-			// d_last_timestamp = -1 on first pass, so ignore that.
-			// if hdr.sample_number < d_last_timestamp our counter may have wrapped.  So ignore that.
-			if ( (d_last_timestamp >= 0) && (hdr.sample_number > d_last_timestamp) && ((hdr.sample_number - d_last_timestamp) > 16) ) {
-				// Each timestamp will always be t[n+1] = t[n] + 16.  If we missed any, we'll know from this.
-				// When t[n+1] is correct, missed_sets = 0.
-				uint64_t missed_sets = (hdr.sample_number - d_last_timestamp) / 16 - 1;
-
-				if (b_one_packet) {
-					skippedPackets += missed_sets;
-				}
-
-				if (missed_sets <= 10000) {
-					for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
-						// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
-						// Gotta push back 16 time entries for each missing timestamp.
-						for (int i=0;i<16;i++) {
-							data_vector<char> x_cur_vector(d_veclen);
-							x_vector_queue.push_back(x_cur_vector);
-							if (!d_packed_output) {
-								// If we're packed output, everything is in x_pol output.
-								data_vector<char> y_cur_vector(d_veclen);
-								y_vector_queue.push_back(y_cur_vector);
-							}
-
-							seq_num_queue.push_back(missed_timestamp);
-						}
-					}
-				}
-			}
-
-			d_last_timestamp = hdr.sample_number;
-
-			for (int this_time_start=0;this_time_start<16;this_time_start++) {
-				int block_start = this_time_start * d_veclen;
-
-				data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
-				x_vector_queue.push_back(x_cur_vector);
-
-				if (!d_packed_output) {
-					// If we're packed output, everything is in x_pol output.
-					data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
-					y_vector_queue.push_back(y_cur_vector);
-				}
-
-				seq_num_queue.push_back(hdr.sample_number);
-			}
-		}
-	}
-
-	int items_returned = noutput_items;
-	// Move queue items to output items as needed
-	// both queues will be the same size, so can just pick one.
-	if (x_vector_queue.size() < noutput_items) {
 		items_returned = x_vector_queue.size();
 	}
 
+	// This is where data actually gets moved to output_items
 	for (int i=0;i<items_returned;i++) {
 		// This needs to come from the new queue
 		int out_index = d_veclen*i;
@@ -1214,20 +855,26 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 			y_vector_queue.pop_front();
 		}
 
-		uint64_t vector_seq_num = seq_num_queue.front();
-		seq_num_queue.pop_front();
+		// We'll only send tags if we haven't received a sync handshake
+		if (sync_timestamp == 0) {
+			// Add sequence number start tag for down-stream coherence
+			// Since each packet set contains 16 time samples for the same packet sequence number,
+			// You'll see output vectors in blocks of 16 with the same sequence number.
+			// This is expected.
 
-		// Add sequence number start tag for down-stream coherence
-		// Since each packet set contains 16 time samples for the same packet sequence number,
-		// You'll see output vectors in blocks of 16 with the same sequence number.
-		// This is expected.
+			if (liveWork) {
+				uint64_t vector_seq_num = seq_num_queue.front();
+				seq_num_queue.pop_front();
 
-		if (liveWork) {
-			pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
+				pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
 
-			add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
-			if (!d_packed_output) {
-				add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+				add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+				if (!d_packed_output) {
+					add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+				}
+			}
+			else {
+				seq_num_queue.pop_front();
 			}
 		}
 	}
@@ -1237,7 +884,6 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	return items_returned;
 }
- */
 
 int snap_source_impl::work_spec_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
@@ -1248,6 +894,7 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 	float *yy_out = (float *)output_items[1];
 	float *xy_real_out = (float *)output_items[2];
 	float *xy_imag_out = (float *)output_items[3];
+	int items_returned = noutput_items;
 
 #ifndef THREAD_RECEIVE
 	if (!d_use_pcap) {
@@ -1260,88 +907,43 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 #endif
 
 	int num_packets_available = packets_available();
-	int items_returned = noutput_items;
 
 	// Handle case where no data is available
-	if (num_packets_available == 0) {
-		d_partialFrameCounter = 0;
-
-		if (d_sourceZeros) {
-			// Just return 0's
-			unsigned int numRequested = noutput_items * vector_buffer_size;
-			memset((void *)xx_out, 0x00, numRequested);
-			memset((void *)yy_out, 0x00, numRequested);
-			memset((void *)xy_real_out, 0x00, numRequested);
-			memset((void *)xy_imag_out, 0x00, numRequested);
-
-			return noutput_items;
-
-		} else {
-			// Returning 0 causes GNU Radio to call work again in 0.1s
-			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(16);
-
-				num_packets_available = packets_available();
-			}
-			//return 0;
+	while (!stop_thread && !pcap_file_done && (num_packets_available == 0) && (x_vector_queue.size() == 0) ) {
+		if (d_use_pcap) {
+			usleep(8);
 		}
+		else {
+			usleep(24);
+		}
+
+		num_packets_available = packets_available();
 	}
 
 	snap_header hdr;
 
-	if (!d_found_start_channel) {
-		// synchronize on start of vector
-		while ( (!d_found_start_channel) && (num_packets_available > 0)) {
-			header_to_local_buffer();
+	if (d_send_sync_pmt) {
+		// we just synchronized.
+		d_send_sync_pmt = false;
 
-			get_spectrometer_header(hdr);
+		memcpy((void *)&hdr,(void *)&async_volt_sync_hdr,sizeof(snap_header));
 
-			if (hdr.channel_id == d_starting_channel) {
-				// We found our start channel packet.
-				// Set that we're synchronized and exit our loop here.
-				d_found_start_channel = true;
-				std::stringstream msg_stream;
-				msg_stream << "Data block alignment achieved with sample number " << hdr.sample_number << " as first block";
-				GR_LOG_INFO(d_logger, msg_stream.str());
+		if (liveWork) {
+			pmt::pmt_t meta = pmt::make_dict();
 
-				if (liveWork) {
-					pmt::pmt_t meta = pmt::make_dict();
+			meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(async_volt_sync_hdr.antenna_id));
+			meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(async_volt_sync_hdr.channel_id));
+			meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(async_volt_sync_hdr.sample_number));
+			meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(async_volt_sync_hdr.firmware_version));
 
-					meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
-					meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
-					meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
-					meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
-
-					pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
-					message_port_pub(pmt::mp("sync_header"), pdu);
-				}
-
-				break;
-			}
-			else {
-				// We found a packet that wasn't the first one of the vector.
-				// Just dump it till we're synchronized.
-				{
-#ifdef THREAD_RECEIVE
-					gr::thread::scoped_lock guard(d_net_mutex);
-#endif
-					d_localqueue->pop_front();
-
-					num_packets_available = d_localqueue->size();
-				}
-			}
-		}
-
-		// We're still looking for the vector start packet and we haven't found it yet.
-		if (!d_found_start_channel) {
-			return 0;
+			pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
+			message_port_pub(pmt::mp("sync_header"), pdu);
 		}
 	}
-	// If we're here, it's not a partial hanging frame
+
 	d_partialFrameCounter = 0;
 
 	// Now if we're here we should have at least 1 block.
-
 
 	// Let's extract the vectors.  The total data is in a 16 time sample by 256 channel by 2 polarization
 	// packet.  Multiple packets will be required to make up a whole time set, so we need to buffer
@@ -1355,16 +957,8 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 
 	while ((snapshot_packets_available > 0) && (xx_vector_queue.size() < noutput_items)) {
 		fill_local_buffer();
-		snapshot_packets_available--;
-
 		get_spectrometer_header(hdr);
-
-		// check for bad channel id first.
-		if ((hdr.channel_id < d_starting_channel) || (hdr.channel_id > d_ending_channel_packet_channel_id) ) {
-			std::cout << "ERROR: Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << hdr.channel_id <<
-					" expecting between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id << std::endl;
-			continue;
-		}
+		snapshot_packets_available--;
 
 		if (hdr.channel_id == d_starting_channel) {
 			// We're starting a new vector, so zero out what we have.
@@ -1484,7 +1078,7 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 		// You'll see output vectors in blocks of 16 with the same sequence number.
 		// This is expected.
 
-		if (liveWork) {
+		if (liveWork && (sync_timestamp > 0)) {
 			pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
 
 			add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
@@ -1591,14 +1185,80 @@ void snap_source_impl::queue_data() {
 				// local queue in case we read more bytes than noutput_items is asking
 				// for.  In that case we'll only return noutput_items bytes
 				{
-#ifdef THREAD_RECEIVE
-					gr::thread::scoped_lock guard(d_net_mutex);
-#endif
-
 					for (long i = 0; i < num_packets; i++) {
-						data_vector<unsigned char> new_data((unsigned char *)&local_net_buffer[i*total_packet_size],total_packet_size);
+						unsigned char *pData = &local_net_buffer[i*total_packet_size];
 
-						d_localqueue->push_back(new_data);
+						if (SNAP_PACKETTYPE_VOLTAGE) {
+							if (!d_found_start_channel) {
+								memcpy(async_buffer, pData, total_packet_size);
+
+								// We're not synchronized on the first packet yet, so we're looking for it.
+								if (!voltage_async_synchronize()) {
+									// we're still not sync'd.  So don't bother queueing the packet.
+									continue;
+								}
+							}
+
+							struct voltage_header *v_hdr = (struct voltage_header *)pData;
+							uint16_t channel_id = be16toh(v_hdr->chan);
+							if ((channel_id < d_starting_channel) || (channel_id > d_ending_channel_packet_channel_id) ) {
+								std::stringstream msg_stream;
+								msg_stream << "Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << channel_id;
+
+								if (b_one_packet) {
+									msg_stream << " expected " << d_starting_channel;
+								}
+								else {
+									msg_stream << " expected block channel between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id;
+								}
+
+								GR_LOG_ERROR(d_logger, msg_stream.str());
+
+								continue;
+							}
+						}
+						else {
+							if (!d_found_start_channel) {
+								memcpy(async_buffer, pData, total_packet_size);
+
+								// We're not synchronized on the first packet yet, so we're looking for it.
+								if (!spect_async_synchronize()) {
+									// we're still not sync'd.  So don't bother queueing the packet.
+									continue;
+								}
+							}
+
+							uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+
+							// Convert from network format to host format.
+							uint64_t header = be64toh(*header_as_uint64);
+							uint16_t channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val
+
+							if ((channel_id < d_starting_channel) || (channel_id > d_ending_channel_packet_channel_id) ) {
+								std::stringstream msg_stream;
+								msg_stream << "Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << channel_id;
+
+								if (b_one_packet) {
+									msg_stream << " expected " << d_starting_channel;
+								}
+								else {
+									msg_stream << " expected block channel between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id;
+								}
+
+								GR_LOG_ERROR(d_logger, msg_stream.str());
+
+								continue;
+							}
+						}
+
+						data_vector<unsigned char> new_data((unsigned char *)pData,total_packet_size);
+
+						{
+#ifdef THREAD_RECEIVE
+							gr::thread::scoped_lock guard(d_net_mutex);
+#endif
+							d_localqueue->push_back(new_data);
+						}
 					}
 				}
 			}
@@ -1659,6 +1319,69 @@ void snap_source_impl::queue_pcap_data() {
 				matchingPackets++;
 
 				pData = (u_char *)&p[etherIPHeaderSize + sizeUDPHeader];
+
+				if (SNAP_PACKETTYPE_VOLTAGE) {
+					if (!d_found_start_channel) {
+						memcpy(async_buffer, pData, total_packet_size);
+
+						// We're not synchronized on the first packet yet, so we're looking for it.
+						if (!voltage_async_synchronize()) {
+							// we're still not sync'd.  So don't bother queueing the packet.
+							continue;
+						}
+					}
+
+					struct voltage_header *v_hdr = (struct voltage_header *)pData;
+					uint16_t channel_id = be16toh(v_hdr->chan);
+					if ((channel_id < d_starting_channel) || (channel_id > d_ending_channel_packet_channel_id) ) {
+						std::stringstream msg_stream;
+						msg_stream << "Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << channel_id;
+
+						if (b_one_packet) {
+							msg_stream << " expected " << d_starting_channel;
+						}
+						else {
+							msg_stream << " expected block channel between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id;
+						}
+
+						GR_LOG_ERROR(d_logger, msg_stream.str());
+
+						continue;
+					}
+				}
+				else {
+					if (!d_found_start_channel) {
+						memcpy(async_buffer, pData, total_packet_size);
+
+						// We're not synchronized on the first packet yet, so we're looking for it.
+						if (!spect_async_synchronize()) {
+							// we're still not sync'd.  So don't bother queueing the packet.
+							continue;
+						}
+					}
+
+					uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+
+					// Convert from network format to host format.
+					uint64_t header = be64toh(*header_as_uint64);
+					uint16_t channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val
+
+					if ((channel_id < d_starting_channel) || (channel_id > d_ending_channel_packet_channel_id) ) {
+						std::stringstream msg_stream;
+						msg_stream << "Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << channel_id;
+
+						if (b_one_packet) {
+							msg_stream << " expected " << d_starting_channel;
+						}
+						else {
+							msg_stream << " expected block channel between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id;
+						}
+
+						GR_LOG_ERROR(d_logger, msg_stream.str());
+
+						continue;
+					}
+				}
 
 				data_vector<unsigned char> new_data(pData,len);
 

@@ -24,6 +24,9 @@ outputs:
     dtype: byte
     vlen: ${ num_channels * 2 }
     multiplicity: ${num_inputs}
+- label: sync
+  domain: message
+  optional: True
 
 templates:
   imports: import ata

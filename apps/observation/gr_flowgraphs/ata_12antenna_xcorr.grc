@@ -643,6 +643,18 @@ connections:
 - [ata_snap_source_0_0_0_0_0_1_0_0_0, '0', clenabled_clXEngine_0, '9']
 - [ata_snap_source_0_0_0_0_0_1_0_0_0_0, '0', clenabled_clXEngine_0, '10']
 - [ata_snap_source_0_0_0_0_0_1_0_0_0_0_0, '0', clenabled_clXEngine_0, '11']
+- [clenabled_clXEngine_0, sync, ata_snap_source_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0_0_1, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0_0_1_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0_0_1_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0_0_1_0_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0_0_1_0_0_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0_0_0_1_0_0_0_0_0, sync]
 
 metadata:
   file_format: 1

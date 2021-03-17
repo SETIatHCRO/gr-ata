@@ -391,6 +391,9 @@ connections:
 - [ata_snap_source_0, '0', clenabled_clXEngine_0, '0']
 - [ata_snap_source_0_0, '0', clenabled_clXEngine_0, '1']
 - [ata_snap_source_0_0_0, '0', clenabled_clXEngine_0, '2']
+- [clenabled_clXEngine_0, sync, ata_snap_source_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0, sync]
+- [clenabled_clXEngine_0, sync, ata_snap_source_0_0_0, sync]
 
 metadata:
   file_format: 1

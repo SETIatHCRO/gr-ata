@@ -248,16 +248,15 @@ protected:
 	boost::asio::ip::udp::endpoint d_endpoint;
 	boost::asio::ip::udp::socket *d_udpsocket = NULL;
 
-	boost::asio::streambuf d_read_buffer;
+	// These local net buffers are only used in non-threaded mode in queue_data.
 	unsigned char *local_net_buffer = NULL;
-	long local_net_buffer_size;
+	long local_net_buffer_size=0;
 
 	// Separate receive thread
 	boost::thread *proc_thread=NULL;
 	bool threadRunning=false;
 	bool stop_thread = false;
 	gr::thread::mutex d_net_mutex;
-	int num_procs;
 
 	// Actual thread function
 	virtual void runThread();
@@ -275,7 +274,13 @@ protected:
 	int vector_buffer_size;
 	int channels_per_packet;
 	boost::circular_buffer<uint64_t> seq_num_queue;
+
+	// async receive items
 	unsigned char *async_buffer = NULL;
+	bool d_send_sync_pmt = false;
+	snap_header async_volt_sync_hdr;
+	snap_header async_spect_sync_hdr;
+	long sync_timestamp = 0;
 
 	// Voltage Mode buffers
 	char *x_vector_buffer = NULL;
@@ -296,8 +301,51 @@ protected:
 	void openPCAP();
 	void closePCAP();
 
+	void get_voltage_async_header(snap_header& hdr) {
+		struct voltage_header *v_hdr;
+		v_hdr = (struct voltage_header *)async_buffer;
+		hdr.antenna_id = be16toh(v_hdr->feng_id);
+		hdr.channel_id = be16toh(v_hdr->chan);
+		hdr.firmware_version = v_hdr->version; // no need to network->host order, only a byte
+		hdr.sample_number = be64toh(v_hdr->timestamp);
+		hdr.type = v_hdr->type;
+	}
+
+	bool voltage_async_synchronize() {
+		// We're not synchronized on the first packet yet, so we're looking for it.
+		struct voltage_header *v_hdr  = (struct voltage_header *)async_buffer;
+		uint16_t channel_id = be16toh(v_hdr->chan);
+
+		if ( channel_id == d_starting_channel ) {
+			// We found our start channel packet.
+			// Set that we're synchronized and that we need to
+			// send out the pmt (can't cross threads with it so the main work thread
+			// will need to do it.
+			d_found_start_channel = true;
+
+			get_voltage_async_header(async_volt_sync_hdr);
+
+			std::stringstream msg_stream;
+			if (d_use_pcap) {
+				msg_stream << "Data block alignment achieved for " << d_file << " with timestamp " << async_volt_sync_hdr.sample_number << " as first block";
+			}
+			else {
+				msg_stream << "Data block alignment achieved for port " << d_port << " with timestamp " << async_volt_sync_hdr.sample_number << " as first block";
+			}
+
+			GR_LOG_INFO(d_logger, msg_stream.str());
+
+			d_send_sync_pmt = true;
+
+			return true;
+		}
+		else {
+			// we're still not sync'd.
+			return false;
+		}
+	}
+
 	void get_voltage_header(snap_header& hdr) {
-#ifdef SNAPFORMAT_2_0_0
 		struct voltage_header *v_hdr;
 		v_hdr = (struct voltage_header *)localBuffer;
 		hdr.antenna_id = be16toh(v_hdr->feng_id);
@@ -305,18 +353,53 @@ protected:
 		hdr.firmware_version = v_hdr->version; // no need to network->host order, only a byte
 		hdr.sample_number = be64toh(v_hdr->timestamp);
 		hdr.type = v_hdr->type;
-#else
-		uint64_t *header_as_uint64;
-		header_as_uint64 = (uint64_t *)localBuffer;
+	}
+
+	bool spect_async_synchronize() {
+		// We're not synchronized on the first packet yet, so we're looking for it.
+		uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+		uint64_t header = be64toh(*header_as_uint64);
+		uint16_t channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val;
+
+		if ( channel_id == d_starting_channel ) {
+			// We found our start channel packet.
+			// Set that we're synchronized and that we need to
+			// send out the pmt (can't cross threads with it so the main work thread
+			// will need to do it.
+			d_found_start_channel = true;
+
+			get_spect_async_header(async_spect_sync_hdr);
+
+			std::stringstream msg_stream;
+			if (d_use_pcap) {
+				msg_stream << "Data block alignment achieved for " << d_file << " with timestamp " << async_spect_sync_hdr.sample_number << " as first block";
+			}
+			else {
+				msg_stream << "Data block alignment achieved for port " << d_port << " with timestamp " << async_spect_sync_hdr.sample_number << " as first block";
+			}
+
+			GR_LOG_INFO(d_logger, msg_stream.str());
+
+			d_send_sync_pmt = true;
+
+			return true;
+		}
+		else {
+			// we're still not sync'd.
+			return false;
+		}
+	}
+
+	void get_spect_async_header(snap_header& hdr) {
+		uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
 
 		// Convert from network format to host format.
 		uint64_t header = be64toh(*header_as_uint64);
 
-		hdr.antenna_id = header & 0x3f;
-		hdr.channel_id = (header >> 6) & 0x0fff;
-		hdr.sample_number = (header >> 18) & 0x3fffffffffULL;
+		hdr.antenna_id = header & 0xff;
+		hdr.channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val
+		hdr.sample_number = (header >> 11) & 0x1fffffffffffULL;
 		hdr.firmware_version = (header >> 56) & 0xff;
-#endif
 	}
 
 	void get_spectrometer_header(snap_header& hdr) {
@@ -339,7 +422,7 @@ protected:
 					<< "] missed  packets: " << skippedPackets;
 
 			if (d_localqueue->full()) {
-				msg_stream << " ERROR: Queue full.  Network packets are not being processed fast enough.";
+				msg_stream << "Queue full.  Network packets are not being processed fast enough.";
 			}
 
 			GR_LOG_WARN(d_logger, msg_stream.str());
@@ -365,8 +448,6 @@ protected:
 	void start_receive();
 	void handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred);
 
-	void volt_sync_packet_stream(snap_header& hdr, int& num_packets_available, bool liveWork);
-
 	int work_volt_mode(int noutput_items, gr_vector_const_void_star &input_items,
 			gr_vector_void_star &output_items, bool liveWork);
 	int work_volt_mode_old(int noutput_items, gr_vector_const_void_star &input_items,
@@ -383,6 +464,8 @@ public:
 	~snap_source_impl();
 
 	bool stop();
+
+	void handleSyncMsg(pmt::pmt_t msg);
 
 	size_t packet_size() { return total_packet_size; };
 	bool packets_aligned() { return d_found_start_channel; };
