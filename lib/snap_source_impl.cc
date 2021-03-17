@@ -43,6 +43,12 @@
 #define DS_MCAST 2
 #define DS_PCAP 3
 
+// So the work function does naturally limit how big these buffers can get,
+// and it puts backpressure on d_localqueue.
+#define MAX_WORK_BUFF_SIZE 16000
+// This is number of packets now.  So memory is this * packet size.
+#define MAX_NET_CIRC_BUFFER 1000000
+
 namespace gr {
 namespace ata {
 
@@ -78,7 +84,10 @@ snap_source_impl::snap_source_impl(int port,
 : gr::sync_block("snap_src_" + std::to_string(port) + "_",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(1, 4,
-				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1))) {
+				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1))),
+				seq_num_queue(MAX_WORK_BUFF_SIZE),x_vector_queue(MAX_WORK_BUFF_SIZE),y_vector_queue(MAX_WORK_BUFF_SIZE),
+				xx_vector_queue(MAX_WORK_BUFF_SIZE),yy_vector_queue(MAX_WORK_BUFF_SIZE),xy_real_vector_queue(MAX_WORK_BUFF_SIZE),xy_imag_vector_queue(MAX_WORK_BUFF_SIZE)
+{
 
 	if (data_source == DS_PCAP) {
 		d_use_pcap = true;
@@ -242,11 +251,9 @@ snap_source_impl::snap_source_impl(int port,
 	}
 
 	localBuffer = new unsigned char[total_packet_size];
-	long maxCircBuffer;
 
 	// Compute reasonable buffer size
-	maxCircBuffer = 500000; // This is number of packets now.  So memory is this * packet size.
-	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(maxCircBuffer);
+	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(MAX_NET_CIRC_BUFFER);
 
 	if (!d_use_pcap) {
 		// Initialize receiving socket
@@ -312,6 +319,9 @@ snap_source_impl::snap_source_impl(int port,
 		else {
 			msg_stream << "Listening for data on UDP port " << port << ".";
 		}
+
+		async_buffer = new unsigned char[total_packet_size];
+
 		GR_LOG_INFO(d_logger, msg_stream.str());
 
 		// Just to not leave this uninitialized:
@@ -343,9 +353,47 @@ snap_source_impl::snap_source_impl(int port,
 
 	message_port_register_out(pmt::mp("sync_header"));
 
+	/*
+	if (!d_use_pcap) {
+		start_receive();
+		d_io_service.run();
+	}
+	*/
 #ifdef THREAD_RECEIVE
 	proc_thread = new boost::thread(boost::bind(&snap_source_impl::runThread, this));
 #endif
+}
+
+void snap_source_impl::start_receive() {
+	if (stop_thread)
+		return;
+
+	d_udpsocket->async_receive_from(
+			boost::asio::buffer(async_buffer,total_packet_size), d_endpoint,
+			boost::bind(&snap_source_impl::handle_receive, this,
+					boost::asio::placeholders::error,
+					boost::asio::placeholders::bytes_transferred));
+}
+
+void snap_source_impl::handle_receive(const boost::system::error_code& error,
+		std::size_t bytes_transferred)
+{
+	// std::cout << "[" << identifier() << "] handle_receive called with " << bytes_transferred << " bytes" << std::endl;
+	if (bytes_transferred > 0)
+	{
+#ifdef THREAD_RECEIVE
+		gr::thread::scoped_lock guard(d_net_mutex);
+#endif
+
+		data_vector<unsigned char> new_data((unsigned char *)async_buffer,bytes_transferred);
+		d_localqueue->push_back(new_data);
+
+	}
+	else {
+		std::cout << "[" << identifier() << "] Network receive error code:" << error << std::endl;
+	}
+
+	start_receive();
 }
 
 /*
@@ -384,9 +432,9 @@ void snap_source_impl::closePCAP() {
 }
 
 bool snap_source_impl::stop() {
-	if (proc_thread) {
-		stop_thread = true;
+	stop_thread = true;
 
+	if (proc_thread) {
 		while (threadRunning)
 			usleep(10);
 
@@ -409,6 +457,11 @@ bool snap_source_impl::stop() {
 
 		d_io_service.reset();
 		d_io_service.stop();
+	}
+
+	if (async_buffer) {
+		delete[] async_buffer;
+		async_buffer = NULL;
 	}
 
 	if (localBuffer) {
@@ -465,6 +518,70 @@ bool snap_source_impl::stop() {
 	return true;
 }
 
+void snap_source_impl::volt_sync_packet_stream(snap_header& hdr, int& num_packets_available, bool liveWork) {
+	while ( (num_packets_available > 0) && !d_found_start_channel && !stop_thread && !( pcap_file_done && (num_packets_available == 0) ) ) {
+		// If I haven't found the start frame,
+		// Haven't been told to stop (stop_thread)
+		// And I'm not out of PCAP data in pcap mode,
+		// Keep looking for the start frame and don't return 0 since it'll cause too long a delay to reenter work.
+
+		header_to_local_buffer();
+
+		get_voltage_header(hdr);
+
+		if ( b_one_packet || (hdr.channel_id == d_starting_channel) ) {
+			// We found our start channel packet.
+			// Set that we're synchronized and exit our loop here.
+			d_found_start_channel = true;
+			std::stringstream msg_stream;
+			if (d_use_pcap) {
+				msg_stream << "Data block alignment achieved for " << d_file << " with timestamp " << hdr.sample_number << " as first block";
+			}
+			else {
+				msg_stream << "Data block alignment achieved for port " << d_port << " with timestamp " << hdr.sample_number << " as first block";
+			}
+
+			GR_LOG_INFO(d_logger, msg_stream.str());
+
+			if (liveWork) {
+				pmt::pmt_t meta = pmt::make_dict();
+
+				meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(hdr.antenna_id));
+				meta = pmt::dict_add(meta, pmt::mp("starting_channel"), pmt::mp(hdr.channel_id));
+				meta = pmt::dict_add(meta, pmt::mp("sample_number"), pmt::mp(hdr.sample_number));
+				meta = pmt::dict_add(meta, pmt::mp("firmware_version"), pmt::mp(hdr.firmware_version));
+
+				pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
+				message_port_pub(pmt::mp("sync_header"), pdu);
+			}
+
+			break;
+		}
+		else {
+			// We found a packet that wasn't the first one of the vector.
+			// Just dump it till we're synchronized.
+			{
+#ifdef THREAD_RECEIVE
+				gr::thread::scoped_lock guard(d_net_mutex);
+#endif
+				d_localqueue->pop_front();
+
+				num_packets_available = d_localqueue->size();
+			}
+		}
+
+		if (!d_found_start_channel) {
+			// We didn't find the start packet.  So unless we're told to end,
+			// wait for more packets, and run the tests here again.
+			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
+				usleep(16);
+
+				num_packets_available = packets_available();
+			}
+		}
+	} // end aligning on start channel
+}
+
 int snap_source_impl::work_volt_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items, bool liveWork) {
@@ -472,7 +589,297 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 	char *y_out = (char *)output_items[1];
 
 #ifndef THREAD_RECEIVE
-	queue_data();
+	if (!d_use_pcap) {
+		// Getting data from the network
+		queue_data();
+	}
+	else {
+		queue_pcap_data();
+	}
+#endif
+
+	int num_packets_available = packets_available();
+
+	// Handle case where no data is available
+	if ( (num_packets_available == 0) && (x_vector_queue.size() == 0) ) {
+		// There's just no data to process.
+		return 0;
+	}
+
+	snap_header hdr;
+
+	if (!d_found_start_channel) {
+		volt_sync_packet_stream(hdr, num_packets_available, liveWork);
+
+		if (!d_found_start_channel) {
+			// If we're here, something above was told to exit.  So return 0 here is correct.
+			return 0;
+		}
+	}
+
+	// If we're here, it's not a partial hanging frame
+	d_partialFrameCounter = 0;
+
+	// Now if we're here we should have at least 1 block.
+
+	// Let's extract the vectors.  The total data is in a 16 time sample by 256 channel by 2 polarization
+	// packet.  Multiple packets will be required to make up a whole time set, so we need to buffer
+	// the chunks to a local temp buffer for each of the x and y data sets.  Once we have a complete set,
+	// we can queue each of the complete time entries to a queue for output consumption.
+	bool found_last_packet = false;
+	int skippedPackets = 0;
+
+	// Queue all the data we have into our local queue
+
+	//int noutput_items_x2 = noutput_items * 2;
+
+	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items)) {
+		fill_local_buffer();
+		num_packets_available--;
+
+		get_voltage_header(hdr);
+
+		// check for bad channel id first.
+		if ((hdr.channel_id < d_starting_channel) || (hdr.channel_id > d_ending_channel_packet_channel_id) ) {
+			std::cout << "[" << identifier() << "] ERROR: Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << hdr.channel_id <<
+					" expecting between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id << std::endl;
+			continue;
+		}
+
+		// hdr.channel_id < d_last_channel_block rather than == d_starting_channel
+		// solves the issue that the first block is not received.  < last channel block is enough
+		// to identify a new packet.
+		if ( b_one_packet || (hdr.channel_id < d_last_channel_block) ) { // (hdr.channel_id == d_starting_channel) ) {
+			if ( !b_one_packet && (d_last_channel_block != d_ending_channel_packet_channel_id) ) {
+				// We missed the last packet.
+				// Before we trigger a vector wipe, let's queue what we had.
+				// NOTE: This logic does assume we had at least one packet from the previous set that
+				// triggered the wipe and that d_last_timestamp was set from the last set.
+				for (int this_time_start=0;this_time_start<16;this_time_start++) {
+					int block_start = this_time_start * d_veclen;
+
+					data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
+					x_vector_queue.push_back(x_cur_vector);
+
+					if (!d_packed_output) {
+						// If we're packed output, everything is in x_pol output.
+						data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
+						y_vector_queue.push_back(y_cur_vector);
+					}
+
+					seq_num_queue.push_back(d_last_timestamp);
+				}
+			}
+			// We're starting a new vector, so zero out what we have.
+			memset(x_vector_buffer,0x00,vector_buffer_size);
+			if (!d_packed_output)
+				memset(y_vector_buffer,0x00,vector_buffer_size);
+		}
+
+		// Check if we skipped packets by missing a channel block.
+		// The if statement just checks that this isn't our very first packet we're processing.
+		// d_last_channel_block is set to -1 in the constructor, and 0 could be a valid start channel.
+		if ( (!b_one_packet) && (d_last_channel_block >= 0) ) {
+			if (hdr.channel_id > d_last_channel_block) {
+				int delta = (hdr.channel_id - d_last_channel_block) / channels_per_packet;
+
+				// Delta should be 1.  So anything more than 1 is a skipped packet.
+				skippedPackets += delta - 1;
+			}
+			else {
+				// channel id < last block so we wrapped around.
+				// int dist_to_end = (d_ending_channel_packet_channel_id - d_last_channel_block)/channels_per_packet;
+				// int dist_from_start = (hdr.channel_id - d_starting_channel)/channels_per_packet;
+
+				// skippedPackets += dist_to_end + dist_from_start;
+				skippedPackets += (d_ending_channel_packet_channel_id - d_last_channel_block + hdr.channel_id - d_starting_channel) / channels_per_packet;
+			}
+		}
+
+		// Store what we saw as the "last" packet we received.
+		d_last_channel_block = hdr.channel_id;
+
+		// Pointer to our UDP payload after the header.
+		// Move to the beginning of our packet data section
+		unsigned char *pData = (unsigned char *)&localBuffer[d_header_size];
+
+		voltage_packet *vp;
+		vp = (voltage_packet *)pData;
+
+		// cycle through the time entry rows in the packet. (will always be 16)
+
+		int t;
+		int sample;
+		int vector_start;
+		int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
+
+		if (d_packed_output) {
+			unsigned char *x_pol;
+			// #pragma omp parallel for num_threads(2) collapse(2)
+			for (t=0;t<16;t++) {
+				// This moves us in the packet memory to the correct time row
+				vector_start = t * d_veclen  + channel_offset_within_time_block;
+				// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
+				// Both go in the x_pol output.
+				x_pol = (unsigned char *)&x_vector_buffer[vector_start];
+
+				for (sample=0;sample<256;sample++) {
+					int TwoS = 2*sample;
+
+					x_pol[TwoS] = vp->data[sample][t][0];
+					// In packed mode, this is actually y to put it in a single block output
+					x_pol[TwoS + 1] = vp->data[sample][t][1];
+				}
+			}
+		}
+		else {
+			// Note these are char rather than unsigned char because in this unpacking
+			// mode, we actually two's complement extract the signed input.
+			char *x_pol;
+			char *y_pol;
+			//#pragma omp parallel for num_threads(2) collapse(2)
+			for (t=0;t<16;t++) {
+				// This moves us in the packet memory to the correct time row
+				vector_start = t * d_veclen  + channel_offset_within_time_block;
+				x_pol = &x_vector_buffer[vector_start];
+				y_pol = &y_vector_buffer[vector_start];
+
+				for (sample=0;sample<256;sample++) {
+					int TwoS = 2*sample;
+					int TwoS1 = TwoS + 1;
+
+					// The 2.0 format reverses the [t][sample] index position to [sample][t].
+					x_pol[TwoS] = (char)(vp->data[sample][t][0] >> 4); // I
+					// Need to adjust twos-complement
+					x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
+
+					x_pol[TwoS1] = (char)(vp->data[sample][t][0] & 0x0F);  // Q
+					x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
+
+					y_pol[TwoS] = (char)(vp->data[sample][t][1] >> 4); // I
+					y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
+
+					y_pol[TwoS1] = (char)(vp->data[sample][t][1] & 0x0F);  // Q
+					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
+				}
+			}
+		}
+
+		// Now check if we've completed a set.  If so, let's queue it up
+		// for output consumption.
+		if ( b_one_packet || (hdr.channel_id == d_ending_channel_packet_channel_id) ) {
+			// Queue up our vectors.  Again always 16 discrete time entries.
+
+			// First, check if we missed any sequence numbers.  If we did,
+			// Let's fill in the missing with zeros to keep things aligned.
+			// d_last_timestamp = -1 on first pass, so ignore that.
+			// if hdr.sample_number < d_last_timestamp our counter may have wrapped.  So ignore that.
+			if ( (d_last_timestamp >= 0) && (hdr.sample_number > d_last_timestamp) && ((hdr.sample_number - d_last_timestamp) > 16) ) {
+				// Each timestamp will always be t[n+1] = t[n] + 16.  If we missed any, we'll know from this.
+				// When t[n+1] is correct, missed_sets = 0.
+				uint64_t missed_sets = (hdr.sample_number - d_last_timestamp) / 16 - 1;
+
+				if (b_one_packet) {
+					skippedPackets += missed_sets;
+				}
+
+				if (missed_sets <= 10000) {
+					for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
+						// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
+						// Gotta push back 16 time entries for each missing timestamp.
+						for (int i=0;i<16;i++) {
+							data_vector<char> x_cur_vector(d_veclen);
+							x_vector_queue.push_back(x_cur_vector);
+							if (!d_packed_output) {
+								// If we're packed output, everything is in x_pol output.
+								data_vector<char> y_cur_vector(d_veclen);
+								y_vector_queue.push_back(y_cur_vector);
+							}
+
+							seq_num_queue.push_back(missed_timestamp);
+						}
+					}
+				}
+			}
+
+			d_last_timestamp = hdr.sample_number;
+
+			for (int this_time_start=0;this_time_start<16;this_time_start++) {
+				int block_start = this_time_start * d_veclen;
+
+				data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
+				x_vector_queue.push_back(x_cur_vector);
+
+				if (!d_packed_output) {
+					// If we're packed output, everything is in x_pol output.
+					data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
+					y_vector_queue.push_back(y_cur_vector);
+				}
+
+				seq_num_queue.push_back(hdr.sample_number);
+			}
+		}
+	}
+
+	int items_returned = noutput_items;
+	// Move queue items to output items as needed
+	// both queues will be the same size, so can just pick one.
+	if (x_vector_queue.size() < noutput_items) {
+		items_returned = x_vector_queue.size();
+	}
+
+	for (int i=0;i<items_returned;i++) {
+		// This needs to come from the new queue
+		int out_index = d_veclen*i;
+
+		// Now move to work output vector.
+		memcpy(&x_out[out_index],x_vector_queue.front().data_pointer(),d_veclen);
+		x_vector_queue.pop_front();
+		if (!d_packed_output) {
+			memcpy(&y_out[out_index],y_vector_queue.front().data_pointer(),d_veclen);
+			y_vector_queue.pop_front();
+		}
+
+		uint64_t vector_seq_num = seq_num_queue.front();
+		seq_num_queue.pop_front();
+
+		// Add sequence number start tag for down-stream coherence
+		// Since each packet set contains 16 time samples for the same packet sequence number,
+		// You'll see output vectors in blocks of 16 with the same sequence number.
+		// This is expected.
+
+		if (liveWork) {
+			pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
+
+			add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+			if (!d_packed_output) {
+				add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
+			}
+		}
+	}
+
+	// Notify on skipped packets
+	NotifyMissed(skippedPackets);
+
+	return items_returned;
+}
+
+
+/*
+int snap_source_impl::work_volt_mode(int noutput_items,
+		gr_vector_const_void_star &input_items,
+		gr_vector_void_star &output_items, bool liveWork) {
+	char *x_out = (char *)output_items[0];
+	char *y_out = (char *)output_items[1];
+
+#ifndef THREAD_RECEIVE
+	if (!d_use_pcap) {
+		// Getting data from the network
+		queue_data();
+	}
+	else {
+		queue_pcap_data();
+	}
 #endif
 
 	int num_packets_available = packets_available();
@@ -503,11 +910,6 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		} else {
 			// Returning 0 causes GNU Radio to call work again in 0.1s
 
-			/*
-			if (d_found_start_channel) {
-				std::cout << "Starving for packets" << std::endl;
-			}
-			*/
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
 				usleep(8);
 
@@ -697,14 +1099,10 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 				for (sample=0;sample<256;sample++) {
 					int TwoS = 2*sample;
-#ifdef SNAPFORMAT_2_0_0
+
 					x_pol[TwoS] = vp->data[sample][t][0];
 					// In packed mode, this is actually y to put it in a single block output
 					x_pol[TwoS + 1] = vp->data[sample][t][1];
-#else
-					x_pol[TwoS] = vp->data[t][sample][0];
-					x_pol[TwoS + 1] = vp->data[t][sample][1];
-#endif
 				}
 			}
 		}
@@ -724,7 +1122,6 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 					int TwoS = 2*sample;
 					int TwoS1 = TwoS + 1;
 
-#ifdef SNAPFORMAT_2_0_0
 					// The 2.0 format reverses the [t][sample] index position to [sample][t].
 					x_pol[TwoS] = (char)(vp->data[sample][t][0] >> 4); // I
 					// Need to adjust twos-complement
@@ -738,20 +1135,6 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 					y_pol[TwoS1] = (char)(vp->data[sample][t][1] & 0x0F);  // Q
 					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
-#else
-					x_pol[TwoS] = (char)(vp->data[t][sample][0] >> 4); // I
-					// Need to adjust twos-complement
-					x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
-
-					x_pol[TwoS1] = (char)(vp->data[t][sample][0] & 0x0F);  // Q
-					x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
-
-					y_pol[TwoS] = (char)(vp->data[t][sample][1] >> 4); // I
-					y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
-
-					y_pol[TwoS1] = (char)(vp->data[t][sample][1] & 0x0F);  // Q
-					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
-#endif
 				}
 			}
 		}
@@ -821,17 +1204,14 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	for (int i=0;i<items_returned;i++) {
 		// This needs to come from the new queue
-		data_vector<char> x_cur_vector = x_vector_queue.front();
-		x_vector_queue.pop_front();
-
 		int out_index = d_veclen*i;
 
 		// Now move to work output vector.
-		memcpy(&x_out[out_index],x_cur_vector.data_pointer(),d_veclen);
+		memcpy(&x_out[out_index],x_vector_queue.front().data_pointer(),d_veclen);
+		x_vector_queue.pop_front();
 		if (!d_packed_output) {
-			data_vector<char> y_cur_vector = y_vector_queue.front();
+			memcpy(&y_out[out_index],y_vector_queue.front().data_pointer(),d_veclen);
 			y_vector_queue.pop_front();
-			memcpy(&y_out[out_index],y_cur_vector.data_pointer(),d_veclen);
 		}
 
 		uint64_t vector_seq_num = seq_num_queue.front();
@@ -857,6 +1237,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	return items_returned;
 }
+ */
 
 int snap_source_impl::work_spec_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
@@ -869,7 +1250,13 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 	float *xy_imag_out = (float *)output_items[3];
 
 #ifndef THREAD_RECEIVE
-	queue_data();
+	if (!d_use_pcap) {
+		// Getting data from the network
+		queue_data();
+	}
+	else {
+		queue_pcap_data();
+	}
 #endif
 
 	int num_packets_available = packets_available();
@@ -892,7 +1279,7 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 		} else {
 			// Returning 0 causes GNU Radio to call work again in 0.1s
 			while (!stop_thread && !pcap_file_done && (num_packets_available == 0)) {
-				usleep(8);
+				usleep(16);
 
 				num_packets_available = packets_available();
 			}
@@ -1069,31 +1456,28 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 
 	for (int i=0;i<items_returned;i++) {
 		// This needs to come from the new queue
-		data_vector<float> xx_cur_vector = xx_vector_queue.front();
-		xx_vector_queue.pop_front();
-		data_vector<float> yy_cur_vector = yy_vector_queue.front();
-		yy_vector_queue.pop_front();
-		data_vector<float> xy_real_cur_vector = xy_real_vector_queue.front();
-		xy_real_vector_queue.pop_front();
-		data_vector<float> xy_imag_cur_vector = xy_imag_vector_queue.front();
-		xy_imag_vector_queue.pop_front();
 		uint64_t vector_seq_num = seq_num_queue.front();
-		seq_num_queue.pop_front();
 
 		// Now move to work output vector.
-		memcpy(&xx_out[d_veclen*i],xx_cur_vector.data_pointer(),vector_buffer_size);
-		memcpy(&yy_out[d_veclen*i],yy_cur_vector.data_pointer(),vector_buffer_size);
+		memcpy(&xx_out[d_veclen*i],xx_vector_queue.front().data_pointer(),vector_buffer_size);
+		memcpy(&yy_out[d_veclen*i],yy_vector_queue.front().data_pointer(),vector_buffer_size);
 
 		// output the xy's if the ports are connected.
 		if (output_items.size() > 2) {
 			// xy is tagged as an optional output.
-			memcpy(&xy_real_out[d_veclen*i],xy_real_cur_vector.data_pointer(),vector_buffer_size);
+			memcpy(&xy_real_out[d_veclen*i],xy_real_vector_queue.front().data_pointer(),vector_buffer_size);
 
 			if (output_items.size() > 3) {
 				// xy is tagged as an optional output.
-				memcpy(&xy_imag_out[d_veclen*i],xy_imag_cur_vector.data_pointer(),vector_buffer_size);
+				memcpy(&xy_imag_out[d_veclen*i],xy_imag_vector_queue.front().data_pointer(),vector_buffer_size);
 			}
 		}
+
+		xx_vector_queue.pop_front();
+		yy_vector_queue.pop_front();
+		xy_real_vector_queue.pop_front();
+		xy_imag_vector_queue.pop_front();
+		seq_num_queue.pop_front();
 
 		// Add sequence number start tag for down-stream coherence
 		// Since each packet set contains 16 time samples for the same packet sequence number,
@@ -1176,7 +1560,6 @@ void snap_source_impl::queue_data() {
 	// Let's be efficient here and say we have to have a total packet before
 	// we try queuing data.  That'll cut down on thread locks that'll
 	// disrupt work()
-
 	if (bytesAvailable >= total_packet_size) {
 		int num_packets = bytesAvailable / total_packet_size;
 
@@ -1190,37 +1573,34 @@ void snap_source_impl::queue_data() {
 			}
 			else {
 				if (bytes_to_read > local_net_buffer_size) {
+					// Just limit unrestricted growth
+					if (bytes_to_read > (10000 * total_packet_size)) {
+						bytes_to_read = 10000 * total_packet_size;
+					}
+
 					delete[] local_net_buffer;
 					local_net_buffer = new unsigned char[bytes_to_read];
 					local_net_buffer_size = bytes_to_read;
 				}
 			}
 
-			// boost::asio::streambuf::mutable_buffers_type buf = d_read_buffer.prepare(bytes_to_read);
-			// size_t bytesRead = d_udpsocket->receive_from(buf, d_endpoint);
 			size_t bytesRead = d_udpsocket->receive_from(boost::asio::buffer(local_net_buffer,bytes_to_read), d_endpoint);
 
 			if (bytesRead > 0) {
-				//d_read_buffer.commit(bytesRead);
-
 				// Get the data and add it to our local queue.  We have to maintain a
 				// local queue in case we read more bytes than noutput_items is asking
 				// for.  In that case we'll only return noutput_items bytes
-				//const char *readData = boost::asio::buffer_cast<const char *>(d_read_buffer.data());
-				const unsigned char *readData = local_net_buffer;
 				{
-					#ifdef THREAD_RECEIVE
+#ifdef THREAD_RECEIVE
 					gr::thread::scoped_lock guard(d_net_mutex);
-					#endif
+#endif
+
 					for (long i = 0; i < num_packets; i++) {
-						data_vector<unsigned char> new_data((unsigned char *)&readData[i*total_packet_size],total_packet_size);
+						data_vector<unsigned char> new_data((unsigned char *)&local_net_buffer[i*total_packet_size],total_packet_size);
 
 						d_localqueue->push_back(new_data);
 					}
 				}
-
-				// No need to worry about consume now.
-				// d_read_buffer.consume(bytesRead);
 			}
 		}
 	}
@@ -1311,14 +1691,21 @@ void snap_source_impl::runThread() {
 	while (!stop_thread) {
 		if (!d_use_pcap) {
 			// Getting data from the network
-			queue_data();
-			usleep(8);
+			//queue_data();
+			// so each packet is 16 time samples at 4 microseconds each.  So a full packet will be
+			// once every 64 microseconds, and we can handle large blocks of packets at a time.
+			// So this just gets some worker thread relief.
+			// usleep(60);
+			if (!d_use_pcap) {
+				start_receive();
+				d_io_service.run();
+			}
+
 		}
 		else {
 			queue_pcap_data();
 			usleep(8);
 		}
-
 	}
 
 	threadRunning = false;

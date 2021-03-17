@@ -274,23 +274,24 @@ protected:
 	// Common mode items
 	int vector_buffer_size;
 	int channels_per_packet;
-	std::deque<uint64_t> seq_num_queue;
+	boost::circular_buffer<uint64_t> seq_num_queue;
+	unsigned char *async_buffer = NULL;
 
 	// Voltage Mode buffers
 	char *x_vector_buffer = NULL;
 	char *y_vector_buffer = NULL;
-	std::deque<data_vector<char>> x_vector_queue;
-	std::deque<data_vector<char>> y_vector_queue;
+	boost::circular_buffer<data_vector<char>> x_vector_queue;
+	boost::circular_buffer<data_vector<char>> y_vector_queue;
 
 	// Spectrometer mode items
 	float *xx_buffer = NULL;
 	float *yy_buffer = NULL;
 	float *xy_real_buffer = NULL;
 	float *xy_imag_buffer = NULL;
-	std::deque<data_vector<float>> xx_vector_queue;
-	std::deque<data_vector<float>> yy_vector_queue;
-	std::deque<data_vector<float>> xy_real_vector_queue;
-	std::deque<data_vector<float>> xy_imag_vector_queue;
+	boost::circular_buffer<data_vector<float>> xx_vector_queue;
+	boost::circular_buffer<data_vector<float>> yy_vector_queue;
+	boost::circular_buffer<data_vector<float>> xy_real_vector_queue;
+	boost::circular_buffer<data_vector<float>> xy_imag_vector_queue;
 
 	void openPCAP();
 	void closePCAP();
@@ -361,7 +362,14 @@ protected:
 		d_localqueue->pop_front();
 	};
 
+	void start_receive();
+	void handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred);
+
+	void volt_sync_packet_stream(snap_header& hdr, int& num_packets_available, bool liveWork);
+
 	int work_volt_mode(int noutput_items, gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items, bool liveWork);
+	int work_volt_mode_old(int noutput_items, gr_vector_const_void_star &input_items,
 			gr_vector_void_star &output_items, bool liveWork);
 	int work_spec_mode(int noutput_items, gr_vector_const_void_star &input_items,
 			gr_vector_void_star &output_items, bool liveWork);
