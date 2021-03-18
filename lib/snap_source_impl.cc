@@ -658,53 +658,55 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		// 					 since we're just going to overwrite it anyway.
 		// If the channel id in a multi-packet frame rolled over (current channel id is less than the lest one we received)
 		// then we need to start a new packet.
-		if ( !b_one_packet && (hdr.channel_id < d_last_channel_block) ) {
-			if ( d_last_channel_block != d_ending_channel_packet_channel_id ) {
-				// We missed the last packet.
-				// Before we trigger a vector wipe, let's queue what we had.
-				// NOTE: This logic does assume we had at least one packet from the previous set that
-				// triggered the wipe and that d_last_timestamp was set from the last set.
-				for (int this_time_start=0;this_time_start<16;this_time_start++) {
-					int block_start = this_time_start * d_veclen;
+		if (!b_one_packet) {
+			if ( hdr.channel_id < d_last_channel_block ) {
+				if ( d_last_channel_block != d_ending_channel_packet_channel_id ) {
+					// We missed the last packet.
+					// Before we trigger a vector wipe, let's queue what we had.
+					// NOTE: This logic does assume we had at least one packet from the previous set that
+					// triggered the wipe and that d_last_timestamp was set from the last set.
+					for (int this_time_start=0;this_time_start<16;this_time_start++) {
+						int block_start = this_time_start * d_veclen;
 
-					data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
-					x_vector_queue.push_back(x_cur_vector);
+						data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
+						x_vector_queue.push_back(x_cur_vector);
 
-					if (!d_packed_output) {
-						// If we're packed output, everything is in x_pol output.
-						data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
-						y_vector_queue.push_back(y_cur_vector);
+						if (!d_packed_output) {
+							// If we're packed output, everything is in x_pol output.
+							data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
+							y_vector_queue.push_back(y_cur_vector);
+						}
+
+						if (sync_timestamp == 0)
+							seq_num_queue.push_back(d_last_timestamp);
 					}
+				}
+				// We're starting a new vector, so zero out what we have.
+				memset(x_vector_buffer,0x00,vector_buffer_size);
+				if (!d_packed_output)
+					memset(y_vector_buffer,0x00,vector_buffer_size);
+			}
 
-					if (sync_timestamp == 0)
-						seq_num_queue.push_back(d_last_timestamp);
+			// Check if we skipped packets by missing a channel block.
+			// The if statement just checks that this isn't our very first packet we're processing.
+			// d_last_channel_block is set to -1 in the constructor, and 0 could be a valid start channel.
+			if ( d_last_channel_block >= 0 ) {
+				if (hdr.channel_id > d_last_channel_block) {
+					int delta = (hdr.channel_id - d_last_channel_block) / channels_per_packet;
+
+					// Delta should be 1.  So anything more than 1 is a skipped packet.
+					skippedPackets += delta - 1;
+				}
+				else {
+					// channel id < last block so we wrapped around.
+					// int dist_to_end = (d_ending_channel_packet_channel_id - d_last_channel_block)/channels_per_packet;
+					// int dist_from_start = (hdr.channel_id - d_starting_channel)/channels_per_packet;
+
+					// skippedPackets += dist_to_end + dist_from_start;
+					skippedPackets += (d_ending_channel_packet_channel_id - d_last_channel_block + hdr.channel_id - d_starting_channel) / channels_per_packet;
 				}
 			}
-			// We're starting a new vector, so zero out what we have.
-			memset(x_vector_buffer,0x00,vector_buffer_size);
-			if (!d_packed_output)
-				memset(y_vector_buffer,0x00,vector_buffer_size);
-		}
-
-		// Check if we skipped packets by missing a channel block.
-		// The if statement just checks that this isn't our very first packet we're processing.
-		// d_last_channel_block is set to -1 in the constructor, and 0 could be a valid start channel.
-		if ( (!b_one_packet) && (d_last_channel_block >= 0) ) {
-			if (hdr.channel_id > d_last_channel_block) {
-				int delta = (hdr.channel_id - d_last_channel_block) / channels_per_packet;
-
-				// Delta should be 1.  So anything more than 1 is a skipped packet.
-				skippedPackets += delta - 1;
-			}
-			else {
-				// channel id < last block so we wrapped around.
-				// int dist_to_end = (d_ending_channel_packet_channel_id - d_last_channel_block)/channels_per_packet;
-				// int dist_from_start = (hdr.channel_id - d_starting_channel)/channels_per_packet;
-
-				// skippedPackets += dist_to_end + dist_from_start;
-				skippedPackets += (d_ending_channel_packet_channel_id - d_last_channel_block + hdr.channel_id - d_starting_channel) / channels_per_packet;
-			}
-		}
+		} // !b_one_packet
 
 		// Store what we saw as the "last" packet we received.
 		d_last_channel_block = hdr.channel_id;
@@ -769,9 +771,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 					y_pol[TwoS1] = (char)(vp->data[sample][t][1] & 0x0F);  // Q
 					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
-				}
-			}
-		}
+				} // for sample
+			} // for t
+		} // if d_packet_output /else
 
 		// Now check if we've completed a set.  If so, let's queue it up
 		// for output consumption.
@@ -828,9 +830,9 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 				if (sync_timestamp == 0)
 					seq_num_queue.push_back(hdr.sample_number);
-			}
-		}
-	}
+			} // this_time_start
+		} // if ( b_one_packet || (hdr.channel_id == d_ending_channel_packet_channel_id) )
+	} // while packets and x_vector < noutput_items
 
 	int items_returned;
 	// Move queue items to output items as needed
