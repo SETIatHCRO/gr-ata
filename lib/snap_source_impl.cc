@@ -144,7 +144,7 @@ snap_source_impl::snap_source_impl(int port,
 
 	d_port = port;
 	d_last_channel_block = -1;
-	d_last_timestamp = -1;
+	d_last_timestamp = 0;
 	d_notifyMissed = notifyMissed;
 	d_sourceZeros = sourceZeros;
 	d_partialFrameCounter = 0;
@@ -588,6 +588,91 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 	start_receive();
 }
 
+void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
+	// Pointer to our UDP payload after the header.
+	// Move to the beginning of our packet data section
+	voltage_packet *vp;
+	vp = (voltage_packet *)&localBuffer[d_header_size];
+
+	// Store what we saw as the "last" packet we received.
+	d_last_channel_block = hdr.channel_id;
+
+	// cycle through the time entry rows in the packet. (will always be 16)
+
+	int t;
+	int sample;
+	int vector_start;
+	int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
+
+	if (d_packed_output) {
+		unsigned char *x_pol;
+		for (t=0;t<16;t++) {
+			// This moves us in the packet memory to the correct time row
+			vector_start = t * d_veclen  + channel_offset_within_time_block;
+			// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
+			// Both go in the x_pol output.
+			x_pol = (unsigned char *)&x_vector_buffer[vector_start];
+
+			for (sample=0;sample<256;sample++) {
+				int TwoS = 2*sample;
+
+				x_pol[TwoS] = vp->data[sample][t][0];
+				// In packed mode, this is actually y to put it in a single block output
+				x_pol[TwoS + 1] = vp->data[sample][t][1];
+			}
+		}
+	}
+	else {
+		// Note these are char rather than unsigned char because in this unpacking
+		// mode, we actually two's complement extract the signed input.
+		char *x_pol;
+		char *y_pol;
+		for (t=0;t<16;t++) {
+			// This moves us in the packet memory to the correct time row
+			vector_start = t * d_veclen  + channel_offset_within_time_block;
+			x_pol = &x_vector_buffer[vector_start];
+			y_pol = &y_vector_buffer[vector_start];
+
+			for (sample=0;sample<256;sample++) {
+				int TwoS = 2*sample;
+				int TwoS1 = TwoS + 1;
+
+				// The 2.0 format reverses the [t][sample] index position to [sample][t].
+				x_pol[TwoS] = (char)(vp->data[sample][t][0] >> 4); // I
+				// Need to adjust twos-complement
+				x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
+
+				x_pol[TwoS1] = (char)(vp->data[sample][t][0] & 0x0F);  // Q
+				x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
+
+				y_pol[TwoS] = (char)(vp->data[sample][t][1] >> 4); // I
+				y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
+
+				y_pol[TwoS1] = (char)(vp->data[sample][t][1] & 0x0F);  // Q
+				y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
+			} // for sample
+		} // for t
+	} // if d_packet_output /else
+}
+
+void snap_source_impl::queue_voltage_data(snap_header& hdr) {
+	for (int this_time_start=0;this_time_start<16;this_time_start++) {
+		int block_start = this_time_start * d_veclen;
+
+		data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
+		x_vector_queue.push_back(x_cur_vector);
+
+		if (!d_packed_output) {
+			// If we're packed output, everything is in x_pol output.
+			data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
+			y_vector_queue.push_back(y_cur_vector);
+		}
+
+		if (sync_timestamp == 0)
+			seq_num_queue.push_back(hdr.sample_number);
+	} // this_time_start
+}
+
 int snap_source_impl::work_volt_mode(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items, bool liveWork) {
@@ -650,143 +735,20 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 	int skippedPackets = 0;
 
 	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items)) {
+		// This get header gets it directly from the queue
 		fill_local_buffer();
 		get_voltage_header(hdr);
 		num_packets_available--;
 
-		// Efficiency note:  For single packet frames, there's no need to zero out the vector buffer,
-		// 					 since we're just going to overwrite it anyway.
-		// If the channel id in a multi-packet frame rolled over (current channel id is less than the lest one we received)
-		// then we need to start a new packet.
-		if (!b_one_packet) {
-			if ( hdr.channel_id < d_last_channel_block ) {
-				if ( d_last_channel_block != d_ending_channel_packet_channel_id ) {
-					// We missed the last packet.
-					// Before we trigger a vector wipe, let's queue what we had.
-					// NOTE: This logic does assume we had at least one packet from the previous set that
-					// triggered the wipe and that d_last_timestamp was set from the last set.
-					for (int this_time_start=0;this_time_start<16;this_time_start++) {
-						int block_start = this_time_start * d_veclen;
-
-						data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
-						x_vector_queue.push_back(x_cur_vector);
-
-						if (!d_packed_output) {
-							// If we're packed output, everything is in x_pol output.
-							data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
-							y_vector_queue.push_back(y_cur_vector);
-						}
-
-						if (sync_timestamp == 0)
-							seq_num_queue.push_back(d_last_timestamp);
-					}
-				}
-				// We're starting a new vector, so zero out what we have.
-				memset(x_vector_buffer,0x00,vector_buffer_size);
-				if (!d_packed_output)
-					memset(y_vector_buffer,0x00,vector_buffer_size);
+		if (b_one_packet || ((d_last_timestamp > 0) && (hdr.sample_number  != d_last_timestamp)) ) {
+			if (!b_one_packet) {
+				// If we're not in 1-packet mode, queue whatever data we already had first, then check for missing
+				queue_voltage_data(hdr);
 			}
 
-			// Check if we skipped packets by missing a channel block.
-			// The if statement just checks that this isn't our very first packet we're processing.
-			// d_last_channel_block is set to -1 in the constructor, and 0 could be a valid start channel.
-			if ( d_last_channel_block >= 0 ) {
-				if (hdr.channel_id > d_last_channel_block) {
-					int delta = (hdr.channel_id - d_last_channel_block) / channels_per_packet;
-
-					// Delta should be 1.  So anything more than 1 is a skipped packet.
-					skippedPackets += delta - 1;
-				}
-				else {
-					// channel id < last block so we wrapped around.
-					// int dist_to_end = (d_ending_channel_packet_channel_id - d_last_channel_block)/channels_per_packet;
-					// int dist_from_start = (hdr.channel_id - d_starting_channel)/channels_per_packet;
-
-					// skippedPackets += dist_to_end + dist_from_start;
-					skippedPackets += (d_ending_channel_packet_channel_id - d_last_channel_block + hdr.channel_id - d_starting_channel) / channels_per_packet;
-				}
-			}
-		} // !b_one_packet
-
-		// Store what we saw as the "last" packet we received.
-		d_last_channel_block = hdr.channel_id;
-
-		// Pointer to our UDP payload after the header.
-		// Move to the beginning of our packet data section
-		unsigned char *pData = (unsigned char *)&localBuffer[d_header_size];
-
-		voltage_packet *vp;
-		vp = (voltage_packet *)pData;
-
-		// cycle through the time entry rows in the packet. (will always be 16)
-
-		int t;
-		int sample;
-		int vector_start;
-		int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
-
-		if (d_packed_output) {
-			unsigned char *x_pol;
-			for (t=0;t<16;t++) {
-				// This moves us in the packet memory to the correct time row
-				vector_start = t * d_veclen  + channel_offset_within_time_block;
-				// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
-				// Both go in the x_pol output.
-				x_pol = (unsigned char *)&x_vector_buffer[vector_start];
-
-				for (sample=0;sample<256;sample++) {
-					int TwoS = 2*sample;
-
-					x_pol[TwoS] = vp->data[sample][t][0];
-					// In packed mode, this is actually y to put it in a single block output
-					x_pol[TwoS + 1] = vp->data[sample][t][1];
-				}
-			}
-		}
-		else {
-			// Note these are char rather than unsigned char because in this unpacking
-			// mode, we actually two's complement extract the signed input.
-			char *x_pol;
-			char *y_pol;
-			for (t=0;t<16;t++) {
-				// This moves us in the packet memory to the correct time row
-				vector_start = t * d_veclen  + channel_offset_within_time_block;
-				x_pol = &x_vector_buffer[vector_start];
-				y_pol = &y_vector_buffer[vector_start];
-
-				for (sample=0;sample<256;sample++) {
-					int TwoS = 2*sample;
-					int TwoS1 = TwoS + 1;
-
-					// The 2.0 format reverses the [t][sample] index position to [sample][t].
-					x_pol[TwoS] = (char)(vp->data[sample][t][0] >> 4); // I
-					// Need to adjust twos-complement
-					x_pol[TwoS] = TwosComplementLookup4Bit(x_pol[TwoS]); // TwosComplement4Bit(x_pol[TwoS]);
-
-					x_pol[TwoS1] = (char)(vp->data[sample][t][0] & 0x0F);  // Q
-					x_pol[TwoS1] = TwosComplementLookup4Bit(x_pol[TwoS1]); // TwosComplement4Bit(x_pol[TwoS1]);
-
-					y_pol[TwoS] = (char)(vp->data[sample][t][1] >> 4); // I
-					y_pol[TwoS] = TwosComplementLookup4Bit(y_pol[TwoS]); // TwosComplement4Bit(y_pol[TwoS]);
-
-					y_pol[TwoS1] = (char)(vp->data[sample][t][1] & 0x0F);  // Q
-					y_pol[TwoS1] = TwosComplementLookup4Bit(y_pol[TwoS1]); // TwosComplement4Bit(y_pol[TwoS1]);
-				} // for sample
-			} // for t
-		} // if d_packet_output /else
-
-		// Now check if we've completed a set.  If so, let's queue it up
-		// for output consumption.
-		if ( b_one_packet || (hdr.channel_id == d_ending_channel_packet_channel_id) ) {
-			// Queue up our vectors.  Again always 16 discrete time entries.
-
-			// First, check if we missed any sequence numbers.  If we did,
-			// Let's fill in the missing with zeros to keep things aligned.
-			// d_last_timestamp = -1 on first pass, so ignore that.
-			// if hdr.sample_number < d_last_timestamp our counter may have wrapped.  So ignore that.
-			if ( (d_last_timestamp >= 0) && (hdr.sample_number > d_last_timestamp) && ((hdr.sample_number - d_last_timestamp) > 16) ) {
-				// Each timestamp will always be t[n+1] = t[n] + 16.  If we missed any, we'll know from this.
-				// When t[n+1] is correct, missed_sets = 0.
+			// Check for missing frames
+			if ( (d_last_timestamp > 0) && (hdr.sample_number > d_last_timestamp) ) {
+				// check for missed frames.  We check > d_last_timestamp to assume on rollovers we didn't miss a frame (for now.  Should calc)
 				uint64_t missed_sets = (hdr.sample_number - d_last_timestamp) / 16 - 1;
 
 				if (b_one_packet) {
@@ -814,24 +776,29 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				}
 			}
 
+			if (b_one_packet) {
+				// If we're in 1-packet mode, we check for missing first, then queue what we just got
+				// Queue what we have
+				copy_volt_data_to_vector_buffer(hdr);
+				queue_voltage_data(hdr);
+			}
+			else {
+				// We're starting a new multi-part vector, so zero out what we have.
+				memset(x_vector_buffer,0x00,vector_buffer_size);
+				if (!d_packed_output)
+					memset(y_vector_buffer,0x00,vector_buffer_size);
+
+				// Then copy in what we just got
+				copy_volt_data_to_vector_buffer(hdr);
+			}
+
 			d_last_timestamp = hdr.sample_number;
+		}
+		else {
+			// Not one packet and in the middle of a multi-packet frame
+			copy_volt_data_to_vector_buffer(hdr);
+		}
 
-			for (int this_time_start=0;this_time_start<16;this_time_start++) {
-				int block_start = this_time_start * d_veclen;
-
-				data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
-				x_vector_queue.push_back(x_cur_vector);
-
-				if (!d_packed_output) {
-					// If we're packed output, everything is in x_pol output.
-					data_vector<char> y_cur_vector(&y_vector_buffer[block_start],d_veclen);
-					y_vector_queue.push_back(y_cur_vector);
-				}
-
-				if (sync_timestamp == 0)
-					seq_num_queue.push_back(hdr.sample_number);
-			} // this_time_start
-		} // if ( b_one_packet || (hdr.channel_id == d_ending_channel_packet_channel_id) )
 	} // while packets and x_vector < noutput_items
 
 	int items_returned;
