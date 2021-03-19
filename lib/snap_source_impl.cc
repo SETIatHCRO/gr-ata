@@ -368,11 +368,11 @@ snap_source_impl::snap_source_impl(int port,
 void snap_source_impl::handleSyncMsg(pmt::pmt_t msg) {
 	pmt::pmt_t data = pmt::cdr(msg);
 	try {
-		sync_timestamp = pmt::to_long(data);
+		sync_timestamp = pmt::to_uint64(data);
 	}
 	catch(...) {
 		std::stringstream msg;
-		msg << "A sync PMT message was received that could not be converted to a long.";
+		msg << "A sync PMT message was received that could not be converted to a uint64.";
 		GR_LOG_WARN(d_logger, msg.str());
 	}
 }
@@ -602,7 +602,14 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 	int t;
 	int sample;
 	int vector_start;
-	int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
+	int channel_offset_within_time_block;
+
+	if (b_one_packet) {
+		channel_offset_within_time_block = 0;
+	}
+	else {
+		channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
+	}
 
 	if (d_packed_output) {
 		unsigned char *x_pol;
@@ -835,7 +842,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				uint64_t vector_seq_num = seq_num_queue.front();
 				seq_num_queue.pop_front();
 
-				pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
+				pmt::pmt_t pmt_sequence_number =pmt::from_uint64(vector_seq_num);
 
 				add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
 				if (!d_packed_output) {
@@ -1048,7 +1055,7 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 		// This is expected.
 
 		if (liveWork && (sync_timestamp > 0)) {
-			pmt::pmt_t pmt_sequence_number =pmt::from_long((long)vector_seq_num);
+			pmt::pmt_t pmt_sequence_number =pmt::from_uint64(vector_seq_num);
 
 			add_item_tag(0, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);
 			add_item_tag(1, nitems_written(0) + i, d_pmt_seqnum, pmt_sequence_number,d_block_name);

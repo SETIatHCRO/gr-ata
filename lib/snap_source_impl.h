@@ -280,7 +280,7 @@ protected:
 	bool d_send_sync_pmt = false;
 	snap_header async_volt_sync_hdr;
 	snap_header async_spect_sync_hdr;
-	long sync_timestamp = 0;
+	uint64_t sync_timestamp = 0;
 
 	// Voltage Mode buffers
 	char *x_vector_buffer = NULL;
