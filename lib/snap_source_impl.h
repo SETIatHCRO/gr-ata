@@ -349,7 +349,23 @@ protected:
 	}
 
 	void get_voltage_header(snap_header& hdr) {
-		struct voltage_header *v_hdr = (struct voltage_header *)localBuffer;
+		// struct voltage_header *v_hdr = (struct voltage_header *)localBuffer;
+
+		struct voltage_header *v_hdr;
+		{
+			gr::thread::scoped_lock guard(d_net_mutex);
+			v_hdr = (struct voltage_header *)d_localqueue->front().data_pointer();
+		}
+		/*
+		struct voltage_header *v_hdr;
+
+		if (b_one_packet) {
+			v_hdr = (struct voltage_header *)d_localqueue->front().data_pointer();
+		}
+		else {
+			v_hdr = (struct voltage_header *)localBuffer;
+		}
+		*/
 		hdr.antenna_id = be16toh(v_hdr->feng_id);
 		hdr.channel_id = be16toh(v_hdr->chan);
 		hdr.firmware_version = v_hdr->version; // no need to network->host order, only a byte

@@ -592,7 +592,16 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 	// Pointer to our UDP payload after the header.
 	// Move to the beginning of our packet data section
 	voltage_packet *vp;
-	vp = (voltage_packet *)&localBuffer[d_header_size];
+	// vp = (voltage_packet *)&localBuffer[d_header_size];
+
+	if (b_one_packet) {
+		gr::thread::scoped_lock guard(d_net_mutex);
+		unsigned char *pData = d_localqueue->front().data_pointer();
+		vp = (voltage_packet *)&pData[d_header_size];
+	}
+	else {
+		vp = (voltage_packet *)&localBuffer[d_header_size];
+	}
 
 	// Store what we saw as the "last" packet we received.
 	d_last_channel_block = hdr.channel_id;
@@ -660,6 +669,11 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 			} // for sample
 		} // for t
 	} // if d_packet_output /else
+
+	if (b_one_packet) {
+		gr::thread::scoped_lock guard(d_net_mutex);
+		d_localqueue->pop_front();
+	}
 }
 
 void snap_source_impl::queue_voltage_data(snap_header& hdr) {
@@ -743,8 +757,12 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items)) {
 		// This get header gets it directly from the queue
-		fill_local_buffer();
 		get_voltage_header(hdr);
+		if (!b_one_packet) {
+			// With only a single packet, we don't copy to localBuffer and
+			// It's handled in copy_volt_data_to_vector_buffer()
+			fill_local_buffer();
+		}
 		num_packets_available--;
 
 		if (b_one_packet || ((d_last_timestamp > 0) && (hdr.sample_number  != d_last_timestamp)) ) {
@@ -763,22 +781,27 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				}
 
 				// missed_sets could be < 0 if we rolled over.  So we'll just let that pass
-				if ((missed_sets > 0) && (missed_sets <= MAX_MISSED_SETS)) {
-					for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
-						// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
-						// Gotta push back 16 time entries for each missing timestamp.
-						for (int i=0;i<16;i++) {
-							data_vector<char> x_cur_vector(d_veclen);
-							x_vector_queue.push_back(x_cur_vector);
-							if (!d_packed_output) {
-								// If we're packed output, everything is in x_pol output.
-								data_vector<char> y_cur_vector(d_veclen);
-								y_vector_queue.push_back(y_cur_vector);
-							}
+				if (missed_sets > 0) {
+					if  (missed_sets <= MAX_MISSED_SETS) {
+						for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
+							// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
+							// Gotta push back 16 time entries for each missing timestamp.
+							for (int i=0;i<16;i++) {
+								data_vector<char> x_cur_vector(d_veclen);
+								x_vector_queue.push_back(x_cur_vector);
+								if (!d_packed_output) {
+									// If we're packed output, everything is in x_pol output.
+									data_vector<char> y_cur_vector(d_veclen);
+									y_vector_queue.push_back(y_cur_vector);
+								}
 
-							if (sync_timestamp == 0)
-								seq_num_queue.push_back(missed_timestamp);
+								if (sync_timestamp == 0)
+									seq_num_queue.push_back(missed_timestamp);
+							}
 						}
+					}
+					else {
+						GR_LOG_WARN(d_logger,"Missed frames exceeded max missed sets.  Some data has been dropped.");
 					}
 				}
 			}
