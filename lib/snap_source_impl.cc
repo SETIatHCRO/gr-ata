@@ -723,6 +723,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 #endif
 
 	int num_packets_available = packets_available();
+	int max_wait_counter = 0;
 
 	// Handle case where no data is available
 	while (!stop_thread && !pcap_file_done && (num_packets_available == 0) && (x_vector_queue.size() == 0) ) {
@@ -734,6 +735,14 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		}
 
 		num_packets_available = packets_available();
+
+		// Returning zero has a massive delay on overall performance.
+		// But waiting indefinitely when there's no packets causes this loop to hang and not respond to sigint.
+		// So a quick counter takes care of it.
+		if (num_packets_available == 0) {
+			if (max_wait_counter++ > 120000)
+				return 0;
+		}
 	}
 
 	snap_header hdr;
