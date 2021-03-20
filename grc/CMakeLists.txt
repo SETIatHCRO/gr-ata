@@ -23,6 +23,5 @@ install(FILES
     ata_trackscan.block.yml
     ata_onoff.block.yml
     ata_ifswitch.block.yml
-    ata_SNAPSynchronizer.block.yml
     ata_SNAPSynchronizerV3.block.yml DESTINATION share/gnuradio/grc/blocks
 )
