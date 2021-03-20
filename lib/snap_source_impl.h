@@ -269,6 +269,7 @@ protected:
 	boost::circular_buffer<data_vector<unsigned char>> *d_localqueue;
 	unsigned char *localBuffer;
 	char *test_buffer = NULL;
+	unsigned char *zc_front_pointer = NULL;
 
 	// Common mode items
 	int vector_buffer_size;
@@ -354,7 +355,8 @@ protected:
 		struct voltage_header *v_hdr;
 		{
 			gr::thread::scoped_lock guard(d_net_mutex);
-			v_hdr = (struct voltage_header *)d_localqueue->front().data_pointer();
+			zc_front_pointer = d_localqueue->front().data_pointer();
+			v_hdr = (struct voltage_header *)zc_front_pointer;
 		}
 		/*
 		struct voltage_header *v_hdr;

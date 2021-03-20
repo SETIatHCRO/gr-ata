@@ -29,6 +29,7 @@
 #include "snap_source_impl.h"
 #include <gnuradio/io_signature.h>
 #include <sstream>
+#include <boost/asio/signal_set.hpp>
 
 #include <ata/snap_headers.h>
 
@@ -416,6 +417,11 @@ bool snap_source_impl::stop() {
 	stop_thread = true;
 
 	if (proc_thread) {
+		if (d_udpsocket) {
+			d_udpsocket->cancel();
+			d_io_service.stop();
+		}
+
 		while (threadRunning)
 			usleep(10);
 
@@ -595,9 +601,15 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 	// vp = (voltage_packet *)&localBuffer[d_header_size];
 
 	if (b_one_packet) {
-		gr::thread::scoped_lock guard(d_net_mutex);
-		unsigned char *pData = d_localqueue->front().data_pointer();
-		vp = (voltage_packet *)&pData[d_header_size];
+		// gr::thread::scoped_lock guard(d_net_mutex);
+		// unsigned char *pData = d_localqueue->front().data_pointer();
+		// vp = (voltage_packet *)&pData[d_header_size];
+		// In one_packet mode, we can just peek at the front of the queue in
+		// the get_header call that happens before this and store
+		// a pointer to the data at the front of the queue, which we need
+		// there but won't move in memory.  So rather than another scoped_lock
+		// we can just use that pointer here.
+		vp = (voltage_packet *)&zc_front_pointer[d_header_size];
 	}
 	else {
 		vp = (voltage_packet *)&localBuffer[d_header_size];
