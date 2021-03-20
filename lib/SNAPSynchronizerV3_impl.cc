@@ -57,7 +57,7 @@ SNAPSynchronizerV3_impl::SNAPSynchronizerV3_impl(int num_inputs, int num_channel
 
 	d_block_name = pmt::string_to_symbol(identifier());
 
-	pmt_sequence_number_minus_one =pmt::from_long(-1);
+	pmt_sequence_number_zero =pmt::from_uint64(0);
 
 	tag_list = new unsigned long[d_num_inputs];
 
@@ -132,7 +132,7 @@ SNAPSynchronizerV3_impl::general_work (int noutput_items,
 			// We only need the first tag.  No need to get them all.
 			this->get_tags_in_window(tags, cur_input, 0, 1);
 
-			unsigned long tag0 = pmt::to_long(tags[0].value);
+			unsigned long tag0 = pmt::to_uint64(tags[0].value);
 
 			if (cur_input == 0) {
 				first_input_timestamp = tag0;
@@ -171,7 +171,7 @@ SNAPSynchronizerV3_impl::general_work (int noutput_items,
 			}
 			consume_each (noutput_items);
 
-	        pmt::pmt_t pdu = pmt::cons( pmt::intern("synctimestamp"), pmt::from_long(highest_tag) );
+	        pmt::pmt_t pdu = pmt::cons( pmt::intern("synctimestamp"), pmt::from_uint64(highest_tag) );
 			message_port_pub(pmt::mp("sync"),pdu);
 
 			std::stringstream msg_stream;

@@ -37,7 +37,7 @@ namespace gr {
 
     	pmt::pmt_t d_pmt_seqnum;
     	pmt::pmt_t d_block_name;
-    	pmt::pmt_t pmt_sequence_number_minus_one;
+    	pmt::pmt_t pmt_sequence_number_zero;
 
     	unsigned long *tag_list;
 
