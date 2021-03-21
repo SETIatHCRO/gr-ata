@@ -20,6 +20,7 @@ from gnuradio import eng_notation
 import ata
 import clenabled
 import os
+import multiprocessing
 
 class ata_12ant_xcorr(gr.top_block):
 
@@ -41,10 +42,14 @@ class ata_12ant_xcorr(gr.top_block):
         ##################################################
         self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, clparam_integration_frames, True,output_file,0,True)
         self.clenabled_clXEngine_0.set_processor_affinity([0, 1])
+
+        num_cores = multiprocessing.cpu_count()
         
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
             new_ant = ata.snap_source(10000+i, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10')
+            if (i+3) < num_cores:
+                new_ant.set_processor_affinity([i+2, i+3])
             ##################################################
             # Connections
             ##################################################
