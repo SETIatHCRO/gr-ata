@@ -18,7 +18,7 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 import ata
 import clenabled
-
+import multiprocessing
 
 class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
 
@@ -39,6 +39,8 @@ class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
         self.clenabled_clXEngine_0 = clenabled.clXEngine(1,2,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, clparam_integration_frames, True,output_file,0,True)
         self.clenabled_clXEngine_0.set_processor_affinity([0, 1])
         
+        num_cores = multiprocessing.cpu_count()
+        
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
             if i == 0:
@@ -52,6 +54,8 @@ class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
                 input_port = 10002
                 
             new_ant = ata.snap_source(input_port, 1, True, False, False,starting_channel,ending_channel,3, input_file, False, True, '224.1.1.10')
+            if (i+3) < num_cores:
+                new_ant.set_processor_affinity([i+2, i+3])
             ##################################################
             # Connections
             ##################################################
