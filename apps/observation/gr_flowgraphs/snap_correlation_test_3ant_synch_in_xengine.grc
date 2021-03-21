@@ -10,7 +10,7 @@ options:
     gen_linking: dynamic
     generate_options: no_gui
     hier_block_src_path: '.:'
-    id: ata_3ant_xcorr
+    id: snap_correlation_test_3ant_synch_in_xengine
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -21,7 +21,7 @@ options:
     run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: ATA 3 Antenna XEngine
+    title: ATA New SNAP X-Engine
     window_size: ''
   states:
     bus_sink: false
@@ -32,54 +32,6 @@ options:
     state: enabled
 
 blocks:
-- name: center_channel
-  id: variable
-  parameters:
-    comment: ''
-    value: starting_channel + num_channels/2
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1272, 12.0]
-    rotation: 0
-    state: true
-- name: center_freq
-  id: variable
-  parameters:
-    comment: ''
-    value: sky_freq + (center_channel-2048)*channel_width
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1160, 12.0]
-    rotation: 0
-    state: true
-- name: channel_width
-  id: variable
-  parameters:
-    comment: ''
-    value: 250e3
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [920, 12.0]
-    rotation: 0
-    state: true
-- name: data_vector_len
-  id: variable
-  parameters:
-    comment: ''
-    value: int(snap_vector_len/2)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [832, 76.0]
-    rotation: 0
-    state: true
 - name: ending_channel
   id: variable
   parameters:
@@ -89,55 +41,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [680, 12.0]
-    rotation: 0
-    state: true
-- name: file_timestamp
-  id: variable
-  parameters:
-    comment: ''
-    value: now.strftime("%Y_%m_%d_%H_%M")
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1224, 164.0]
-    rotation: 0
-    state: true
-- name: gain
-  id: variable
-  parameters:
-    comment: ''
-    value: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [960, 76.0]
-    rotation: 0
-    state: true
-- name: half_channel_width
-  id: variable
-  parameters:
-    comment: ''
-    value: channel_width/2.0
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1048, 84.0]
-    rotation: 0
-    state: true
-- name: now
-  id: variable
-  parameters:
-    comment: ''
-    value: datetime.now()
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1408, 12.0]
+    coordinate: [808, 12.0]
     rotation: 0
     state: true
 - name: num_channels
@@ -149,79 +53,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [546, 12]
-    rotation: 0
-    state: true
-- name: output_file
-  id: variable
-  parameters:
-    comment: ''
-    value: '''/home/mpiscopo/xengine_output/staging/ata_'' + file_timestamp'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1016, 164.0]
-    rotation: 0
-    state: true
-- name: sky_freq
-  id: variable
-  parameters:
-    comment: ''
-    value: 3000e6
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [331, 12]
-    rotation: 0
-    state: true
-- name: snap_bandwidth
-  id: variable
-  parameters:
-    comment: ''
-    value: channel_width*num_channels
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [688, 76.0]
-    rotation: 0
-    state: enabled
-- name: snap_samp_rate
-  id: variable
-  parameters:
-    comment: ''
-    value: num_channels/4e-6
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [210, 12]
-    rotation: 0
-    state: enabled
-- name: snap_vector_len
-  id: variable
-  parameters:
-    comment: ''
-    value: int((ending_channel-starting_channel+1)*2)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [808, 12.0]
-    rotation: 0
-    state: true
-- name: start_freq
-  id: variable
-  parameters:
-    comment: ''
-    value: sky_freq - (2048-starting_channel)*channel_width
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1048, 12.0]
+    coordinate: [440, 12.0]
     rotation: 0
     state: true
 - name: starting_channel
@@ -233,7 +65,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [426, 12]
+    coordinate: [320, 12.0]
     rotation: 0
     state: true
 - name: ata_snap_source_0
@@ -242,9 +74,9 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    data_source: '1'
+    data_source: '3'
     ending_channel: ending_channel
-    file: /home/sonata/casa_pcap_feb9/snap_2_ant_1f.pcap
+    file: /home/sonata/casa_pcap/snap_2_ant_1f.pcap
     header: '1'
     ipv6: 'False'
     maxoutbuf: '0'
@@ -269,9 +101,9 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    data_source: '1'
+    data_source: '3'
     ending_channel: ending_channel
-    file: /home/sonata/casa_pcap_feb9/snap_5_ant_2a.pcap
+    file: /home/sonata/casa_pcap/snap_7_ant_3c.pcap
     header: '1'
     ipv6: 'False'
     maxoutbuf: '0'
@@ -296,9 +128,9 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    data_source: '1'
+    data_source: '3'
     ending_channel: ending_channel
-    file: /home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap
+    file: /home/sonata/casa_pcap/snap_8_ant_4g.pcap
     header: '1'
     ipv6: 'False'
     maxoutbuf: '0'
@@ -320,14 +152,14 @@ blocks:
 - name: clenabled_clXEngine_0
   id: clenabled_clXEngine
   parameters:
-    affinity: ''
+    affinity: '[0,1]'
     alias: ''
     comment: ''
     deviceId: '0'
-    devices: '1'
-    file_base: output_file
+    devices: '2'
+    file_base: /home/mpiscopo/xengine_output/2021_Jan_04/casa_2021_jan_04_sync_v3_xeng
     first_channel: starting_channel
-    integration: '10000'
+    integration: '1024'
     internal_synchronizer: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -344,22 +176,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [624, 356.0]
+    coordinate: [648, 412.0]
     rotation: 0
     state: enabled
-- name: import_0
-  id: import
-  parameters:
-    alias: ''
-    comment: ''
-    imports: from datetime import datetime
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1240, 100.0]
-    rotation: 0
-    state: true
 - name: note_0
   id: note
   parameters:
@@ -383,7 +202,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [680, 140.0]
+    coordinate: [824, 84.0]
     rotation: 0
     state: true
 

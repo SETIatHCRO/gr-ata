@@ -32,64 +32,16 @@ options:
     state: enabled
 
 blocks:
-- name: center_channel
-  id: variable
-  parameters:
-    comment: ''
-    value: starting_channel + num_channels/2
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1272, 12.0]
-    rotation: 0
-    state: true
-- name: center_freq
-  id: variable
-  parameters:
-    comment: ''
-    value: sky_freq + (center_channel-2048)*channel_width
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1160, 12.0]
-    rotation: 0
-    state: true
-- name: channel_width
-  id: variable
-  parameters:
-    comment: ''
-    value: 250e3
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [920, 12.0]
-    rotation: 0
-    state: true
-- name: data_vector_len
-  id: variable
-  parameters:
-    comment: ''
-    value: int(snap_vector_len/2)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [832, 76.0]
-    rotation: 0
-    state: true
 - name: ending_channel
   id: variable
   parameters:
-    comment: ''
+    comment: This is calc as start+num_channels
     value: starting_channel+num_channels-1
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [680, 12.0]
+    coordinate: [880, 12.0]
     rotation: 0
     state: true
 - name: file_timestamp
@@ -101,31 +53,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1224, 164.0]
-    rotation: 0
-    state: true
-- name: gain
-  id: variable
-  parameters:
-    comment: ''
-    value: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [960, 76.0]
-    rotation: 0
-    state: true
-- name: half_channel_width
-  id: variable
-  parameters:
-    comment: ''
-    value: channel_width/2.0
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1048, 84.0]
+    coordinate: [1312, 92.0]
     rotation: 0
     state: true
 - name: now
@@ -137,7 +65,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1408, 12.0]
+    coordinate: [1304, 12.0]
     rotation: 0
     state: true
 - name: num_channels
@@ -149,7 +77,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [546, 12]
+    coordinate: [464, 12.0]
     rotation: 0
     state: true
 - name: output_file
@@ -161,67 +89,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1016, 164.0]
-    rotation: 0
-    state: true
-- name: sky_freq
-  id: variable
-  parameters:
-    comment: ''
-    value: 3000e6
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [331, 12]
-    rotation: 0
-    state: true
-- name: snap_bandwidth
-  id: variable
-  parameters:
-    comment: ''
-    value: channel_width*num_channels
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [688, 76.0]
-    rotation: 0
-    state: enabled
-- name: snap_samp_rate
-  id: variable
-  parameters:
-    comment: ''
-    value: num_channels/4e-6
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [210, 12]
-    rotation: 0
-    state: enabled
-- name: snap_vector_len
-  id: variable
-  parameters:
-    comment: ''
-    value: int((ending_channel-starting_channel+1)*2)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [808, 12.0]
-    rotation: 0
-    state: true
-- name: start_freq
-  id: variable
-  parameters:
-    comment: ''
-    value: sky_freq - (2048-starting_channel)*channel_width
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1048, 12.0]
+    coordinate: [1104, 92.0]
     rotation: 0
     state: true
 - name: starting_channel
@@ -233,7 +101,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [426, 12]
+    coordinate: [328, 12.0]
     rotation: 0
     state: true
 - name: ata_snap_source_0
@@ -600,7 +468,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1240, 100.0]
+    coordinate: [1144, 20.0]
     rotation: 0
     state: true
 - name: note_0
@@ -614,19 +482,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [322, 76]
-    rotation: 0
-    state: true
-- name: note_0_0
-  id: note
-  parameters:
-    alias: ''
-    comment: These are calculated
-    note: ''
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [680, 140.0]
     rotation: 0
     state: true
 
