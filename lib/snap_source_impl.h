@@ -439,10 +439,10 @@ protected:
 		if (skippedPackets > 0 && d_notifyMissed) {
 			std::stringstream msg_stream;
 			msg_stream << "[UDP source:" << d_port
-					<< "] missed  packets: " << skippedPackets;
+					<< "] missed packets: " << skippedPackets;
 
 			if (d_localqueue->full()) {
-				msg_stream << "Queue full.  Network packets are not being processed fast enough.";
+				msg_stream << ".  Queue full.  Network packets are not being processed fast enough.";
 			}
 
 			GR_LOG_WARN(d_logger, msg_stream.str());
