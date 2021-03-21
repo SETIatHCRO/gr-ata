@@ -40,6 +40,7 @@ class ata_12ant_xcorr(gr.top_block):
         # Blocks
         ##################################################
         self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, clparam_integration_frames, True,output_file,0,True)
+        self.clenabled_clXEngine_0.set_processor_affinity([0, 1])
         
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
