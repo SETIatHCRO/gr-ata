@@ -34,22 +34,24 @@ class ata_12ant_xcorr(gr.top_block):
         self.starting_channel = starting_channel = clparam_starting_channel
         self.num_channels = num_channels = clparam_num_channels
         self.file_timestamp = file_timestamp = now.strftime("%Y_%m_%d_%H_%M")
-        self.output_file = output_file = clparam_output_directory + '/ata_' + file_timestamp
+        self.output_file = output_file = clparam_output_directory + '/' + clparam_output_prefix + '_' + file_timestamp
         self.ending_channel = ending_channel = starting_channel+num_channels-1
 
         ##################################################
         # Blocks
         ##################################################
         self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, clparam_integration_frames, True,output_file,0,True)
-        self.clenabled_clXEngine_0.set_processor_affinity([0, 1])
-
-        num_cores = multiprocessing.cpu_count()
         
+        if clparam_enable_affinity:
+            num_cores = multiprocessing.cpu_count()
+            self.clenabled_clXEngine_0.set_processor_affinity([0, 1])
+
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
             new_ant = ata.snap_source(10000+i, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10')
-            if (i+3) < num_cores:
-                new_ant.set_processor_affinity([i+2, i+3])
+            if clparam_enable_affinity:
+                if (i+3) < num_cores:
+                    new_ant.set_processor_affinity([i+2, i+3])
             ##################################################
             # Connections
             ##################################################
@@ -122,6 +124,8 @@ if __name__ == '__main__':
     parser.add_argument('--num-channels', '-c', type=int, help="Number of channels being received from SNAP (should be a multiple of 256)", required=True)
     parser.add_argument('--integration-frames', '-n', type=int, help="Number of Frames to integrate in the correlator.  Each frame is 4 microseconds.  So 4us * integration_frames=integration time.", required=True)
     parser.add_argument('--output-directory', '-o', type=str, help="Directory path to where correlation outputs should be written", required=True)
+    parser.add_argument('--output-prefix', '-p', type=str, default='ata', help="If specified, this prefix will be prepended to the output files.  Otherwise 'ata' will be used.", required=False)
+    parser.add_argument('--enable-affinity', help="Use processor affinity to pin processing blocks", action='store_true', required=False)
     
     args = parser.parse_args()
     clparam_starting_channel = args.starting_channel
@@ -129,7 +133,9 @@ if __name__ == '__main__':
     clparam_integration_frames = args.integration_frames
     clparam_output_directory = args.output_directory
     clparam_num_antennas = args.num_antennas
-
+    clparam_enable_affinity = args.enable_affinity
+    clparam_output_prefix = args.output_prefix
+    
     if not os.path.exists(clparam_output_directory):
         print("ERROR: The specified output directory does not exist.")
         exit(1)
