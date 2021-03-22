@@ -360,10 +360,6 @@ snap_source_impl::snap_source_impl(int port,
 	message_port_register_out(pmt::mp("sync_header"));
 	message_port_register_in(pmt::mp("sync"));
 	set_msg_handler(pmt::mp("sync"), boost::bind(&snap_source_impl::handleSyncMsg, this, _1) );
-
-#ifdef THREAD_RECEIVE
-	proc_thread = new boost::thread(boost::bind(&snap_source_impl::runThread, this));
-#endif
 }
 
 void snap_source_impl::handleSyncMsg(pmt::pmt_t msg) {
@@ -411,6 +407,14 @@ void snap_source_impl::closePCAP() {
 		pcap_close(pcapFile);
 		pcapFile = NULL;
 	}
+}
+
+bool snap_source_impl::start() {
+#ifdef THREAD_RECEIVE
+	proc_thread = new boost::thread(boost::bind(&snap_source_impl::runThread, this));
+#endif
+
+	return true;
 }
 
 bool snap_source_impl::stop() {
@@ -598,8 +602,8 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 	// Pointer to our UDP payload after the header.
 	// Move to the beginning of our packet data section
 	voltage_packet *vp;
-	// vp = (voltage_packet *)&localBuffer[d_header_size];
 
+#ifdef ZEROCOPY
 	if (b_one_packet) {
 		// gr::thread::scoped_lock guard(d_net_mutex);
 		// unsigned char *pData = d_localqueue->front().data_pointer();
@@ -614,6 +618,9 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 	else {
 		vp = (voltage_packet *)&localBuffer[d_header_size];
 	}
+#else
+	vp = (voltage_packet *)&localBuffer[d_header_size];
+#endif
 
 	// Store what we saw as the "last" packet we received.
 	d_last_channel_block = hdr.channel_id;
@@ -682,10 +689,12 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 		} // for t
 	} // if d_packet_output /else
 
+#ifdef ZEROCOPY
 	if (b_one_packet) {
 		gr::thread::scoped_lock guard(d_net_mutex);
 		d_localqueue->pop_front();
 	}
+#endif
 }
 
 void snap_source_impl::queue_voltage_data(snap_header& hdr) {
@@ -778,12 +787,18 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items)) {
 		// This get header gets it directly from the queue
+#ifdef ZEROCOPY
 		get_voltage_header(hdr);
 		if (!b_one_packet) {
 			// With only a single packet, we don't copy to localBuffer and
 			// It's handled in copy_volt_data_to_vector_buffer()
 			fill_local_buffer();
 		}
+#else
+		fill_local_buffer();
+		get_voltage_header(hdr);
+#endif
+
 		num_packets_available--;
 
 		if (b_one_packet || ((d_last_timestamp > 0) && (hdr.sample_number  != d_last_timestamp)) ) {

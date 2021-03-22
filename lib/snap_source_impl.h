@@ -350,14 +350,17 @@ protected:
 	}
 
 	void get_voltage_header(snap_header& hdr) {
-		// struct voltage_header *v_hdr = (struct voltage_header *)localBuffer;
 
+#ifdef ZEROCOPY
 		struct voltage_header *v_hdr;
 		{
 			gr::thread::scoped_lock guard(d_net_mutex);
 			zc_front_pointer = d_localqueue->front().data_pointer();
 			v_hdr = (struct voltage_header *)zc_front_pointer;
 		}
+#else
+		struct voltage_header *v_hdr = (struct voltage_header *)localBuffer;
+#endif
 		/*
 		struct voltage_header *v_hdr;
 
@@ -483,7 +486,8 @@ public:
 
 	~snap_source_impl();
 
-	bool stop();
+	virtual bool start();
+	virtual bool stop();
 
 	void handleSyncMsg(pmt::pmt_t msg);
 
