@@ -183,25 +183,16 @@ SNAPSynchronizerV3_impl::general_work (int noutput_items,
 		}
 
 		// So we're still not sync'd so we need to figure out what we need to dump.
-		unsigned long relative_tags = noutput_items - 16;
-
 		for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
 
 			// tag_diff will increment by 16 with the tag #'s so no need to divide by 16.
 			// We need this # anyway.
-			unsigned long tag_diff = highest_tag - tag_list[cur_input];
+			uint64_t items_to_consume = highest_tag - tag_list[cur_input];
 
-			if (tag_diff == 0) {
-				consume(cur_input,0);
-			}
-			else {
-				if (tag_diff > relative_tags) {
-					consume(cur_input,noutput_items);
-				}
-				else {
-					consume(cur_input, tag_diff);
-				}
-			}
+			if (items_to_consume > noutput_items)
+				items_to_consume = noutput_items;
+
+			consume(cur_input,items_to_consume);
 		}
 
 		// We're going to return 0 here so we don't forward any data along yet.  That won't happen till we're synchronized.
