@@ -51,7 +51,7 @@
 const int MAX_MISSED_SETS=20000;
 // So the work function does naturally limit how big these buffers can get,
 // and it puts backpressure on d_localqueue.
-const int MAX_WORK_BUFF_SIZE=MAX_MISSED_SETS+8000;
+const int MAX_WORK_BUFF_SIZE=125000;
 // This is number of packets now.  So memory is this * packet size.
 #define MAX_NET_CIRC_BUFFER 1000000
 
@@ -91,9 +91,11 @@ snap_source_impl::snap_source_impl(int port,
 : gr::sync_block("snap_src_" + std::to_string(port) + "_",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(1, 4,
-				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1))),
+				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1)))
+#ifdef USE_CIRC_VB
 				seq_num_queue(MAX_WORK_BUFF_SIZE),x_vector_queue(MAX_WORK_BUFF_SIZE),y_vector_queue(MAX_WORK_BUFF_SIZE),
 				xx_vector_queue(MAX_WORK_BUFF_SIZE),yy_vector_queue(MAX_WORK_BUFF_SIZE),xy_real_vector_queue(MAX_WORK_BUFF_SIZE),xy_imag_vector_queue(MAX_WORK_BUFF_SIZE)
+#endif
 {
 
 	if (data_source == DS_PCAP) {
@@ -525,10 +527,6 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 {
 	// std::cout << "[" << identifier() << "] handle_receive called with " << bytes_transferred << " bytes" << std::endl;
 	if (!error && (bytes_transferred == total_packet_size)) {
-#ifdef THREAD_RECEIVE
-		gr::thread::scoped_lock guard(d_net_mutex);
-#endif
-
 		if (!d_found_start_channel) {
 			// We're not synchronized on the first packet yet, so we're looking for it.
 			if (SNAP_PACKETTYPE_VOLTAGE) {
@@ -581,8 +579,10 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 
 		// We'll only get here if we've sync'd and the id is good.  so the main work doesn't need to track this anymore.
 		data_vector<unsigned char> new_data((unsigned char *)async_buffer,total_packet_size);
+#ifdef THREAD_RECEIVE
+		gr::thread::scoped_lock guard(d_net_mutex);
+#endif
 		d_localqueue->push_back(new_data);
-
 	}
 	else {
 		std::stringstream msg_stream;
@@ -599,56 +599,37 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 }
 
 void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
-	// Pointer to our UDP payload after the header.
-	// Move to the beginning of our packet data section
 	voltage_packet *vp;
-
 #ifdef ZEROCOPY
-	if (b_one_packet) {
-		// gr::thread::scoped_lock guard(d_net_mutex);
-		// unsigned char *pData = d_localqueue->front().data_pointer();
-		// vp = (voltage_packet *)&pData[d_header_size];
-		// In one_packet mode, we can just peek at the front of the queue in
-		// the get_header call that happens before this and store
-		// a pointer to the data at the front of the queue, which we need
-		// there but won't move in memory.  So rather than another scoped_lock
-		// we can just use that pointer here.
-		vp = (voltage_packet *)&zc_front_pointer[d_header_size];
+	unsigned char *pData;
+
+	{
+		// If we need to switch back from zc mode, this is where
+		// we'd call fill_local_buffer()
+
+		// We only need to lock while we're grabbing the data pointer
+		gr::thread::scoped_lock guard(d_net_mutex);
+		pData = d_localqueue->front().data_pointer();
 	}
-	else {
-		vp = (voltage_packet *)&localBuffer[d_header_size];
-	}
+	vp = (voltage_packet *)&pData[d_header_size];
 #else
 	vp = (voltage_packet *)&localBuffer[d_header_size];
 #endif
 
-	// Store what we saw as the "last" packet we received.
-	d_last_channel_block = hdr.channel_id;
-
 	// cycle through the time entry rows in the packet. (will always be 16)
 
-	int t;
-	int sample;
-	int vector_start;
-	int channel_offset_within_time_block;
-
-	if (b_one_packet) {
-		channel_offset_within_time_block = 0;
-	}
-	else {
-		channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
-	}
+	int channel_offset_within_time_block = channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
 
 	if (d_packed_output) {
 		unsigned char *x_pol;
-		for (t=0;t<16;t++) {
+		for (int t=0;t<16;t++) {
 			// This moves us in the packet memory to the correct time row
-			vector_start = t * d_veclen  + channel_offset_within_time_block;
+			int vector_start = t * d_veclen  + channel_offset_within_time_block;
 			// For packed output, the output is [IQ packed 4-bit] Xn,[IQ packed 4-bit] Yn,...
 			// Both go in the x_pol output.
 			x_pol = (unsigned char *)&x_vector_buffer[vector_start];
 
-			for (sample=0;sample<256;sample++) {
+			for (int sample=0;sample<256;sample++) {
 				int TwoS = 2*sample;
 
 				x_pol[TwoS] = vp->data[sample][t][0];
@@ -662,13 +643,13 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 		// mode, we actually two's complement extract the signed input.
 		char *x_pol;
 		char *y_pol;
-		for (t=0;t<16;t++) {
+		for (int t=0;t<16;t++) {
 			// This moves us in the packet memory to the correct time row
-			vector_start = t * d_veclen  + channel_offset_within_time_block;
+			int vector_start = t * d_veclen  + channel_offset_within_time_block;
 			x_pol = &x_vector_buffer[vector_start];
 			y_pol = &y_vector_buffer[vector_start];
 
-			for (sample=0;sample<256;sample++) {
+			for (int sample=0;sample<256;sample++) {
 				int TwoS = 2*sample;
 				int TwoS1 = TwoS + 1;
 
@@ -690,7 +671,8 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 	} // if d_packet_output /else
 
 #ifdef ZEROCOPY
-	if (b_one_packet) {
+	{
+		// We're finished with the data in the queue head.  So we can remove it.
 		gr::thread::scoped_lock guard(d_net_mutex);
 		d_localqueue->pop_front();
 	}
@@ -702,6 +684,15 @@ void snap_source_impl::queue_voltage_data(snap_header& hdr) {
 		int block_start = this_time_start * d_veclen;
 
 		data_vector<char> x_cur_vector(&x_vector_buffer[block_start],d_veclen);
+
+#ifdef USE_CIRC_VB
+		if (x_vector_queue.size() == MAX_WORK_BUFF_SIZE) {
+			std::stringstream msg_stream;
+			msg_stream << "The vector queue is full.  Frames are getting lost.";
+			GR_LOG_ERROR(d_logger,msg_stream.str());
+		}
+#endif
+
 		x_vector_queue.push_back(x_cur_vector);
 
 		if (!d_packed_output) {
@@ -760,8 +751,6 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		// we just synchronized.
 		d_send_sync_pmt = false;
 
-		memcpy((void *)&hdr,(void *)&async_volt_sync_hdr,sizeof(snap_header));
-
 		if (liveWork) {
 			pmt::pmt_t meta = pmt::make_dict();
 
@@ -782,42 +771,29 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 	// packet.  Multiple packets will be required to make up a whole time set, so we need to buffer
 	// the chunks to a local temp buffer for each of the x and y data sets.  Once we have a complete set,
 	// we can queue each of the complete time entries to a queue for output consumption.
-	bool found_last_packet = false;
 	int skippedPackets = 0;
 
 	while ((num_packets_available > 0) && (x_vector_queue.size() < noutput_items)) {
-		// This get header gets it directly from the queue
-#ifdef ZEROCOPY
-		get_voltage_header(hdr);
-		if (!b_one_packet) {
-			// With only a single packet, we don't copy to localBuffer and
-			// It's handled in copy_volt_data_to_vector_buffer()
-			fill_local_buffer();
-		}
-#else
 		fill_local_buffer();
 		get_voltage_header(hdr);
-#endif
-
-		num_packets_available--;
 
 		if (b_one_packet || ((d_last_timestamp > 0) && (hdr.sample_number  != d_last_timestamp)) ) {
+			// If we're in this code block, we have a next frame
 			if (!b_one_packet) {
-				// If we're not in 1-packet mode, queue whatever data we already had first, then check for missing
+				// If we're not in 1-packet mode, queue whatever data we already had first since a new
+				// timestamp means we're out of the previous frame, then check for missing frames.
 				queue_voltage_data(hdr);
 			}
 
-			// Check for missing frames
+			// Check for missing frames.  On the first pass with only one packet, d_last_timestamp will be zero.
 			if ( (d_last_timestamp > 0) && (hdr.sample_number > d_last_timestamp) ) {
 				// check for missed frames.  We check > d_last_timestamp to assume on rollovers we didn't miss a frame (for now.  Should calc)
 				uint64_t missed_sets = (hdr.sample_number - d_last_timestamp) / 16 - 1;
 
-				if (b_one_packet) {
-					skippedPackets += missed_sets;
-				}
-
-				// missed_sets could be < 0 if we rolled over.  So we'll just let that pass
+				// missed_sets will be zero when we haven't missed a frame
 				if (missed_sets > 0) {
+					skippedPackets += missed_sets;
+
 					if  (missed_sets <= MAX_MISSED_SETS) {
 						for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
 							// This constructor syntax initializes a vector of d_veclen size, but zero'd out data.
@@ -839,12 +815,12 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 					else {
 						GR_LOG_WARN(d_logger,"Missed frames exceeded max missed sets.  Some data has been dropped.");
 					}
-				}
-			}
+				} // if missed_sets >0
+			} // d_last_timestamp > 0 and sample_number > d_last_timestamp
 
 			if (b_one_packet) {
 				// If we're in 1-packet mode, we check for missing first, then queue what we just got
-				// Queue what we have
+				// since each packet is a frame and is atomic.
 				copy_volt_data_to_vector_buffer(hdr);
 				queue_voltage_data(hdr);
 			}
@@ -854,17 +830,24 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				if (!d_packed_output)
 					memset(y_vector_buffer,0x00,vector_buffer_size);
 
-				// Then copy in what we just got
+				// Then copy in what we just got to start the new frame.
 				copy_volt_data_to_vector_buffer(hdr);
 			}
 
+			// make sure we change the last timestamp to our current timestamp for the next pass.
 			d_last_timestamp = hdr.sample_number;
 		}
 		else {
-			// Not one packet and in the middle of a multi-packet frame
+			if (d_last_timestamp == 0) {
+				// This is our very first packet in a multipacket set.
+				d_last_timestamp = hdr.sample_number;
+			}
+			// In the middle of a multi-packet frame, so we're just filling it.
 			copy_volt_data_to_vector_buffer(hdr);
 		}
 
+		// copy_volt_data_to_vector_buffer() actually removes the packet from the ring buffer.
+		num_packets_available--;
 	} // while packets and x_vector < noutput_items
 
 	int items_returned;
@@ -984,7 +967,6 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 	// packet.  Multiple packets will be required to make up a whole time set, so we need to buffer
 	// the chunks to a local temp buffer for each of the x and y data sets.  Once we have a complete set,
 	// we can queue each of the complete time entries to a queue for output consumption.
-	bool found_last_packet = false;
 	int skippedPackets = 0;
 
 	// Queue all the data we have into our local queue

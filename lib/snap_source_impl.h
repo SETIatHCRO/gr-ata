@@ -269,12 +269,18 @@ protected:
 	boost::circular_buffer<data_vector<unsigned char>> *d_localqueue;
 	unsigned char *localBuffer;
 	char *test_buffer = NULL;
+#ifdef ZEROCOPY
 	unsigned char *zc_front_pointer = NULL;
+#endif
 
 	// Common mode items
 	int vector_buffer_size;
 	int channels_per_packet;
+#ifdef USE_CIRC_VB
 	boost::circular_buffer<uint64_t> seq_num_queue;
+#else
+	std::deque<uint64_t> seq_num_queue;
+#endif
 
 	// async receive items
 	unsigned char *async_buffer = NULL;
@@ -286,18 +292,30 @@ protected:
 	// Voltage Mode buffers
 	char *x_vector_buffer = NULL;
 	char *y_vector_buffer = NULL;
+#ifdef USE_CIRC_VB
 	boost::circular_buffer<data_vector<char>> x_vector_queue;
 	boost::circular_buffer<data_vector<char>> y_vector_queue;
+#else
+	std::deque<data_vector<char>> x_vector_queue;
+	std::deque<data_vector<char>> y_vector_queue;
+#endif
 
 	// Spectrometer mode items
 	float *xx_buffer = NULL;
 	float *yy_buffer = NULL;
 	float *xy_real_buffer = NULL;
 	float *xy_imag_buffer = NULL;
+#ifdef USE_CIRC_VB
 	boost::circular_buffer<data_vector<float>> xx_vector_queue;
 	boost::circular_buffer<data_vector<float>> yy_vector_queue;
 	boost::circular_buffer<data_vector<float>> xy_real_vector_queue;
 	boost::circular_buffer<data_vector<float>> xy_imag_vector_queue;
+#else
+	std::deque<data_vector<float>> xx_vector_queue;
+	std::deque<data_vector<float>> yy_vector_queue;
+	std::deque<data_vector<float>> xy_real_vector_queue;
+	std::deque<data_vector<float>> xy_imag_vector_queue;
+#endif
 
 	void openPCAP();
 	void closePCAP();
@@ -347,35 +365,6 @@ protected:
 			// we're still not sync'd.
 			return false;
 		}
-	}
-
-	void get_voltage_header(snap_header& hdr) {
-
-#ifdef ZEROCOPY
-		struct voltage_header *v_hdr;
-		{
-			gr::thread::scoped_lock guard(d_net_mutex);
-			zc_front_pointer = d_localqueue->front().data_pointer();
-			v_hdr = (struct voltage_header *)zc_front_pointer;
-		}
-#else
-		struct voltage_header *v_hdr = (struct voltage_header *)localBuffer;
-#endif
-		/*
-		struct voltage_header *v_hdr;
-
-		if (b_one_packet) {
-			v_hdr = (struct voltage_header *)d_localqueue->front().data_pointer();
-		}
-		else {
-			v_hdr = (struct voltage_header *)localBuffer;
-		}
-		*/
-		hdr.antenna_id = be16toh(v_hdr->feng_id);
-		hdr.channel_id = be16toh(v_hdr->chan);
-		hdr.firmware_version = v_hdr->version; // no need to network->host order, only a byte
-		hdr.sample_number = be64toh(v_hdr->timestamp);
-		hdr.type = v_hdr->type;
 	}
 
 	bool spect_async_synchronize() {
@@ -459,6 +448,25 @@ protected:
 		unsigned char *first_packet = d_localqueue->front().data_pointer();
 		memcpy(localBuffer,first_packet,d_header_size);
 	};
+
+	void get_voltage_header(snap_header& hdr) {
+#ifdef ZEROCOPY
+		{
+			gr::thread::scoped_lock guard(d_net_mutex);
+			zc_front_pointer = d_localqueue->front().data_pointer();
+		}
+
+		struct voltage_header *v_hdr = (struct voltage_header *)zc_front_pointer;
+#else
+		struct voltage_header *v_hdr = (struct voltage_header *)localBuffer;
+#endif
+
+		hdr.antenna_id = be16toh(v_hdr->feng_id);
+		hdr.channel_id = be16toh(v_hdr->chan);
+		hdr.firmware_version = v_hdr->version; // no need to network->host order, only a byte
+		hdr.sample_number = be64toh(v_hdr->timestamp);
+		hdr.type = v_hdr->type;
+	}
 
 	void fill_local_buffer(void) {
 		gr::thread::scoped_lock guard(d_net_mutex);
