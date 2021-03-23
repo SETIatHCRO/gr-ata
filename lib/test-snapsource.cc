@@ -119,6 +119,8 @@ bool testSNAPSource() {
 	test = new gr::ata::snap_source_impl(port,1, // voltage
 			false, false,false, starting_channel, ending_channel, data_size, data_source, pcap_filename, false, output_packed, mcast_group);
 
+	test->start();
+
 	int i;
 	std::chrono::time_point<std::chrono::steady_clock> start, end;
 	std::chrono::duration<double> elapsed_seconds = end-start;
@@ -158,29 +160,33 @@ bool testSNAPSource() {
 
 		// Let's get aligned
 		while (!test->packets_aligned()) {
-			noutputitems = test->work_test(entries_per_complete_frame,inputPointers,outputPointers);
-
+			std::cout << "Packets not aligned yet.  Packets available: " << test->packets_available() << "...";
 			if (test->packets_aligned()) {
 				break;
 			}
 			else {
-				usleep(100);
+				usleep(100000);
 			}
 		}
+
+		std::cout << "Packets aligned" << std::endl;
 
 		if (use_pcap) {
 			test->set_test_case_min_queue_length((iterations+1)*packet_size*packets_per_complete_frame);
 		}
 
 		// Now let's make sure we have enough data for the test.
-		while (test->packets_available() < (iterations+1)*packets_per_complete_frame) {
+		long required_packets = (iterations+1)*packets_per_complete_frame;
+
+		while (test->packets_available() < required_packets) {
 #ifndef THREAD_RECEIVE
 			test->queue_data();
 #endif
-			usleep(100);
+			usleep(50000);
+			std::cout << test->packets_available() << "/" << required_packets << "...";
 		}
 
-		std::cout << "Enough data has been received.  Proceeding to test..." << std::endl;
+		std::cout << std::endl << "Enough data has been received.  Proceeding to test..." << std::endl;
 	}
 
 	// Get the first run out of the way.
