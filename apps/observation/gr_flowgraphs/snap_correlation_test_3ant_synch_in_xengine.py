@@ -35,7 +35,7 @@ class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
-        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,2,0,0,False, 6, 2, 3, 1, starting_channel, num_channels, 1024, True,'/home/mpiscopo/xengine_output/2021_Jan_04/casa_2021_jan_04_sync_v3_xeng',0,True)
+        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0, False, 6, 2, 3, 1, starting_channel, num_channels, 1024, '1f,3c,4g'.replace(' ','').split(','), True,'/home/mpiscopo/xengine_output/2021_Jan_04/casa_2021_jan_04_sync_v3_xeng',0,True,0, 'CasA', 2968000000.0, 25000.0, False)
         self.clenabled_clXEngine_0.set_processor_affinity([0, 1])
         self.ata_snap_source_0_0_0 = ata.snap_source(10002, 1, True, False, False,starting_channel,ending_channel,3, '/home/sonata/casa_pcap/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0 = ata.snap_source(10001, 1, True, False, False,starting_channel,ending_channel,3, '/home/sonata/casa_pcap/snap_7_ant_3c.pcap', False, True, '224.1.1.10')

@@ -39,7 +39,7 @@ class ata_12ant_xcorr(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
-        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, 12, 1, starting_channel, num_channels, 10000, True,output_file,0,True)
+        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0, False, 6, 2, 12, 1, starting_channel, num_channels, 10000, '1a,1f,4g,5c,1c,2b,2h,1h,1k,4j,2a,3c'.replace(' ','').split(','), True,output_file,0,True,0, 'CasA', 2968000000.0, 250000.0, False)
         self.ata_snap_source_0_0_0_0_0_1_0_0_0_0_0 = ata.snap_source(10011, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0_0_0_0_1_0_0_0_0 = ata.snap_source(10010, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')
         self.ata_snap_source_0_0_0_0_0_1_0_0_0 = ata.snap_source(10009, 1, True, False, False,starting_channel,ending_channel,1, '/home/sonata/casa_pcap_feb9/snap_8_ant_4g.pcap', False, True, '224.1.1.10')

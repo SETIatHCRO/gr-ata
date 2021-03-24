@@ -154,9 +154,12 @@ blocks:
   parameters:
     affinity: '[0,1]'
     alias: ''
+    antenna_list: 1f,3c,4g
+    channel_width: '25000.0'
     comment: ''
     deviceId: '0'
-    devices: '2'
+    devices: '1'
+    disable_output: 'False'
     file_base: /home/mpiscopo/xengine_output/2021_Jan_04/casa_2021_jan_04_sync_v3_xeng
     first_channel: starting_channel
     integration: '1024'
@@ -165,12 +168,15 @@ blocks:
     minoutbuf: '0'
     num_channels: num_channels
     num_inputs: '3'
+    object_name: CasA
     openCLPlatform: '1'
     output_file: 'True'
     platformId: '0'
     polarization: '2'
     rollover_size_mb: '0'
     setDebug: 'False'
+    starting_chan_center_freq: '2968000000.0'
+    sync_timestamp: '0'
     type: Packed XY
   states:
     bus_sink: false

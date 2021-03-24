@@ -40,7 +40,9 @@ class ata_12ant_xcorr(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
-        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, clparam_integration_frames, True,output_file,0,True)
+        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, 
+                                                                                            clparam_integration_frames, clparam_antenna_list, True,output_file,0,True, 
+                                                                                            clparam_snap_sync, clparam_object_name, clparam_starting_chan_freq, clparam_channel_width, clparam_no_output)
         
         if clparam_enable_affinity:
             num_cores = multiprocessing.cpu_count()
@@ -48,7 +50,7 @@ class ata_12ant_xcorr(gr.top_block):
 
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
-            new_ant = ata.snap_source(10000+i, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10')
+            new_ant = ata.snap_source(clparam_base_port +i, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10')
             if clparam_enable_affinity:
                 if (i+3) < num_cores:
                     new_ant.set_processor_affinity([i+2, i+3])
@@ -118,24 +120,49 @@ def main(top_block_cls=ata_12ant_xcorr, options=None):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='X-Engine Data Extractor')
-    parser.add_argument('--num-antennas', '-a', type=int, help="Number of antennas to use.  The first antenna will listen on UDP 10000, and each successive one will increment the listening port by 1.", required=True)
-    parser.add_argument('--starting-channel', '-s', type=int, help="Starting channel number being received from the SNAP", required=True)
+    parser = ArgumentParser(description='ATA Multi-Antenna X-Engine')
+    parser.add_argument('--snap-sync', '-s', type=int, default='ata', help="The unix timestamp when the SNAPs started and were synchronized", required=True)
+    parser.add_argument('--object-name', '-o', type=str, help="Name of viewing object.  E.g. 3C84 or 3C461 for CasA", required=True)
+    parser.add_argument('--antenna-list', '-a', type=str, help="Comma-separated list of antennas used (no spaces).  This will be used to also define num_antennas.", required=True)
     parser.add_argument('--num-channels', '-c', type=int, help="Number of channels being received from SNAP (should be a multiple of 256)", required=True)
-    parser.add_argument('--integration-frames', '-n', type=int, help="Number of Frames to integrate in the correlator.  Each frame is 4 microseconds.  So 4us * integration_frames=integration time.", required=True)
-    parser.add_argument('--output-directory', '-o', type=str, help="Directory path to where correlation outputs should be written", required=True)
+    parser.add_argument('--starting-channel', '-t', type=int, help="Starting channel number being received from the SNAP", required=True)
+    parser.add_argument('--starting-chan-freq', '-f', type=float, help="Center frequency (in Hz) of the first channel (e.g. for 3 GHz sky freq and 256 channels, first channel would be 2968000000.0", required=True)
+    parser.add_argument('--channel-width', '-w', type=float, default=250000.0,  help="[Optional] Channel width.  For now for the ATA, this number should be 250000.0", required=False)
+    parser.add_argument('--integration-frames', '-i', type=int, help="Number of Frames to integrate in the correlator.  Note this should be a multiple of 16 to optimize the way the SNAP outputs frames (e.g. 10000, 20000, or 24000 but not 25000). Each frame is 4 microseconds so an integration of 10000 equates to a time of 0.04 seconds.", required=True)
+    parser.add_argument('--output-directory', '-d', type=str, help="Directory path to where correlation outputs should be written. If set to the word 'none', no output will be generated (useful for performance testing).", required=True)
     parser.add_argument('--output-prefix', '-p', type=str, default='ata', help="If specified, this prefix will be prepended to the output files.  Otherwise 'ata' will be used.", required=False)
-    parser.add_argument('--enable-affinity', help="Use processor affinity to pin processing blocks", action='store_true', required=False)
-    
+    parser.add_argument('--base-port', '-b', type=int, default=10000, help="The first UDP port number for the listeners.  The first antenna will be assigned to this port and each subsequent antenna to the next number up (e.g. 10000, 10001, 10002,...)", required=False)
+    parser.add_argument('--no-output', '-n', help="Used for performance tuning.  Disables disk IO.", action='store_true', required=False)
+
     args = parser.parse_args()
+    clparam_snap_sync = args.snap_sync
+    clparam_object_name = args.object_name
+    clparam_antenna_list = args.antenna_list.replace(' ', '').split(',')
+    clparam_num_antennas = len(clparam_antenna_list)
     clparam_starting_channel = args.starting_channel
+    clparam_starting_chan_freq = args.starting_chan_freq
     clparam_num_channels = args.num_channels
     clparam_integration_frames = args.integration_frames
+    clparam_no_output = args.no_output
     clparam_output_directory = args.output_directory
-    clparam_num_antennas = args.num_antennas
-    clparam_enable_affinity = args.enable_affinity
     clparam_output_prefix = args.output_prefix
+    clparam_channel_width = args.channel_width
+    clparam_base_port = args.base_port
     
+    clparam_enable_affinity = False
+    
+    if clparam_num_antennas < 2:
+        print("ERROR: Please provide at least 2 antennas")
+        exit(1)
+        
+    if (clparam_num_channels % 256) > 0 or clparam_num_channels < 256 or clparam_num_channels > 4096:
+        print("ERROR: The number of channels must be a multiple of 256 from 256 to 4096")
+        exit(1)
+        
+    if (clparam_integration_frames % 16) > 0:
+        print("ERROR: The number of integration frames should be a multiple of 16 to optimize the SNAP->xengine pipeline")
+        exit(1)
+
     if not os.path.exists(clparam_output_directory):
         print("ERROR: The specified output directory does not exist.")
         exit(1)

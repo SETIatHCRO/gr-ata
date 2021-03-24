@@ -433,9 +433,12 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
+    antenna_list: 1a,1f,4g,5c,1c,2b,2h,1h,1k,4j,2a,3c
+    channel_width: '250000.0'
     comment: ''
     deviceId: '0'
     devices: '1'
+    disable_output: 'False'
     file_base: output_file
     first_channel: starting_channel
     integration: '10000'
@@ -444,12 +447,15 @@ blocks:
     minoutbuf: '0'
     num_channels: num_channels
     num_inputs: '12'
+    object_name: CasA
     openCLPlatform: '1'
     output_file: 'True'
     platformId: '0'
     polarization: '2'
     rollover_size_mb: '0'
     setDebug: 'False'
+    starting_chan_center_freq: '2968000000.0'
+    sync_timestamp: '0'
     type: Packed XY
   states:
     bus_sink: false
