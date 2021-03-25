@@ -64,7 +64,7 @@ snap_source::sptr snap_source::make(int port,
 		bool notifyMissed,
 		bool sourceZeros, bool ipv6,
 		int starting_channel, int ending_channel,
-		int data_source, std::string file, bool repeat_file, bool packed_output,std::string mcast_group) {
+		int data_source, std::string file, bool repeat_file, bool packed_output,std::string mcast_group, bool send_start_msg) {
 	int data_size;
 	if (headerType == SNAP_PACKETTYPE_VOLTAGE) {
 		data_size = sizeof(char);
@@ -75,7 +75,7 @@ snap_source::sptr snap_source::make(int port,
 	return gnuradio::get_initial_sptr(
 			new snap_source_impl(port, headerType,
 					notifyMissed, sourceZeros, ipv6, starting_channel, ending_channel, data_size, data_source, file, repeat_file,
-					packed_output, mcast_group));
+					packed_output, mcast_group, send_start_msg));
 }
 
 /*
@@ -87,7 +87,7 @@ snap_source_impl::snap_source_impl(int port,
 		bool sourceZeros, bool ipv6,
 		int starting_channel, int ending_channel, int data_size,
 		int data_source, std::string file, bool repeat_file, bool packed_output,
-		std::string mcast_group)
+		std::string mcast_group, bool send_start_msg)
 : gr::sync_block("snap_src_" + std::to_string(port) + "_",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(1, 4,
@@ -97,6 +97,7 @@ snap_source_impl::snap_source_impl(int port,
 				xx_vector_queue(MAX_WORK_BUFF_SIZE),yy_vector_queue(MAX_WORK_BUFF_SIZE),xy_real_vector_queue(MAX_WORK_BUFF_SIZE),xy_imag_vector_queue(MAX_WORK_BUFF_SIZE)
 #endif
 {
+	d_send_start_msg = send_start_msg;
 
 	if (data_source == DS_PCAP) {
 		d_use_pcap = true;
@@ -751,7 +752,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		// we just synchronized.
 		d_send_sync_pmt = false;
 
-		if (liveWork) {
+		if (liveWork && d_send_start_msg) {
 			pmt::pmt_t meta = pmt::make_dict();
 
 			meta = pmt::dict_add(meta, pmt::mp("antenna_id"), pmt::mp(async_volt_sync_hdr.antenna_id));

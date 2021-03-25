@@ -56,7 +56,7 @@ class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
                 input_file = '/home/sonata/casa_pcap/snap_8_ant_4g.pcap'
                 input_port = 10002
                 
-            new_ant = ata.snap_source(input_port, 1, True, False, False,starting_channel,ending_channel,3, input_file, False, True, '224.1.1.10')
+            new_ant = ata.snap_source(input_port, 1, True, False, False,starting_channel,ending_channel,3, input_file, False, True, '224.1.1.10',  False)
             if clparam_enable_affinity:
                 if (i+3) < num_cores:
                     new_ant.set_processor_affinity([i+2, i+3])

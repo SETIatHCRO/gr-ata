@@ -50,7 +50,7 @@ class ata_12ant_xcorr(gr.top_block):
 
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
-            new_ant = ata.snap_source(clparam_base_port +i, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10')
+            new_ant = ata.snap_source(clparam_base_port +i, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10',  False)
             if clparam_enable_affinity:
                 if (i+3) < num_cores:
                     new_ant.set_processor_affinity([i+2, i+3])

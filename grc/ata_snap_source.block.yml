@@ -59,11 +59,11 @@ parameters:
     dtype: enum
     options: ['True', 'False']
     option_labels: ['Yes', 'No']
--   id: srcZeros
-    label: Src 0s If No Data
+-   id: send_start_msg
+    label: Send Start Message
     dtype: enum
-    options: ['True', 'False']
-    option_labels: ['Yes', 'No']
+    options: ['False','True']
+    option_labels: ['No', 'Yes']
 -   id: ipv6
     label: Enable IPv6 Support
     dtype: enum
@@ -101,7 +101,7 @@ outputs:
     
 templates:
     imports: import ata
-    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, ${srcZeros}, ${ipv6},${starting_channel},${ending_channel},${data_source}, ${file}, ${repeat_file}, ${packed_output}, ${mcast_group})
+    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, False, ${ipv6},${starting_channel},${ending_channel},${data_source}, ${file}, ${repeat_file}, ${packed_output}, ${mcast_group}, ${send_start_msg})
 
 documentation: "This block listens for ATA SNAP traffic on the specified UDP port and outputs\
     \ the channel vector appropriate for the selected type.  Voltage blocks output 512 byte\

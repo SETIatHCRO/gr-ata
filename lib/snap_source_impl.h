@@ -219,6 +219,8 @@ protected:
 	bool d_use_mcast;
 	std::string d_mcast_group;
 
+	bool d_send_start_msg;
+
 	bool d_packed_output;
 
 	int d_port;
@@ -490,7 +492,7 @@ public:
 			bool notifyMissed, bool sourceZeros, bool ipv6,
 			int starting_channel, int ending_channel, int data_size,
 			int data_source, std::string file="", bool repeat_file=false, bool packed_output=false,
-			std::string mcast_group="");
+			std::string mcast_group="", bool send_start_msg=false);
 
 	~snap_source_impl();
 
