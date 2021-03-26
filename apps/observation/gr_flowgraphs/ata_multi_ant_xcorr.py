@@ -20,7 +20,7 @@ from gnuradio import eng_notation
 import ata
 import clenabled
 import os
-import multiprocessing
+import numa
 
 class ata_12ant_xcorr(gr.top_block):
 
@@ -45,15 +45,39 @@ class ata_12ant_xcorr(gr.top_block):
                                                                                             clparam_snap_sync, clparam_object_name, clparam_starting_chan_freq, clparam_channel_width, clparam_no_output)
         
         if clparam_enable_affinity:
-            num_cores = multiprocessing.cpu_count()
-            self.clenabled_clXEngine_0.set_processor_affinity([0, 1])
+            # So with affinity here, we're just trying to ensure NUMA doesn't move us off
+            # where our memory was allocated.  So we're going to try to be smart about 
+            # allocating here.  We'll set affinity to all of the cores on each processor till
+            # we've "recommended" a full set.
+            num_nodes=numa.get_max_node() + 1
+            
+            core_pairs = []
+            for cur_node in range(0, num_nodes):
+                cpu_to_node=list(numa.node_to_cpus(cur_node))
+                print("Node " + str(cur_node) + " has " + str(len(cpu_to_node)) + " cores: " + str(cpu_to_node))
+                i = 0
+                
+                for cur_cpu in cpu_to_node:
+                    if i % 2 == 0:
+                        cpu_pair = [cur_cpu]
+                    else:
+                        cpu_pair.append(cur_cpu)
+                        core_pairs.append(cpu_pair)
+                        
+                    i += 1
+            
+            print("Setting xEngine affinity to cores " + str(core_pairs[0]))
+            self.clenabled_clXEngine_0.set_processor_affinity(core_pairs[0])
+            core_pairs = core_pairs[1:]
 
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
             new_ant = ata.snap_source(clparam_base_port +i, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10',  False)
-            if clparam_enable_affinity:
-                if (i+3) < num_cores:
-                    new_ant.set_processor_affinity([i+2, i+3])
+            if clparam_enable_affinity and len(core_pairs) > 0:
+                print("Setting SNAP UDP " + str(clparam_base_port+i) + " to affinity to cores " + str(core_pairs[0]))
+                new_ant.set_processor_affinity(core_pairs[0])
+                core_pairs = core_pairs[1:]
+                
             ##################################################
             # Connections
             ##################################################
@@ -133,6 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--output-prefix', '-p', type=str, default='ata', help="If specified, this prefix will be prepended to the output files.  Otherwise 'ata' will be used.", required=False)
     parser.add_argument('--base-port', '-b', type=int, default=10000, help="The first UDP port number for the listeners.  The first antenna will be assigned to this port and each subsequent antenna to the next number up (e.g. 10000, 10001, 10002,...)", required=False)
     parser.add_argument('--no-output', '-n', help="Used for performance tuning.  Disables disk IO.", action='store_true', required=False)
+    parser.add_argument('--enable-affinity', '-e', help="Enable CPU affiniity", action='store_true', required=False)
 
     args = parser.parse_args()
     clparam_snap_sync = args.snap_sync
@@ -149,7 +174,7 @@ if __name__ == '__main__':
     clparam_channel_width = args.channel_width
     clparam_base_port = args.base_port
     
-    clparam_enable_affinity = False
+    clparam_enable_affinity = args.enable_affinity
     
     if clparam_num_antennas < 2:
         print("ERROR: Please provide at least 2 antennas")

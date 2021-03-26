@@ -28,6 +28,8 @@
 #include <ata/snap_source.h>
 #include <pcap/pcap.h>
 
+// #define NUMA_AWARE
+
 namespace gr {
 namespace ata {
 
@@ -259,6 +261,8 @@ protected:
 	bool threadRunning=false;
 	bool stop_thread = false;
 	gr::thread::mutex d_net_mutex;
+	unsigned int d_cpu;
+	unsigned int d_cpu_node;
 
 	// Actual thread function
 	virtual void runThread();
@@ -317,6 +321,10 @@ protected:
 	std::deque<data_vector<float>> yy_vector_queue;
 	std::deque<data_vector<float>> xy_real_vector_queue;
 	std::deque<data_vector<float>> xy_imag_vector_queue;
+#endif
+
+#ifdef NUMA_AWARE
+	void num_binding();
 #endif
 
 	void openPCAP();

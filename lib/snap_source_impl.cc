@@ -38,6 +38,10 @@
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 
+#ifdef NUMA_AWARE
+#include <numa.h>
+#endif
+
 #define THREAD_RECEIVE
 
 #define DS_NETWORK 1
@@ -1426,8 +1430,48 @@ void snap_source_impl::queue_pcap_data() {
 	} // queue_size < min_queue_size
 }
 
+#ifdef NUMA_AWARE
+void snap_source_impl::num_binding() {
+	int retVal = getcpu(&d_cpu, &d_cpu_node);
+
+	if (retVal == 0) {
+		/*
+		if (numa_available() >= 0) {
+			/*
+			nodemask_t mask;
+			nodemask_zero(&mask);
+			nodemask_set_compat(&mask, d_cpu_node);
+			struct bitmask bitmask;
+			copy_nodemask_to_bitmask(&mask,&bitmask);
+			numa_bind(&bitmask);
+
+			numa_bind(numa_get_membind());
+		}
+		*/
+		/*
+		cpu_set_t cpuset;
+		CPU_ZERO( & cpuset);
+		CPU_SET( d_cpu, & cpuset);
+		// bind_to_processor(d_cpu);
+		::pthread_setaffinity_np( ::pthread_self(), sizeof( cpuset), & cpuset);
+		*/
+		std::stringstream msg_stream;
+
+		msg_stream << identifier() << " Starting on cpu " << d_cpu << " node " << d_cpu_node;
+		GR_LOG_INFO(d_logger,msg_stream.str());
+	}
+	else {
+		GR_LOG_INFO(d_logger,"Unable to get CPU binding info.  Threads may float.");
+	}
+}
+#endif
+
 void snap_source_impl::runThread() {
 	threadRunning = true;
+
+#ifdef NUMA_AWARE
+	numa_binding();
+#endif
 
 	while (!stop_thread) {
 		if (!d_use_pcap) {

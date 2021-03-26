@@ -34,7 +34,7 @@ if(NOT ata_sources)
 endif(NOT ata_sources)
 
 add_library(gnuradio-ata SHARED ${ata_sources})
-target_link_libraries(gnuradio-ata gnuradio::gnuradio-runtime ${PCAP_LIBRARY})
+target_link_libraries(gnuradio-ata gnuradio::gnuradio-runtime ${Boost_LIBRARIES} numa ${PCAP_LIBRARY})
 target_include_directories(gnuradio-ata
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     PUBLIC $<INSTALL_INTERFACE:include>
@@ -58,7 +58,6 @@ GR_LIBRARY_FOO(gnuradio-ata)
 ########################################################################
 list(APPEND test_snapsource_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test-snapsource.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/snap_source_impl.cc
 )
 
 add_executable(test-snapsource ${test_snapsource_sources})
@@ -66,11 +65,9 @@ add_executable(test-snapsource ${test_snapsource_sources})
 target_link_libraries(
   test-snapsource
   ${GNURADIO_RUNTIME_LIBRARIES}
-  ${Boost_LIBRARIES}
-  ${OpenMP_CXX_LIBRARIES}
-  volk
   gnuradio-ata
   ${PCAP_LIBRARY}
+  ${Boost_LIBRARIES}
 )
 
 install(TARGETS test-snapsource DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
