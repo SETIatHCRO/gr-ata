@@ -37,7 +37,7 @@ class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
-        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,1,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, 
+        self.clenabled_clXEngine_0 = clenabled.clXEngine(1,2,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, 
                                                                                             clparam_integration_frames, clparam_antenna_list, True,output_file,0,True, 
                                                                                             clparam_snap_sync, clparam_object_name, clparam_starting_chan_freq, clparam_channel_width, clparam_no_output)
 
@@ -48,24 +48,35 @@ class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
             # we've "recommended" a full set.
             num_nodes=numa.get_max_node() + 1
             
-            core_pairs = []
+            # core_pairs = []
+            cpu_core_list = []
+            cores_per_cpu = 0
+            cores_per_cpu_2 = 0
+            
             for cur_node in range(0, num_nodes):
                 cpu_to_node=list(numa.node_to_cpus(cur_node))
-                print("Node " + str(cur_node) + " has " + str(len(cpu_to_node)) + " cores: " + str(cpu_to_node))
-                i = 0
+                cpu_core_list.append(cpu_to_node)
+                if cores_per_cpu == 0:
+                    cores_per_cpu = len(cpu_to_node)
+                    cores_per_cpu_2 = cores_per_cpu // 2
+                print("CPU" + str(cur_node) + " has " + str(len(cpu_to_node)) + " cores: " + str(cpu_to_node))
+                #i = 0
                 
-                for cur_cpu in cpu_to_node:
-                    if i % 2 == 0:
-                        cpu_pair = [cur_cpu]
-                    else:
-                        cpu_pair.append(cur_cpu)
-                        core_pairs.append(cpu_pair)
-                        
-                    i += 1
+                #for cur_cpu in cpu_to_node:
+                #   if i % 2 == 0:
+                #        cpu_pair = [cur_cpu]
+                #    else:
+                #        cpu_pair.append(cur_cpu)
+                #        core_pairs.append(cpu_pair)
+                #        
+                #    i += 1
             
-            print("Setting xEngine affinity to cores " + str(core_pairs[0]))
-            self.clenabled_clXEngine_0.set_processor_affinity(core_pairs[0])
-            core_pairs = core_pairs[1:]
+            #print("Setting xEngine affinity to cores " + str(core_pairs[0]))
+            #self.clenabled_clXEngine_0.set_processor_affinity(core_pairs[0])
+            #core_pairs = core_pairs[1:]
+            # or to all cores on CPU0
+            if num_nodes > 1:
+                self.clenabled_clXEngine_0.set_processor_affinity(cpu_core_list[0])
 
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
@@ -80,10 +91,22 @@ class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
                 input_port = 10002
                 
             new_ant = ata.snap_source(input_port, 1, True, False, False,starting_channel,ending_channel,3, input_file, False, True, '224.1.1.10',  False)
-            if clparam_enable_affinity and len(core_pairs) > 0:
-                print("Setting PCAP " + input_file + " to affinity to cores " + str(core_pairs[0]))
-                new_ant.set_processor_affinity(core_pairs[0])
-                core_pairs = core_pairs[1:]
+            
+            if clparam_enable_affinity and num_nodes > 1:
+                cpu2 = cores_per_cpu_2 -2 + cores_per_cpu_2
+                if i < cores_per_cpu_2 -2:
+                    # Subtract 2 for the xengine on the first node.
+                    print("Setting affinity for PCAP " + input_file + " to CPU0")
+                    new_ant.set_processor_affinity(cpu_core_list[0])
+                elif i < cpu2:
+                    print("Setting affinity for PCAP " + input_file + " to CPU1")
+                    new_ant.set_processor_affinity(cpu_core_list[1])
+                else:
+                    #   just balance
+                    index = i % 2
+                    print("Setting affinity for PCAP " + input_file + " to CPU" + str(index))
+                    new_ant.set_processor_affinity(cpu_core_list[index])
+            
             ##################################################
             # Connections
             ##################################################
