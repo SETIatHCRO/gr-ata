@@ -164,7 +164,6 @@ snap_source_impl::snap_source_impl(int port,
 	std::string id_str = identifier() + " chan " + std::to_string(starting_channel) + " UDP port " + std::to_string(d_port);
 
 	d_block_name = pmt::string_to_symbol(id_str);
-	// Configure packet parser
 	d_header_size = 0;
 	switch (d_header_type) {
 	case SNAP_PACKETTYPE_VOLTAGE:
@@ -196,7 +195,7 @@ snap_source_impl::snap_source_impl(int port,
 				std::stringstream msg_stream;
 				msg_stream << "Channels must represent a 256 boundary (end_channel - start_channel + 1) % 256 must be zero.";
 				GR_LOG_ERROR(d_logger, msg_stream.str());
-				exit(2);
+				throw std::out_of_range ("Channels must represent a 256 boundary (end_channel - start_channel + 1) % 256 must be zero.");
 			}
 		}
 		// GR output vector length will be number of total channels * 2
@@ -211,17 +210,6 @@ snap_source_impl::snap_source_impl(int port,
 		// contiguous memory.  The 16 comes from each packet having 16 time samples
 		// across 256 channels per packet.
 		vector_buffer_size = d_veclen * 16;
-
-		x_vector_buffer = new char[vector_buffer_size];
-		memset(x_vector_buffer,0x00,vector_buffer_size);
-
-		if (!d_packed_output) {
-			y_vector_buffer = new char[vector_buffer_size];
-			memset(y_vector_buffer,0x00,vector_buffer_size);
-		}
-		else {
-			y_vector_buffer = NULL; // Not used in this mode.
-		}
 
 		single_polarization_bytes = d_payloadsize/2;
 
@@ -239,11 +227,6 @@ snap_source_impl::snap_source_impl(int port,
 		d_channel_diff = 4096;
 
 		channels_per_packet = 512;
-
-		xx_buffer = new float[4096];
-		yy_buffer = new float[4096];
-		xy_real_buffer = new float[4096];
-		xy_imag_buffer = new float[4096];
 
 		d_veclen = 4096;
 		vector_buffer_size = d_veclen * sizeof(float);
@@ -264,104 +247,9 @@ snap_source_impl::snap_source_impl(int port,
 		exit(1);
 	}
 
-	localBuffer = new unsigned char[total_packet_size];
-
-	// Compute reasonable buffer size
-	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(MAX_NET_CIRC_BUFFER);
-	async_buffer = new unsigned char[total_packet_size];
-
-	if (!d_use_pcap) {
-		// Initialize receiving socket
-		boost::asio::ip::address mcast_addr;
-		if (is_ipv6)
-			d_endpoint =
-					boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v6(), port);
-		else {
-			if (d_data_source == DS_NETWORK) {
-				// Standard UDP
-				d_endpoint =
-						boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port);
-			}
-			else {
-				// Multicast group
-				try {
-					mcast_addr = boost::asio::ip::address::from_string(d_mcast_group, ec);
-				}
-				catch (const std::exception &ex) {
-					std::stringstream msg_stream;
-					msg_stream << "Error converting  " << d_mcast_group << " to address object.  Check address is valid.";
-					GR_LOG_ERROR(d_logger, msg_stream.str());
-
-					throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
-							ex.what());
-				}
-
-				try {
-					d_endpoint = boost::asio::ip::udp::endpoint(mcast_addr, port);
-				}
-				catch (const std::exception &ex) {
-					std::stringstream msg_stream;
-					msg_stream << "Error opening  " << d_mcast_group << " on port " << port;
-					GR_LOG_ERROR(d_logger, msg_stream.str());
-
-					throw std::runtime_error(std::string("[SNAP Source] Multicast Error occurred: ") +
-							ex.what());
-				}
-			}
-		}
-
-		try {
-			d_udpsocket = new boost::asio::ip::udp::socket(d_io_service, d_endpoint);
-		} catch (const std::exception &ex) {
-			throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
-					ex.what());
-		}
-
-		if (d_use_mcast) {
-			try {
-				boost::asio::ip::multicast::join_group option(mcast_addr);
-				d_udpsocket->set_option(option);
-			} catch (const std::exception &ex) {
-				throw std::runtime_error(std::string("[SNAP Source] Multicast Error occurred: ") +
-						ex.what());
-			}
-		}
-
-		std::stringstream msg_stream;
-		if (d_use_mcast) {
-			msg_stream << "Listening for data on multicast group " << d_mcast_group << " on port " << port << ".";
-		}
-		else {
-			msg_stream << "Listening for data on UDP port " << port << ".";
-		}
-
-		GR_LOG_INFO(d_logger, msg_stream.str());
-
-		// Just to not leave this uninitialized:
-		min_pcap_queue_size = 1;
-	}
-	else {
-		min_pcap_queue_size = (d_channel_diff / channels_per_packet) * 16;
-
-		if (min_pcap_queue_size == 0) {
-			min_pcap_queue_size = 16;
-		}
-
-		reload_size = min_pcap_queue_size * 4;
-	}
-
 	// We'll always produce blocks of 16 time vectors for voltage mode.
 	if (d_header_type == SNAP_PACKETTYPE_VOLTAGE) {
 		gr::block::set_output_multiple(16);
-	}
-
-	for (int i=0;i<8;i++) {
-		twosComplementLUT[i] = i;
-	}
-
-	twosComplementLUT[8] = 0; // 1000 is a special case: -0 (as opposed to 0000 = +0)
-	for (int i=9;i<16;i++) {
-		twosComplementLUT[i] = i - 16;
 	}
 
 	message_port_register_out(pmt::mp("sync_header"));
@@ -417,6 +305,123 @@ void snap_source_impl::closePCAP() {
 }
 
 bool snap_source_impl::start() {
+	for (int i=0;i<8;i++) {
+		twosComplementLUT[i] = i;
+	}
+
+	twosComplementLUT[8] = 0; // 1000 is a special case: -0 (as opposed to 0000 = +0)
+	for (int i=9;i<16;i++) {
+		twosComplementLUT[i] = i - 16;
+	}
+
+	if (!d_use_pcap) {
+		// Initialize receiving socket
+		boost::asio::ip::address mcast_addr;
+		if (is_ipv6)
+			d_endpoint =
+					boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v6(), d_port);
+		else {
+			if (d_data_source == DS_NETWORK) {
+				// Standard UDP
+				d_endpoint =
+						boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), d_port);
+			}
+			else {
+				// Multicast group
+				try {
+					mcast_addr = boost::asio::ip::address::from_string(d_mcast_group, ec);
+				}
+				catch (const std::exception &ex) {
+					std::stringstream msg_stream;
+					msg_stream << "Error converting  " << d_mcast_group << " to address object.  Check address is valid.";
+					GR_LOG_ERROR(d_logger, msg_stream.str());
+
+					throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
+							ex.what());
+				}
+
+				try {
+					d_endpoint = boost::asio::ip::udp::endpoint(mcast_addr, d_port);
+				}
+				catch (const std::exception &ex) {
+					std::stringstream msg_stream;
+					msg_stream << "Error opening  " << d_mcast_group << " on port " << d_port;
+					GR_LOG_ERROR(d_logger, msg_stream.str());
+
+					throw std::runtime_error(std::string("[SNAP Source] Multicast Error occurred: ") +
+							ex.what());
+				}
+			}
+		}
+
+		try {
+			d_udpsocket = new boost::asio::ip::udp::socket(d_io_service, d_endpoint);
+		} catch (const std::exception &ex) {
+			throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
+					ex.what());
+		}
+
+		if (d_use_mcast) {
+			try {
+				boost::asio::ip::multicast::join_group option(mcast_addr);
+				d_udpsocket->set_option(option);
+			} catch (const std::exception &ex) {
+				throw std::runtime_error(std::string("[SNAP Source] Multicast Error occurred: ") +
+						ex.what());
+			}
+		}
+
+		std::stringstream msg_stream;
+		if (d_use_mcast) {
+			msg_stream << "Listening for data on multicast group " << d_mcast_group << " on port " << d_port << ".";
+		}
+		else {
+			msg_stream << "Listening for data on UDP port " << d_port << ".";
+		}
+
+		GR_LOG_INFO(d_logger, msg_stream.str());
+
+		// Just to not leave this uninitialized:
+		min_pcap_queue_size = 1;
+	}
+	else {
+		min_pcap_queue_size = (d_channel_diff / channels_per_packet) * 16;
+
+		if (min_pcap_queue_size == 0) {
+			min_pcap_queue_size = 16;
+		}
+
+		reload_size = min_pcap_queue_size * 4;
+	}
+
+	switch (d_header_type) {
+	case SNAP_PACKETTYPE_VOLTAGE:
+		x_vector_buffer = new char[vector_buffer_size];
+		memset(x_vector_buffer,0x00,vector_buffer_size);
+
+		if (!d_packed_output) {
+			y_vector_buffer = new char[vector_buffer_size];
+			memset(y_vector_buffer,0x00,vector_buffer_size);
+		}
+		else {
+			y_vector_buffer = NULL; // Not used in this mode.
+		}
+		break;
+	case SNAP_PACKETTYPE_SPECT:
+		xx_buffer = new float[4096];
+		yy_buffer = new float[4096];
+		xy_real_buffer = new float[4096];
+		xy_imag_buffer = new float[4096];
+
+		break;
+	}
+
+	localBuffer = new unsigned char[total_packet_size];
+
+	// Compute reasonable buffer size
+	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(MAX_NET_CIRC_BUFFER);
+	async_buffer = new unsigned char[total_packet_size];
+
 #ifdef THREAD_RECEIVE
 	proc_thread = new boost::thread(boost::bind(&snap_source_impl::runThread, this));
 #endif
