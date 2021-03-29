@@ -86,6 +86,31 @@ class comma_numpunct : public std::numpunct<char>
     }
 };
 
+void test_mem_layout() {
+	int frames[16][32][2];
+
+	int size=16*32*2;
+
+	int counter=0;
+	for (int timeframe=0;timeframe<16;timeframe++) {
+		for (int freq=0;freq<32;freq++) {
+			for (int pol=0;pol<2;pol++) {
+				frames[timeframe][freq][pol] = counter++;
+			}
+		}
+	}
+
+	int *flat_array;
+	flat_array = &frames[0][0][0];
+
+	for (int i=0;i<size;i++) {
+		std::cout << flat_array[i] << " ";
+		if ((i>0) && ((i % 64) == 0) )
+			std::cout << std::endl;
+	}
+	std::cout << std::endl;
+}
+
 bool testSNAPSource() {
 #ifndef _OPENMP
 	std::cout << "WARNING: OMP not enabled.  Please install libomp and recompile." << std::endl;
@@ -339,6 +364,8 @@ main (int argc, char **argv)
 	bool was_successful;
 
 	was_successful = testSNAPSource();
+
+	// test_mem_layout();
 
 	std::cout << std::endl;
 
