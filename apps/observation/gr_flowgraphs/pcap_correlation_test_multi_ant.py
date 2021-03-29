@@ -39,7 +39,8 @@ class snap_correlation_test_3ant_synch_in_xengine(gr.top_block):
         ##################################################
         self.clenabled_clXEngine_0 = clenabled.clXEngine(1,2,0,0,False, 6, 2, clparam_num_antennas, 1, starting_channel, num_channels, 
                                                                                             clparam_integration_frames, clparam_antenna_list, True,output_file,0,True, 
-                                                                                            clparam_snap_sync, clparam_object_name, clparam_starting_chan_freq, clparam_channel_width, clparam_no_output)
+                                                                                            clparam_snap_sync, clparam_object_name, clparam_starting_chan_freq, clparam_channel_width, 
+                                                                                            clparam_no_output, clparam_cpu_integration)
 
         if clparam_enable_affinity:
             # So with affinity here, we're just trying to ensure NUMA doesn't move us off
@@ -167,6 +168,7 @@ if __name__ == '__main__':
     parser.add_argument('--starting-chan-freq', '-f', type=float, help="Center frequency (in Hz) of the first channel (e.g. for 3 GHz sky freq and 256 channels, first channel would be 2968000000.0", required=True)
     parser.add_argument('--channel-width', '-w', type=float, default=250000.0,  help="[Optional] Channel width.  For now for the ATA, this number should be 250000.0", required=False)
     parser.add_argument('--integration-frames', '-i', type=int, help="Number of Frames to integrate in the correlator.  Note this should be a multiple of 16 to optimize the way the SNAP outputs frames (e.g. 10000, 20000, or 24000 but not 25000). Each frame is 4 microseconds so an integration of 10000 equates to a time of 0.04 seconds.", required=True)
+    parser.add_argument('--cpu-integration',  type=int, default=0, help="If set to a value > 1, each GPU correlated frame will be further accumulated in a CPU buffer.  This allows for integrations beyond the amount of memory available on a GPU.  This figure is a multiplier, so if integration-time=20000, and cpu-integration=2, total integration time will be 40000", required=False)
     parser.add_argument('--output-directory', '-d', type=str, help="Directory path to where correlation outputs should be written. If set to the word 'none', no output will be generated (useful for performance testing).", required=True)
     parser.add_argument('--output-prefix', '-p', type=str, default='ata', help="If specified, this prefix will be prepended to the output files.  Otherwise 'ata' will be used.", required=False)
     parser.add_argument('--base-port', '-b', type=int, default=10000, help="The first UDP port number for the listeners.  The first antenna will be assigned to this port and each subsequent antenna to the next number up (e.g. 10000, 10001, 10002,...)", required=False)
@@ -182,6 +184,7 @@ if __name__ == '__main__':
     clparam_starting_chan_freq = args.starting_chan_freq
     clparam_num_channels = args.num_channels
     clparam_integration_frames = args.integration_frames
+    clparam_cpu_integration = args.cpu_integration
     clparam_no_output = args.no_output
     clparam_output_directory = args.output_directory
     clparam_output_prefix = args.output_prefix
