@@ -165,6 +165,9 @@ snap_source_impl::snap_source_impl(int port,
 
 	d_block_name = pmt::string_to_symbol(id_str);
 	d_header_size = 0;
+
+	multipacket_frame_pkt_ctr = 0;
+
 	switch (d_header_type) {
 	case SNAP_PACKETTYPE_VOLTAGE:
 		d_header_size = sizeof(struct voltage_header);
@@ -198,6 +201,9 @@ snap_source_impl::snap_source_impl(int port,
 				throw std::out_of_range ("Channels must represent a 256 boundary (end_channel - start_channel + 1) % 256 must be zero.");
 			}
 		}
+
+		packets_per_frame = d_channel_diff / channels_per_packet;
+
 		// GR output vector length will be number of total channels * 2
 		// In all modes.
 		// Unpacked mode: since we expand the packed 8-bit to separate bytes for I and Q.
@@ -628,7 +634,7 @@ void snap_source_impl::copy_volt_data_to_vector_buffer(snap_header& hdr) {
 
 	// cycle through the time entry rows in the packet. (will always be 16)
 
-	int channel_offset_within_time_block = channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
+	int channel_offset_within_time_block = (hdr.channel_id - d_starting_channel) * 2;
 
 	if (d_packed_output) {
 		unsigned char *x_pol;
@@ -787,12 +793,16 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 		fill_local_buffer();
 		get_voltage_header(hdr);
 
-		if (b_one_packet || ((d_last_timestamp > 0) && (hdr.sample_number  != d_last_timestamp)) ) {
+		if (b_one_packet || ((d_last_timestamp > 0) && (hdr.sample_number != d_last_timestamp)) ) {
 			// If we're in this code block, we have a next frame
 			if (!b_one_packet) {
 				// If we're not in 1-packet mode, queue whatever data we already had first since a new
 				// timestamp means we're out of the previous frame, then check for missing frames.
 				queue_voltage_data(hdr);
+
+				// See if we missed any packets in the last set.
+				// This calc only applies to multi-packet frames as in 1-packet mode a missed timestamp implies the missed packets
+				skippedPackets += packets_per_frame - multipacket_frame_pkt_ctr;
 			}
 
 			// Check for missing frames.  On the first pass with only one packet, d_last_timestamp will be zero.
@@ -802,7 +812,7 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 				// missed_sets will be zero when we haven't missed a frame
 				if (missed_sets > 0) {
-					skippedPackets += missed_sets;
+					skippedPackets += missed_sets * packets_per_frame;
 
 					if  (missed_sets <= MAX_MISSED_SETS) {
 						for (uint64_t missed_timestamp=d_last_timestamp+16;missed_timestamp<hdr.sample_number;missed_timestamp+=16) {
@@ -835,7 +845,8 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 				queue_voltage_data(hdr);
 			}
 			else {
-				// We're starting a new multi-part vector, so zero out what we have.
+				multipacket_frame_pkt_ctr = 1;
+				// We're starting a new multi-part vector, so zero out what we have and set that we have one packet
 				memset(x_vector_buffer,0x00,vector_buffer_size);
 				if (!d_packed_output)
 					memset(y_vector_buffer,0x00,vector_buffer_size);
@@ -846,14 +857,18 @@ int snap_source_impl::work_volt_mode(int noutput_items,
 
 			// make sure we change the last timestamp to our current timestamp for the next pass.
 			d_last_timestamp = hdr.sample_number;
-		}
+		} // if (b_one_packet || ((d_last_timestamp > 0) && (hdr.sample_number  != d_last_timestamp)) )
 		else {
+			// We'll only be here if we're not in b_one_packet mode and our timestamp hasn't changed
+
 			if (d_last_timestamp == 0) {
 				// This is our very first packet in a multipacket set.
 				d_last_timestamp = hdr.sample_number;
+				// multipacket_frame_pkt_ctr is initialized to 0 in the constructor
 			}
 			// In the middle of a multi-packet frame, so we're just filling it.
 			copy_volt_data_to_vector_buffer(hdr);
+			multipacket_frame_pkt_ctr++;
 		}
 
 		// copy_volt_data_to_vector_buffer() actually removes the packet from the ring buffer.
