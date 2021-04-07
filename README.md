@@ -155,7 +155,9 @@ Daniel Estivez also has a separate repository with scripts for interferometry at
 
 ### Optimizing Performance
 
-From the SNAP Source block perspective, several things can dramatically affect performance.  First, it is recommended that CPU's be modern CPU's running at least at a base clock speed of 2.4 GHz.  The network stack should also be tuned.  In sysctl.conf (or from the command-line for temporary settings), the following settings are recommended:
+From the SNAP Source block perspective, several things can dramatically affect performance.  First, it is recommended that CPU's be modern CPU's running at least at a base clock speed of 2.4 GHz.  However, successful testing with 12 antennas was executed on a Xeon 4216 CPU with a clock speed of 2.1 GHz with virtualization **enabled**.  While the network threads per SNAP block are not necesarily demanding, timing is critical to keep up with the network.  Both thread count and per-thread performance will matter.  In general with an X-Engine, you can calculate the number of spawned threads as 2*SNAPs + 2 [for the correlator] + 1 [primary thread].  So while some applications may benefit from disabling virtualization, this will benefit from keeping virtualization enabled.  The Xeon 4216 for instance has 16 cores, 32 virtual pipelines, so 12 antennas can run comfortably on one CPU.  Given the low per-thread usage though in the network blocks, it should be possible to "double up" on one CPU and not completely require exclusivity on CPU cores.
+
+Another important optimization for the SNAP source block will be network tuning.  In sysctl.conf (or from the command-line for temporary settings), the following settings are recommended:
 
 ```
 net.core.rmem_default=26214400 
