@@ -58,7 +58,7 @@ namespace ata {
  */
 class ATA_API snap_source : virtual public gr::sync_block {
 public:
-  typedef boost::shared_ptr<snap_source> sptr;
+  typedef std::shared_ptr<snap_source> sptr;
 
   /*!
    * Build a snap_source block.

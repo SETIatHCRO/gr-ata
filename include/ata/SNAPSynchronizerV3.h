@@ -35,7 +35,7 @@ namespace gr {
     class ATA_API SNAPSynchronizerV3 : virtual public gr::block
     {
      public:
-      typedef boost::shared_ptr<SNAPSynchronizerV3> sptr;
+      typedef std::shared_ptr<SNAPSynchronizerV3> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of ata::SNAPSynchronizerV3.

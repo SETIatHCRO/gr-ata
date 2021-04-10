@@ -63,11 +63,11 @@ if((CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
 endif()
 
 IF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    SET(CMAKE_CXX_STANDARD 11)
+    SET(CMAKE_CXX_STANDARD 14)
 ELSEIF(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    SET(CMAKE_CXX_STANDARD 11)
+    SET(CMAKE_CXX_STANDARD 14)
 ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    SET(CMAKE_CXX_STANDARD 11)
+    SET(CMAKE_CXX_STANDARD 14)
 ELSE()
     message(WARNING "C++ standard could not be set because compiler is not GNU, Clang or MSVC.")
 ENDIF()
@@ -85,7 +85,8 @@ ENDIF()
 ########################################################################
 # Install directories
 ########################################################################
-find_package(Gnuradio "3.8" REQUIRED)
+include(FindPkgConfig)
+find_package(Gnuradio "3.9" REQUIRED)
 include(GrVersion)
 
 include(GrPlatform) #define LIB_SUFFIX
@@ -131,6 +132,15 @@ find_package(PCAP REQUIRED)
 ########################################################################
 find_package(Doxygen)
 
+######################################################################## 
+# PyBind11 Related 
+######################################################################## 
+find_package(pybind11 REQUIRED)
+execute_process(
+    COMMAND "${PYTHON_EXECUTABLE}" -c
+    "try:\n import numpy\n import os\n inc_path = numpy.get_include()\n if os.path.exists(os.path.join(inc_path, 'numpy', 'arrayobject.h')):\n  print(inc_path, end='')\nexcept:\n pass"
+    OUTPUT_VARIABLE PYTHON_NUMPY_INCLUDE_DIR)
+    
 ########################################################################
 # Setup doxygen option
 ########################################################################
@@ -160,10 +170,14 @@ add_subdirectory(include/ata)
 add_subdirectory(lib)
 add_subdirectory(apps)
 add_subdirectory(docs)
-add_subdirectory(swig)
-add_subdirectory(python)
-add_subdirectory(grc)
-
+if(ENABLE_PYTHON) 
+  message(STATUS "PYTHON and GRC components are enabled") 
+  add_subdirectory(python) 
+  add_subdirectory(grc) 
+else(ENABLE_PYTHON) 
+  message(STATUS "PYTHON and GRC components are disabled") 
+endif(ENABLE_PYTHON) 
+ 
 ########################################################################
 # Install cmake search helper for this library
 ########################################################################

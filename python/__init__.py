@@ -25,10 +25,11 @@ description here (python/__init__.py).
 from __future__ import unicode_literals
 
 # import swig generated symbols into the ata namespace
+# import pybind11 generated symbols into the ata namespace
 try:
     # this might fail if the module is python-only
-    from .ata_swig import *
-except ImportError:
+    from .ata_python import *
+except ModuleNotFoundError:
     pass
 
 # import any pure python here
