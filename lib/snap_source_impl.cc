@@ -48,6 +48,7 @@
 #define DS_MCAST 2
 #define DS_PCAP 3
 
+#define MULT_PACKET_COUNT 16
 
 // This is the maximum missed frames before we declare something went terribly wrong.
 // 10000 = 0.04 seconds
@@ -426,7 +427,8 @@ bool snap_source_impl::start() {
 
 	// Compute reasonable buffer size
 	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(MAX_NET_CIRC_BUFFER);
-	async_buffer = new unsigned char[total_packet_size];
+	async_buffer = new unsigned char[total_packet_size*8];
+	d_udp_recv_buf_size = total_packet_size;
 
 #ifdef THREAD_RECEIVE
 	proc_thread = new boost::thread(boost::bind(&snap_source_impl::runThread, this));
@@ -531,7 +533,7 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 		std::size_t bytes_transferred)
 {
 	// std::cout << "[" << identifier() << "] handle_receive called with " << bytes_transferred << " bytes" << std::endl;
-	if (!error && (bytes_transferred == total_packet_size)) {
+	if (!error) {
 		if (!d_found_start_channel) {
 			// We're not synchronized on the first packet yet, so we're looking for it.
 			if (SNAP_PACKETTYPE_VOLTAGE) {
@@ -540,6 +542,9 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 					start_receive();
 					return;
 				}
+
+				// Now switch to receiving 8 packets at a time
+				d_udp_recv_buf_size = total_packet_size * MULT_PACKET_COUNT;
 			}
 			else {
 				if (!spect_async_synchronize()) {
@@ -552,42 +557,49 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 
 		// check for bad channel id first.
 		uint16_t channel_id;
-
-		if (SNAP_PACKETTYPE_VOLTAGE) {
-			struct voltage_header *v_hdr = (struct voltage_header *)async_buffer;
-			channel_id = be16toh(v_hdr->chan);
+		unsigned char *cur_pkt;
+		int num_packets = bytes_transferred / total_packet_size;
+		/*
+		if (num_packets > 0) {
+			std::cout << "Received " << num_packets << " packets" << std::endl;
 		}
-		else {
-			uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
-
-			// Convert from network format to host format.
-			uint64_t header = be64toh(*header_as_uint64);
-			channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val
-		}
-
-		if ((channel_id < d_starting_channel) || (channel_id > d_ending_channel_packet_channel_id) ) {
-			std::stringstream msg_stream;
-			msg_stream << "Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << channel_id;
-
-			if (b_one_packet) {
-				msg_stream << " expected " << d_starting_channel;
-			}
-			else {
-				msg_stream << " expected block channel between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id;
-			}
-
-			GR_LOG_ERROR(d_logger, msg_stream.str());
-
-			start_receive();
-			return;
-		}
-
-		// We'll only get here if we've sync'd and the id is good.  so the main work doesn't need to track this anymore.
-		data_vector<unsigned char> new_data((unsigned char *)async_buffer,total_packet_size);
+		*/
 #ifdef THREAD_RECEIVE
 		gr::thread::scoped_lock guard(d_net_mutex);
 #endif
-		d_localqueue->push_back(new_data);
+		for (int i=0;i<num_packets;i++) {
+			cur_pkt = &async_buffer[i*total_packet_size];
+
+			if (SNAP_PACKETTYPE_VOLTAGE) {
+				struct voltage_header *v_hdr = (struct voltage_header *)cur_pkt;
+				channel_id = be16toh(v_hdr->chan);
+			}
+			else {
+				uint64_t *header_as_uint64 = (uint64_t *)cur_pkt;
+
+				// Convert from network format to host format.
+				uint64_t header = be64toh(*header_as_uint64);
+				channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val
+			}
+
+			if ((channel_id < d_starting_channel) || (channel_id > d_ending_channel_packet_channel_id) ) {
+				std::stringstream msg_stream;
+				msg_stream << "Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << channel_id;
+
+				if (b_one_packet) {
+					msg_stream << " expected " << d_starting_channel;
+				}
+				else {
+					msg_stream << " expected block channel between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id;
+				}
+
+				GR_LOG_ERROR(d_logger, msg_stream.str());
+			}
+
+			// We'll only get here if we've sync'd and the id is good.  so the main work doesn't need to track this anymore.
+			data_vector<unsigned char> new_data((unsigned char *)cur_pkt,total_packet_size);
+			d_localqueue->push_back(new_data);
+		}
 	}
 	else {
 		std::stringstream msg_stream;
@@ -595,7 +607,7 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 			msg_stream << "Network receive error code:" << error;
 		}
 		else {
-			msg_stream << "Network received an incorrect number of bytes:" << bytes_transferred << ".  Should be " << total_packet_size;
+			msg_stream << "Network received an incorrect number of bytes:" << bytes_transferred << ".  Should be " << d_udp_recv_buf_size;
 		}
 		GR_LOG_ERROR(d_logger, msg_stream.str());
 	}

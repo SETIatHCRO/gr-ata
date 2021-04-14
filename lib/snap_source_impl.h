@@ -493,7 +493,7 @@ protected:
 			return;
 
 		d_udpsocket->async_receive_from(
-				boost::asio::buffer(async_buffer,total_packet_size), d_endpoint,
+				boost::asio::buffer(async_buffer,d_udp_recv_buf_size), d_endpoint,
 				boost::bind(&snap_source_impl::handle_receive, this,
 						boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
