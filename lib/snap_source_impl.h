@@ -488,7 +488,17 @@ protected:
 		d_localqueue->pop_front();
 	};
 
-	void start_receive();
+	void start_receive() {
+		if (stop_thread)
+			return;
+
+		d_udpsocket->async_receive_from(
+				boost::asio::buffer(async_buffer,total_packet_size), d_endpoint,
+				boost::bind(&snap_source_impl::handle_receive, this,
+						boost::asio::placeholders::error,
+						boost::asio::placeholders::bytes_transferred));
+	};
+
 	void handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred);
 
 	int work_volt_mode(int noutput_items, gr_vector_const_void_star &input_items,

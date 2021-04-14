@@ -527,17 +527,6 @@ bool snap_source_impl::stop() {
 	return true;
 }
 
-void snap_source_impl::start_receive() {
-	if (stop_thread)
-		return;
-
-	d_udpsocket->async_receive_from(
-			boost::asio::buffer(async_buffer,total_packet_size), d_endpoint,
-			boost::bind(&snap_source_impl::handle_receive, this,
-					boost::asio::placeholders::error,
-					boost::asio::placeholders::bytes_transferred));
-}
-
 void snap_source_impl::handle_receive(const boost::system::error_code& error,
 		std::size_t bytes_transferred)
 {
