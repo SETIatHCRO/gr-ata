@@ -27,13 +27,15 @@
 #include <boost/circular_buffer.hpp>
 #include <ata/snap_source.h>
 #include <pcap/pcap.h>
-
-// #define NUMA_AWARE
+#include <sys/socket.h>
 
 namespace gr {
 namespace ata {
 
 #define SNAPFORMAT_2_0_0
+
+#define MMSG_LENGTH 32
+#define MMSG_TIMEOUT 1
 
 const int VP_DATA_STRIDE=256*16*2;
 
@@ -258,6 +260,13 @@ protected:
 	unsigned char *local_net_buffer = NULL;
 	long local_net_buffer_size=0;
 
+	// multimessage receive (mmsg)
+	struct mmsghdr msgs[MMSG_LENGTH];
+	struct iovec iovecs[MMSG_LENGTH];
+	unsigned char bufs[MMSG_LENGTH][9000];
+	struct timespec timeout;
+	int mmsg_sleep_time = 0;
+
 	// Separate receive thread
 	boost::thread *proc_thread=NULL;
 	bool threadRunning=false;
@@ -325,19 +334,17 @@ protected:
 	std::deque<data_vector<float>> xy_imag_vector_queue;
 #endif
 
-#ifdef NUMA_AWARE
-	void num_binding();
-#endif
-
 	void openPCAP();
 	void closePCAP();
+
+	int mmsg_receive();
 
 	void copy_volt_data_to_vector_buffer(snap_header& hdr);
 	void queue_voltage_data(snap_header& hdr);
 
-	void get_voltage_async_header(snap_header& hdr) {
+	void get_voltage_header(snap_header& hdr, unsigned char *pBuff) {
 		struct voltage_header *v_hdr;
-		v_hdr = (struct voltage_header *)async_buffer;
+		v_hdr = (struct voltage_header *)pBuff;
 		hdr.antenna_id = be16toh(v_hdr->feng_id);
 		hdr.channel_id = be16toh(v_hdr->chan);
 		hdr.firmware_version = v_hdr->version; // no need to network->host order, only a byte
@@ -345,9 +352,9 @@ protected:
 		hdr.type = v_hdr->type;
 	}
 
-	bool voltage_async_synchronize() {
+	bool voltage_synchronize(unsigned char *pBuff) {
 		// We're not synchronized on the first packet yet, so we're looking for it.
-		struct voltage_header *v_hdr  = (struct voltage_header *)async_buffer;
+		struct voltage_header *v_hdr  = (struct voltage_header *)pBuff;
 		uint16_t channel_id = be16toh(v_hdr->chan);
 
 		if ( channel_id == d_starting_channel ) {
@@ -357,7 +364,7 @@ protected:
 			// will need to do it.
 			d_found_start_channel = true;
 
-			get_voltage_async_header(async_volt_sync_hdr);
+			get_voltage_header(async_volt_sync_hdr,pBuff);
 
 			std::stringstream msg_stream;
 			if (d_use_pcap) {
@@ -379,9 +386,9 @@ protected:
 		}
 	}
 
-	bool spect_async_synchronize() {
+	bool spect_synchronize(unsigned char *pBuff) {
 		// We're not synchronized on the first packet yet, so we're looking for it.
-		uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+		uint64_t *header_as_uint64 = (uint64_t *)pBuff;
 		uint64_t header = be64toh(*header_as_uint64);
 		uint16_t channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val;
 
@@ -392,7 +399,7 @@ protected:
 			// will need to do it.
 			d_found_start_channel = true;
 
-			get_spect_async_header(async_spect_sync_hdr);
+			get_spect_header(async_spect_sync_hdr, pBuff);
 
 			std::stringstream msg_stream;
 			if (d_use_pcap) {
@@ -414,8 +421,8 @@ protected:
 		}
 	}
 
-	void get_spect_async_header(snap_header& hdr) {
-		uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+	void get_spect_header(snap_header& hdr, unsigned char *pBuff) {
+		uint64_t *header_as_uint64 = (uint64_t *)pBuff;
 
 		// Convert from network format to host format.
 		uint64_t header = be64toh(*header_as_uint64);
