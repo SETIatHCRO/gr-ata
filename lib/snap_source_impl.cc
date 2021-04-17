@@ -1533,6 +1533,7 @@ void snap_source_impl::runThread() {
 			}
 			*/
 			int retval = recvmmsg(d_udpsocket->native_handle(), msgs, MMSG_LENGTH, MSG_DONTWAIT, nullptr);
+			sleep(4);
 		}
 
 		/*
