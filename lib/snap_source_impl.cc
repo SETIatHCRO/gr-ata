@@ -63,7 +63,8 @@ snap_source::sptr snap_source::make(int port,
 		bool notifyMissed,
 		bool sourceZeros, bool ipv6,
 		int starting_channel, int ending_channel,
-		int data_source, std::string file, bool repeat_file, bool packed_output,std::string mcast_group, bool send_start_msg) {
+		int data_source, std::string file, bool repeat_file, bool packed_output,std::string mcast_group,
+		bool send_start_msg, std::string udp_ip) {
 	int data_size;
 	if (headerType == SNAP_PACKETTYPE_VOLTAGE) {
 		data_size = sizeof(char);
@@ -74,7 +75,7 @@ snap_source::sptr snap_source::make(int port,
 	return gnuradio::get_initial_sptr(
 			new snap_source_impl(port, headerType,
 					notifyMissed, sourceZeros, ipv6, starting_channel, ending_channel, data_size, data_source, file, repeat_file,
-					packed_output, mcast_group, send_start_msg));
+					packed_output, mcast_group, send_start_msg, udp_ip));
 }
 
 /*
@@ -86,7 +87,7 @@ snap_source_impl::snap_source_impl(int port,
 		bool sourceZeros, bool ipv6,
 		int starting_channel, int ending_channel, int data_size,
 		int data_source, std::string file, bool repeat_file, bool packed_output,
-		std::string mcast_group, bool send_start_msg)
+		std::string mcast_group, bool send_start_msg, std::string udp_ip)
 : gr::sync_block("snap_src_" + std::to_string(port) + "_",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(1, 4,
@@ -96,6 +97,8 @@ seq_num_queue(MAX_WORK_BUFF_SIZE),x_vector_queue(MAX_WORK_BUFF_SIZE),y_vector_qu
 xx_vector_queue(MAX_WORK_BUFF_SIZE),yy_vector_queue(MAX_WORK_BUFF_SIZE),xy_real_vector_queue(MAX_WORK_BUFF_SIZE),xy_imag_vector_queue(MAX_WORK_BUFF_SIZE)
 #endif
 {
+	d_udp_ip = udp_ip;
+
 	d_send_start_msg = send_start_msg;
 
 	if (data_source == DS_PCAP) {
@@ -337,8 +340,22 @@ bool snap_source_impl::start() {
 		else {
 			if (d_data_source == DS_NETWORK) {
 				// Standard UDP
-				d_endpoint =
-						boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), d_port);
+				if ( (d_udp_ip.length() == 0) || (d_udp_ip == "0.0.0.0") || (d_udp_ip == "any") || (d_udp_ip == "all") ) {
+					d_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), d_port);
+				}
+				else {
+					try {
+						d_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address::from_string(d_udp_ip), d_port);
+					}
+					catch (const std::exception &ex) {
+						std::stringstream msg_stream;
+						msg_stream << "Error converting  " << d_udp_ip << " to endpoint object.  Check address is valid.";
+						GR_LOG_ERROR(d_logger, msg_stream.str());
+
+						throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
+								ex.what());
+					}
+				}
 			}
 			else {
 				// Multicast group

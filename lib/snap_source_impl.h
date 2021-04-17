@@ -255,6 +255,7 @@ protected:
 	boost::asio::io_service d_io_service;
 	boost::asio::ip::udp::endpoint d_endpoint;
 	boost::asio::ip::udp::socket *d_udpsocket = NULL;
+	std::string d_udp_ip;
 
 	// These local net buffers are only used in non-threaded mode in queue_data.
 	unsigned char *local_net_buffer = NULL;
@@ -521,7 +522,7 @@ public:
 			bool notifyMissed, bool sourceZeros, bool ipv6,
 			int starting_channel, int ending_channel, int data_size,
 			int data_source, std::string file="", bool repeat_file=false, bool packed_output=false,
-			std::string mcast_group="", bool send_start_msg=false);
+			std::string mcast_group="", bool send_start_msg=false, std::string udp_ip="");
 
 	~snap_source_impl();
 

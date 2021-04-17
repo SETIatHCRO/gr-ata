@@ -27,6 +27,11 @@ parameters:
         size: [gr.sizeof_char, gr.sizeof_float]
         type: [byte, float]
         multiplier: [2, 1]
+-   id: udp_ip
+    label: Bind IP
+    dtype: string
+    default: ''
+    hide: ${ 'part' if data_source == '1' else 'all' }
 -   id: mcast_group
     label: Multicast Group IP
     dtype: string
@@ -101,7 +106,7 @@ outputs:
     
 templates:
     imports: import ata
-    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, False, ${ipv6},${starting_channel},${ending_channel},${data_source}, ${file}, ${repeat_file}, ${packed_output}, ${mcast_group}, ${send_start_msg})
+    make: ata.snap_source(${port}, ${header}, ${notifyMissed}, False, ${ipv6},${starting_channel},${ending_channel},${data_source}, ${file}, ${repeat_file}, ${packed_output}, ${mcast_group}, ${send_start_msg},${udp_ip})
 
 documentation: "This block listens for ATA SNAP traffic on the specified UDP port and outputs\
     \ the channel vector appropriate for the selected type.  Voltage blocks output 512 byte\
@@ -116,10 +121,11 @@ documentation: "This block listens for ATA SNAP traffic on the specified UDP por
     \ and not continue to produce zeros).\n\n\
     \ NOTE:\n\
     \ For best performance and to ensure UDP packets are not dropped, add the following\
-    \ lines to your /etc/sysctl.conf and reboot (the reboot is required).\n\n\
-    \ net.core.rmem_default=26214400\n\
-    \ net.core.rmem_max=104857600\n\
-    \ net.core.wmem_default=65536\n\
-    \ net.core.wmem_max=104857600\n\n"
+    \ lines to your /etc/sysctl.conf and either reboot or issue sudo sysctl --system.\n\n\
+	\ net.core.rmem_default=26214400\n\ 
+	\ net.core.rmem_max=104857600\n\
+	\ net.core.wmem_default=1024000\n\
+	\ net.core.wmem_max=104857600\n\
+	\ net.core.netdev_max_backlog=300000\n\n" 
 
 file_format: 1

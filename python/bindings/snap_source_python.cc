@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(snap_source.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(6b90def25a181698a264fb6be22bd73b)                     */
+/* BINDTOOL_HEADER_FILE_HASH(43bf03a2dd93842f8700b548a115c4a7)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -50,6 +50,7 @@ void bind_snap_source(py::module& m)
            py::arg("packed_output") = false,
            py::arg("mcast_group") = "",
            py::arg("send_start_msg") = false,
+           py::arg("udp_ip") = "",
            D(snap_source,make)
         )
         
