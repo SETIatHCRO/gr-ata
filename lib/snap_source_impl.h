@@ -274,6 +274,8 @@ protected:
 	gr::thread::mutex d_net_mutex;
 	unsigned int d_cpu;
 	unsigned int d_cpu_node;
+	bool work_called = false;
+	// std::chrono::time_point<std::chrono::steady_clock> start_time, end_time;
 
 	// Actual thread function
 	virtual void runThread();
