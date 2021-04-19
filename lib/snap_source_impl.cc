@@ -1533,34 +1533,33 @@ int snap_source_impl::mmsg_receive()
 	return retval;
 }
 
-
 void snap_source_impl::runThread() {
 	threadRunning = true;
-
+	/*
 	if (!d_use_pcap) {
 		// data dump until work starts.
 		//bool printed_msg = false;
 
 		while (!work_called && !stop_thread) {
-			/*
-			if (!printed_msg) {
-				start_time = std::chrono::steady_clock::now();
-				std::cout << "Waiting on work..." << std::endl;
-				printed_msg = true;
-			}
-			*/
+
+			//if (!printed_msg) {
+			//	start_time = std::chrono::steady_clock::now();
+			//	std::cout << "Waiting on work..." << std::endl;
+			//	printed_msg = true;
+			//}
+
 			int retval = recvmmsg(d_udpsocket->native_handle(), msgs, MMSG_LENGTH, MSG_DONTWAIT, nullptr);
 			sleep(4);
 		}
 
-		/*
-		end_time = std::chrono::steady_clock::now();
-		std::cout << "Work called" << std::endl;
-		std::chrono::duration<double> elapsed_seconds = end_time - start_time;
-		std::cout << "Time between start and work: " << elapsed_seconds.count() << std::endl;
-		*/
-	}
 
+		//end_time = std::chrono::steady_clock::now();
+		//std::cout << "Work called" << std::endl;
+		//std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+		//std::cout << "Time between start and work: " << elapsed_seconds.count() << std::endl;
+
+	}
+	*/
 	while (!stop_thread) {
 		if (!d_use_pcap) {
 			// Getting data from the network
@@ -1571,6 +1570,9 @@ void snap_source_impl::runThread() {
 			// usleep(60);
 			if (!d_use_pcap) {
 				int pkts_received = mmsg_receive();
+				usleep(30);
+
+				/*
 				if (pkts_received == 0) {
 					usleep(mmsg_sleep_time);
 				}
@@ -1578,11 +1580,12 @@ void snap_source_impl::runThread() {
 					// wait 1/2 packet
 					usleep(16);
 				}
+				*/
 
 				/*
 				start_receive();
 				d_io_service.run();
-				 */
+				*/
 			}
 
 		}
