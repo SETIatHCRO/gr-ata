@@ -394,7 +394,8 @@ bool snap_source_impl::start() {
 
 		try {
 			boost::system::error_code error_code;
-			d_udpsocket->set_option(boost::asio::socket_base::receive_buffer_size(64*1024*1024), error_code);
+			// 100*1024*1024 = what we normally set rmem_max to: 104857600
+			d_udpsocket->set_option(boost::asio::socket_base::receive_buffer_size(100*1024*1024), error_code);
 		} catch (const std::exception &ex) {
 			throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
 					ex.what());
