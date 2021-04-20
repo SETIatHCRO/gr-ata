@@ -38,7 +38,7 @@ sudo ldconfig
 
 With gr-ata, it is possible to run a full FX correlation engine from within GNU Radio.  The pipeline takes data from the SNAP boards running in voltage mode via SNAP source blocks, and leverages [gr-clenabled](https://github.com/ghostop14/gr-clenabled)'s clXEngine block to perform GPU accelerated correlation.  The XEngine block has been used to do observations with 12 simultaneous antennas of 256 channels (both polarizations) in real-time, and has been timed to support up to 21 antennas on an NVIDIA 2080 GPU.  In the apps/observation/gr_flowgraphs directory is a sample flowgraph called ata_12ant_xcorr.grc that shows the flowgraph to correlate 12 antennas in realtime.
 
-In order to more easily support reconfigurable observations, there is an application named ata_multi_ant.py in apps/observations/gr_flowgraphs.  This can be used from the command-line to control a variable number of antennas (configured from the command-line).  Observations at the ATA have been executed with this script such as this.  The one piece of information that would be required from the SNAP configuration will be the unix timestamp that they are all synchronized to start on (designated snap-sync).
+In order to more easily support reconfigurable observations, there is an application named ata_multi_ant.py in the apps directory.  This can be used from the command-line to control a variable number of antennas (configured from the command-line).  Observations at the ATA have been executed with this script such as this.  The one piece of information that would be required from the SNAP configuration will be the unix timestamp that they are all synchronized to start on (designated snap-sync).
 
 ### 3c84 5-Minute Calibration 
 This example uses the timeout command to control a 5-minute runtime.  LD_PRELOAD is present to take advantage of Mellanox VMA, numactl -N 0 is used to lock in the run to just one NUMA node in a 2-CPU system.  If you have a system with just 1 CPU, or want to use the --enable-affinity option to balance across all nodes, this can be left off.
@@ -153,6 +153,32 @@ source = SkyCoord.from_name(metadata['object_name'])
 ```
 
 Daniel Estivez also has a separate repository with scripts for interferometry at the ATA here: [ata_interferometry](https://github.com/daniestevez/ata_interferometry).  Specifically, there are a number of scripts in the postprocess directory that have been used in real pipelines to correct for fringe rotation (fringe_stop.py) and to create a UVFITS output file (xengine_to_uvfits.py) that can be used with common applications such as [casa](https://casa.nrao.edu/) that can handle UVFITS files.
+
+Here are the steps you will need to take the xengine output files and produce UVFITS files that can be loaded into other tools.
+
+First, under the postprocessing directory in ata_interferometry are the python files you will need.  You will also need to save (and update as necessary) this target name mapping to a file such as target_name_translation.json.
+
+```
+{
+    "sources" : { "2202+422" : ["22h02m43.291377s", "42d16m39.979940s"],
+		  "3C147" : "3C147",
+		  "3C286" : "3C286",
+		  "3C345" : "3C345",
+		  "3c84" : "3C84",
+		  "3c461" : "Cassiopeia A",
+		  "CasA" : "Cassiopeia A",
+		  "CygA" : "Cygnus A" }
+}
+```
+
+This file will be the input "observation JSON" parameter to xengine_to_uvfits.py as shown in the example below. The dictionary key is the common name provided as the parameter to the object-name parameter above.  The value represents astropy's name for that object.
+
+The following example shows launching the translation to UVFITS from observation files stored in $HOME/xengine_output/data:
+
+```
+mkdir -p $HOME/xengine_output/data/uvfits
+./xengine_to_uvfits.py <gr-ata directory>/apps/observation/antenna_coordinates_ecef.txt <gr-ata directory>/apps/observation/antenna_delays.json target_name_translation.json $HOME/xengine_output/data 1 1 $HOME/xengine_output/data/uvfits
+```
 
 ### Optimizing Performance
 
