@@ -41,15 +41,15 @@ With gr-ata, it is possible to run a full FX correlation engine from within GNU 
 In order to more easily support reconfigurable observations, there is an application named ata_multi_ant.py in apps/observations/gr_flowgraphs.  This can be used from the command-line to control a variable number of antennas (configured from the command-line).  Observations at the ATA have been executed with this script such as this.  The one piece of information that would be required from the SNAP configuration will be the unix timestamp that they are all synchronized to start on (designated snap-sync).
 
 ### 3c84 5-Minute Calibration 
-This example uses the timeout command to control a 5-minute runtime.  numactl -N 0 is used to lock in the run to just one NUMA node in a 2-CPU system.  If you have a system with just 1 CPU, or want to use the --enable-affinity option to balance across all nodes, this can be left off.
+This example uses the timeout command to control a 5-minute runtime.  LD_PRELOAD is present to take advantage of Mellanox VMA, numactl -N 0 is used to lock in the run to just one NUMA node in a 2-CPU system.  If you have a system with just 1 CPU, or want to use the --enable-affinity option to balance across all nodes, this can be left off.
 
 ```
-timeout 5m numactl -N 0 ./ata_multi_ant_xcorr.py --snap-sync=1616950797 --integration-frames=20000 --output-prefix=3c84 --object-name=3c84 --starting-channel=1920 --num-channels=256 --antenna-list=1a,1f,4g,5c,1c,2b,2h,1h,1k,4j,2a,3c --starting-chan-freq=2968000000.0 --output-directory=$HOME/xengine_output/staging 
+LD_PRELOAD=libvma.so timeout 5m numactl -N 0 ./ata_multi_ant_xcorr.py --snap-sync=1616950797 --integration-frames=20000 --output-prefix=3c84 --object-name=3c84 --starting-channel=1920 --num-channels=256 --antenna-list=1a,1f,4g,5c,1c,2b,2h,1h,1k,4j,2a,3c --starting-chan-freq=2968000000.0 --output-directory=$HOME/xengine_output/staging 
 ```
  
 ### Cassiopeia A 2-Minutes Observing, 8-Minute Sleep
 ```
-while true; do timeout 2m numactl -N 0 ./ata_multi_ant_xcorr.py --snap-sync=1616950797 --integration-frames=20000 --output-prefix=casa --object-name=3c461 --starting-channel=1920 --num-channels=256 --antenna-list=1a,1f,4g,5c,1c,2b,2h,1h,1k,4j,2a,3c --starting-chan-freq=2968000000.0 --output-directory=$HOME/xengine_output/staging; echo "[`date`] Sleeping..."; sleep 8m;done 
+while true; do LD_PRELOAD=libvma.so timeout 2m numactl -N 0 ./ata_multi_ant_xcorr.py --snap-sync=1616950797 --integration-frames=20000 --output-prefix=casa --object-name=3c461 --starting-channel=1920 --num-channels=256 --antenna-list=1a,1f,4g,5c,1c,2b,2h,1h,1k,4j,2a,3c --starting-chan-freq=2968000000.0 --output-directory=$HOME/xengine_output/staging; echo "[`date`] Sleeping..."; sleep 8m;done 
 ```
 
 ### ata_multi_ant_xcorr.py
@@ -59,7 +59,7 @@ The full list of options for ata_multi_ant_xcorr.py is:
 usage: ata_multi_ant_xcorr.py [-h] --snap-sync SNAP_SYNC --object-name OBJECT_NAME --antenna-list ANTENNA_LIST --num-channels NUM_CHANNELS --starting-channel
                               STARTING_CHANNEL --starting-chan-freq STARTING_CHAN_FREQ [--channel-width CHANNEL_WIDTH] --integration-frames INTEGRATION_FRAMES
                               [--cpu-integration CPU_INTEGRATION] --output-directory OUTPUT_DIRECTORY [--output-prefix OUTPUT_PREFIX] [--base-port BASE_PORT] [--no-output]
-                              [--enable-affinity]
+                              [--enable-affinity] [--bind-ip]
 
 ATA Multi-Antenna X-Engine
 
@@ -96,6 +96,7 @@ optional arguments:
   --no-output, -n       Used for performance tuning. Disables disk IO.
   --enable-affinity, -e
                         Enable CPU affiniity
+  --bind-ip BIND_IP     Specific IP to bind to. Default is 0.0.0.0 (all)
 ```
 
 ### Output Format
