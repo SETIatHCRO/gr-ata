@@ -188,7 +188,7 @@ if __name__ == '__main__':
     parser.add_argument('--base-port', '-b', type=int, default=10000, help="The first UDP port number for the listeners.  The first antenna will be assigned to this port and each subsequent antenna to the next number up (e.g. 10000, 10001, 10002,...)", required=False)
     parser.add_argument('--no-output', '-n', help="Used for performance tuning.  Disables disk IO.", action='store_true', required=False)
     parser.add_argument('--enable-affinity', '-e', help="Enable CPU affiniity", action='store_true', required=False)
-    parser.add_argument('--bind-ip', type=str, default='', help="Specific IP to bind to.  Default is 0.0.0.0 (all)", required=True)
+    parser.add_argument('--bind-ip', type=str, default='', help="Specific IP to bind to.  Default is 0.0.0.0 (all)", required=False)
 
     args = parser.parse_args()
     clparam_snap_sync = args.snap_sync
