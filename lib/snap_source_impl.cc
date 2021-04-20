@@ -392,6 +392,14 @@ bool snap_source_impl::start() {
 					ex.what());
 		}
 
+		try {
+			boost::system::error_code error_code;
+			d_udpsocket->set_option(boost::asio::socket_base::receive_buffer_size(64*1024*1024), error_code);
+		} catch (const std::exception &ex) {
+			throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
+					ex.what());
+		}
+
 		if (d_use_mcast) {
 			try {
 				boost::asio::ip::multicast::join_group option(mcast_addr);
