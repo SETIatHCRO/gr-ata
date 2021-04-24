@@ -38,16 +38,11 @@
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 
-#ifdef NUMA_AWARE
-#include <numa.h>
-#endif
-
 #define THREAD_RECEIVE
 
 #define DS_NETWORK 1
 #define DS_MCAST 2
 #define DS_PCAP 3
-
 
 // This is the maximum missed frames before we declare something went terribly wrong.
 // 10000 = 0.04 seconds
@@ -68,7 +63,8 @@ snap_source::sptr snap_source::make(int port,
 		bool notifyMissed,
 		bool sourceZeros, bool ipv6,
 		int starting_channel, int ending_channel,
-		int data_source, std::string file, bool repeat_file, bool packed_output,std::string mcast_group, bool send_start_msg) {
+		int data_source, std::string file, bool repeat_file, bool packed_output,std::string mcast_group,
+		bool send_start_msg, std::string udp_ip) {
 	int data_size;
 	if (headerType == SNAP_PACKETTYPE_VOLTAGE) {
 		data_size = sizeof(char);
@@ -79,7 +75,7 @@ snap_source::sptr snap_source::make(int port,
 	return gnuradio::get_initial_sptr(
 			new snap_source_impl(port, headerType,
 					notifyMissed, sourceZeros, ipv6, starting_channel, ending_channel, data_size, data_source, file, repeat_file,
-					packed_output, mcast_group, send_start_msg));
+					packed_output, mcast_group, send_start_msg, udp_ip));
 }
 
 /*
@@ -91,16 +87,18 @@ snap_source_impl::snap_source_impl(int port,
 		bool sourceZeros, bool ipv6,
 		int starting_channel, int ending_channel, int data_size,
 		int data_source, std::string file, bool repeat_file, bool packed_output,
-		std::string mcast_group, bool send_start_msg)
+		std::string mcast_group, bool send_start_msg, std::string udp_ip)
 : gr::sync_block("snap_src_" + std::to_string(port) + "_",
 		gr::io_signature::make(0, 0, 0),
 		gr::io_signature::make(1, 4,
 				(headerType == SNAP_PACKETTYPE_VOLTAGE) ? data_size * (ending_channel-starting_channel+1)*2:data_size * (ending_channel-starting_channel+1)))
 #ifdef USE_CIRC_VB
-				seq_num_queue(MAX_WORK_BUFF_SIZE),x_vector_queue(MAX_WORK_BUFF_SIZE),y_vector_queue(MAX_WORK_BUFF_SIZE),
-				xx_vector_queue(MAX_WORK_BUFF_SIZE),yy_vector_queue(MAX_WORK_BUFF_SIZE),xy_real_vector_queue(MAX_WORK_BUFF_SIZE),xy_imag_vector_queue(MAX_WORK_BUFF_SIZE)
+seq_num_queue(MAX_WORK_BUFF_SIZE),x_vector_queue(MAX_WORK_BUFF_SIZE),y_vector_queue(MAX_WORK_BUFF_SIZE),
+xx_vector_queue(MAX_WORK_BUFF_SIZE),yy_vector_queue(MAX_WORK_BUFF_SIZE),xy_real_vector_queue(MAX_WORK_BUFF_SIZE),xy_imag_vector_queue(MAX_WORK_BUFF_SIZE)
 #endif
 {
+	d_udp_ip = udp_ip;
+
 	d_send_start_msg = send_start_msg;
 
 	if (data_source == DS_PCAP) {
@@ -321,6 +319,19 @@ bool snap_source_impl::start() {
 	}
 
 	if (!d_use_pcap) {
+		// dividing by packets/frame will speed things up when more packets are expected.
+		mmsg_sleep_time = MMSG_LENGTH / 2 * 32 / packets_per_frame;
+
+		memset(msgs, 0, sizeof(msgs));
+		for (int i = 0; i < MMSG_LENGTH; i++) {
+			iovecs[i].iov_base         = bufs[i];
+			iovecs[i].iov_len          = total_packet_size;
+			msgs[i].msg_hdr.msg_iov    = &iovecs[i];
+			msgs[i].msg_hdr.msg_iovlen = 1;
+		}
+		timeout.tv_sec = MMSG_TIMEOUT;
+		timeout.tv_nsec = 0;
+
 		// Initialize receiving socket
 		boost::asio::ip::address mcast_addr;
 		if (is_ipv6)
@@ -329,8 +340,22 @@ bool snap_source_impl::start() {
 		else {
 			if (d_data_source == DS_NETWORK) {
 				// Standard UDP
-				d_endpoint =
-						boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), d_port);
+				if ( (d_udp_ip.length() == 0) || (d_udp_ip == "0.0.0.0") || (d_udp_ip == "any") || (d_udp_ip == "all") ) {
+					d_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), d_port);
+				}
+				else {
+					try {
+						d_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address::from_string(d_udp_ip), d_port);
+					}
+					catch (const std::exception &ex) {
+						std::stringstream msg_stream;
+						msg_stream << "Error converting  " << d_udp_ip << " to endpoint object.  Check address is valid.";
+						GR_LOG_ERROR(d_logger, msg_stream.str());
+
+						throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
+								ex.what());
+					}
+				}
 			}
 			else {
 				// Multicast group
@@ -362,6 +387,15 @@ bool snap_source_impl::start() {
 
 		try {
 			d_udpsocket = new boost::asio::ip::udp::socket(d_io_service, d_endpoint);
+		} catch (const std::exception &ex) {
+			throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
+					ex.what());
+		}
+
+		try {
+			boost::system::error_code error_code;
+			// 100*1024*1024 = what we normally set rmem_max to: 104857600
+			d_udpsocket->set_option(boost::asio::socket_base::receive_buffer_size(100*1024*1024), error_code);
 		} catch (const std::exception &ex) {
 			throw std::runtime_error(std::string("[SNAP Source] Error occurred: ") +
 					ex.what());
@@ -427,6 +461,7 @@ bool snap_source_impl::start() {
 	// Compute reasonable buffer size
 	d_localqueue = new boost::circular_buffer<data_vector<unsigned char>>(MAX_NET_CIRC_BUFFER);
 	async_buffer = new unsigned char[total_packet_size];
+	d_udp_recv_buf_size = total_packet_size;
 
 #ifdef THREAD_RECEIVE
 	proc_thread = new boost::thread(boost::bind(&snap_source_impl::runThread, this));
@@ -527,33 +562,22 @@ bool snap_source_impl::stop() {
 	return true;
 }
 
-void snap_source_impl::start_receive() {
-	if (stop_thread)
-		return;
-
-	d_udpsocket->async_receive_from(
-			boost::asio::buffer(async_buffer,total_packet_size), d_endpoint,
-			boost::bind(&snap_source_impl::handle_receive, this,
-					boost::asio::placeholders::error,
-					boost::asio::placeholders::bytes_transferred));
-}
-
 void snap_source_impl::handle_receive(const boost::system::error_code& error,
 		std::size_t bytes_transferred)
 {
 	// std::cout << "[" << identifier() << "] handle_receive called with " << bytes_transferred << " bytes" << std::endl;
-	if (!error && (bytes_transferred == total_packet_size)) {
+	if (!error) {
 		if (!d_found_start_channel) {
 			// We're not synchronized on the first packet yet, so we're looking for it.
 			if (SNAP_PACKETTYPE_VOLTAGE) {
-				if (!voltage_async_synchronize()) {
+				if (!voltage_synchronize(async_buffer)) {
 					// we're still not sync'd.  So don't bother queueing the packet.
 					start_receive();
 					return;
 				}
 			}
 			else {
-				if (!spect_async_synchronize()) {
+				if (!spect_synchronize(async_buffer)) {
 					// we're still not sync'd.  So don't bother queueing the packet.
 					start_receive();
 					return;
@@ -588,17 +612,19 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 			}
 
 			GR_LOG_ERROR(d_logger, msg_stream.str());
-
-			start_receive();
-			return;
 		}
 
 		// We'll only get here if we've sync'd and the id is good.  so the main work doesn't need to track this anymore.
 		data_vector<unsigned char> new_data((unsigned char *)async_buffer,total_packet_size);
+		{
 #ifdef THREAD_RECEIVE
-		gr::thread::scoped_lock guard(d_net_mutex);
+			gr::thread::scoped_lock guard(d_net_mutex);
 #endif
-		d_localqueue->push_back(new_data);
+			d_localqueue->push_back(new_data);
+		}
+		// An attempt at multipacket receive while still using async_receive.  If there's a lot of data outstanding,
+		// this receive will grab the rest of it.
+		//queue_data();
 	}
 	else {
 		std::stringstream msg_stream;
@@ -606,7 +632,7 @@ void snap_source_impl::handle_receive(const boost::system::error_code& error,
 			msg_stream << "Network receive error code:" << error;
 		}
 		else {
-			msg_stream << "Network received an incorrect number of bytes:" << bytes_transferred << ".  Should be " << total_packet_size;
+			msg_stream << "Network received an incorrect number of bytes:" << bytes_transferred << ".  Should be " << d_udp_recv_buf_size;
 		}
 		GR_LOG_ERROR(d_logger, msg_stream.str());
 	}
@@ -969,7 +995,7 @@ int snap_source_impl::work_spec_mode(int noutput_items,
 		// we just synchronized.
 		d_send_sync_pmt = false;
 
-		memcpy((void *)&hdr,(void *)&async_volt_sync_hdr,sizeof(snap_header));
+		// memcpy((void *)&hdr,(void *)&async_volt_sync_hdr,sizeof(snap_header));
 
 		if (liveWork) {
 			pmt::pmt_t meta = pmt::make_dict();
@@ -1172,6 +1198,8 @@ int snap_source_impl::work_test(int noutput_items,
 int snap_source_impl::work(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items) {
+	work_called = true;
+
 	gr::thread::scoped_lock guard(d_setlock);
 
 	if (d_use_pcap && pcap_file_done) {
@@ -1221,7 +1249,6 @@ void snap_source_impl::queue_data() {
 			}
 
 			size_t bytesRead = d_udpsocket->receive_from(boost::asio::buffer(local_net_buffer,bytes_to_read), d_endpoint);
-
 			if (bytesRead > 0) {
 				// Get the data and add it to our local queue.  We have to maintain a
 				// local queue in case we read more bytes than noutput_items is asking
@@ -1232,10 +1259,8 @@ void snap_source_impl::queue_data() {
 
 						if (SNAP_PACKETTYPE_VOLTAGE) {
 							if (!d_found_start_channel) {
-								memcpy(async_buffer, pData, total_packet_size);
-
 								// We're not synchronized on the first packet yet, so we're looking for it.
-								if (!voltage_async_synchronize()) {
+								if (!voltage_synchronize(pData)) {
 									// we're still not sync'd.  So don't bother queueing the packet.
 									continue;
 								}
@@ -1261,16 +1286,14 @@ void snap_source_impl::queue_data() {
 						}
 						else {
 							if (!d_found_start_channel) {
-								memcpy(async_buffer, pData, total_packet_size);
-
 								// We're not synchronized on the first packet yet, so we're looking for it.
-								if (!spect_async_synchronize()) {
+								if (!spect_synchronize(pData)) {
 									// we're still not sync'd.  So don't bother queueing the packet.
 									continue;
 								}
 							}
 
-							uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+							uint64_t *header_as_uint64 = (uint64_t *)pData;
 
 							// Convert from network format to host format.
 							uint64_t header = be64toh(*header_as_uint64);
@@ -1296,6 +1319,7 @@ void snap_source_impl::queue_data() {
 						data_vector<unsigned char> new_data((unsigned char *)pData,total_packet_size);
 
 						{
+
 #ifdef THREAD_RECEIVE
 							gr::thread::scoped_lock guard(d_net_mutex);
 #endif
@@ -1364,10 +1388,8 @@ void snap_source_impl::queue_pcap_data() {
 
 				if (SNAP_PACKETTYPE_VOLTAGE) {
 					if (!d_found_start_channel) {
-						memcpy(async_buffer, pData, total_packet_size);
-
 						// We're not synchronized on the first packet yet, so we're looking for it.
-						if (!voltage_async_synchronize()) {
+						if (!voltage_synchronize(pData)) {
 							// we're still not sync'd.  So don't bother queueing the packet.
 							continue;
 						}
@@ -1393,16 +1415,14 @@ void snap_source_impl::queue_pcap_data() {
 				}
 				else {
 					if (!d_found_start_channel) {
-						memcpy(async_buffer, pData, total_packet_size);
-
 						// We're not synchronized on the first packet yet, so we're looking for it.
-						if (!spect_async_synchronize()) {
+						if (!spect_synchronize(pData)) {
 							// we're still not sync'd.  So don't bother queueing the packet.
 							continue;
 						}
 					}
 
-					uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+					uint64_t *header_as_uint64 = (uint64_t *)pData;
 
 					// Convert from network format to host format.
 					uint64_t header = be64toh(*header_as_uint64);
@@ -1450,49 +1470,105 @@ void snap_source_impl::queue_pcap_data() {
 	} // queue_size < min_queue_size
 }
 
-#ifdef NUMA_AWARE
-void snap_source_impl::num_binding() {
-	int retVal = getcpu(&d_cpu, &d_cpu_node);
+int snap_source_impl::mmsg_receive()
+{
+	int retval = recvmmsg(d_udpsocket->native_handle(), msgs, MMSG_LENGTH, MSG_DONTWAIT, nullptr);
+	if (retval == -1) {
+		//GR_LOG_ERROR(d_logger,"ERROR receiving data from recvmmsg (-1)");
+		return 0;
+	}
 
-	if (retVal == 0) {
-		/*
-		if (numa_available() >= 0) {
-			/*
-			nodemask_t mask;
-			nodemask_zero(&mask);
-			nodemask_set_compat(&mask, d_cpu_node);
-			struct bitmask bitmask;
-			copy_nodemask_to_bitmask(&mask,&bitmask);
-			numa_bind(&bitmask);
+	// check for bad channel id first.
+	uint16_t channel_id;
+	unsigned char *cur_pkt;
 
-			numa_bind(numa_get_membind());
+	/*
+	if (retval > 1) {
+		printf("%d messages received\n", retval);
+	}
+	*/
+	gr::thread::scoped_lock guard(d_net_mutex);
+
+	for (int i = 0; i < retval; i++) {
+		cur_pkt = bufs[i];
+
+		if (!d_found_start_channel) {
+			// We're not synchronized on the first packet yet, so we're looking for it.
+			if (SNAP_PACKETTYPE_VOLTAGE) {
+				if (!voltage_synchronize(cur_pkt)) {
+					// we're still not sync'd.  So don't bother queueing the packet.
+					continue;
+				}
+			}
+			else {
+				if (!spect_synchronize(cur_pkt)) {
+					// we're still not sync'd.  So don't bother queueing the packet.
+					continue;
+				}
+			}
 		}
-		*/
-		/*
-		cpu_set_t cpuset;
-		CPU_ZERO( & cpuset);
-		CPU_SET( d_cpu, & cpuset);
-		// bind_to_processor(d_cpu);
-		::pthread_setaffinity_np( ::pthread_self(), sizeof( cpuset), & cpuset);
-		*/
-		std::stringstream msg_stream;
 
-		msg_stream << identifier() << " Starting on cpu " << d_cpu << " node " << d_cpu_node;
-		GR_LOG_INFO(d_logger,msg_stream.str());
+		if (SNAP_PACKETTYPE_VOLTAGE) {
+			struct voltage_header *v_hdr = (struct voltage_header *)cur_pkt;
+			channel_id = be16toh(v_hdr->chan);
+		}
+		else {
+			uint64_t *header_as_uint64 = (uint64_t *)cur_pkt;
+
+			// Convert from network format to host format.
+			uint64_t header = be64toh(*header_as_uint64);
+			channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val
+		}
+
+		if ((channel_id < d_starting_channel) || (channel_id > d_ending_channel_packet_channel_id) ) {
+			std::stringstream msg_stream;
+			msg_stream << "Received an unexpected channel index.  Skipping packet.  Received block starting channel id: " << channel_id;
+
+			if (b_one_packet) {
+				msg_stream << " expected " << d_starting_channel;
+			}
+			else {
+				msg_stream << " expected block channel between " << d_starting_channel << " and " << d_ending_channel_packet_channel_id;
+			}
+
+			GR_LOG_ERROR(d_logger, msg_stream.str());
+		}
+
+		// We'll only get here if we've sync'd and the id is good.  so the main work doesn't need to track this anymore.
+		data_vector<unsigned char> new_data((unsigned char *)cur_pkt,total_packet_size);
+		d_localqueue->push_back(new_data);
 	}
-	else {
-		GR_LOG_INFO(d_logger,"Unable to get CPU binding info.  Threads may float.");
-	}
+
+	return retval;
 }
-#endif
 
 void snap_source_impl::runThread() {
 	threadRunning = true;
+	/*
+	if (!d_use_pcap) {
+		// data dump until work starts.
+		//bool printed_msg = false;
 
-#ifdef NUMA_AWARE
-	numa_binding();
-#endif
+		while (!work_called && !stop_thread) {
 
+			//if (!printed_msg) {
+			//	start_time = std::chrono::steady_clock::now();
+			//	std::cout << "Waiting on work..." << std::endl;
+			//	printed_msg = true;
+			//}
+
+			int retval = recvmmsg(d_udpsocket->native_handle(), msgs, MMSG_LENGTH, MSG_DONTWAIT, nullptr);
+			sleep(4);
+		}
+
+
+		//end_time = std::chrono::steady_clock::now();
+		//std::cout << "Work called" << std::endl;
+		//std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+		//std::cout << "Time between start and work: " << elapsed_seconds.count() << std::endl;
+
+	}
+	*/
 	while (!stop_thread) {
 		if (!d_use_pcap) {
 			// Getting data from the network
@@ -1502,8 +1578,23 @@ void snap_source_impl::runThread() {
 			// So this just gets some worker thread relief.
 			// usleep(60);
 			if (!d_use_pcap) {
+				int pkts_received = mmsg_receive();
+				usleep(30);
+
+				/*
+				if (pkts_received == 0) {
+					usleep(mmsg_sleep_time);
+				}
+				else {
+					// wait 1/2 packet
+					usleep(16);
+				}
+				*/
+
+				/*
 				start_receive();
 				d_io_service.run();
+				*/
 			}
 
 		}
@@ -1517,4 +1608,5 @@ void snap_source_impl::runThread() {
 }
 
 } /* namespace ata */
+
 } /* namespace gr */

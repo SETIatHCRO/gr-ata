@@ -85,7 +85,7 @@ class ata_12ant_xcorr(gr.top_block):
         self.antenna_list = []
         for i in range(0, clparam_num_antennas):
             cur_port = clparam_base_port +i
-            new_ant = ata.snap_source(cur_port, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10',  False)
+            new_ant = ata.snap_source(cur_port, 1, True, False, False,starting_channel,ending_channel,1, '', False, True, '224.1.1.10',  False, clparam_bind_ip)
             # if clparam_enable_affinity and len(core_pairs) > 0:
             #    print("Setting SNAP UDP " + str(clparam_base_port+i) + " to affinity to cores " + str(core_pairs[0]))
             #    new_ant.set_processor_affinity(core_pairs[0])
@@ -188,6 +188,7 @@ if __name__ == '__main__':
     parser.add_argument('--base-port', '-b', type=int, default=10000, help="The first UDP port number for the listeners.  The first antenna will be assigned to this port and each subsequent antenna to the next number up (e.g. 10000, 10001, 10002,...)", required=False)
     parser.add_argument('--no-output', '-n', help="Used for performance tuning.  Disables disk IO.", action='store_true', required=False)
     parser.add_argument('--enable-affinity', '-e', help="Enable CPU affiniity", action='store_true', required=False)
+    parser.add_argument('--bind-ip', type=str, default='', help="Specific IP to bind to.  Default is 0.0.0.0 (all)", required=False)
 
     args = parser.parse_args()
     clparam_snap_sync = args.snap_sync
@@ -204,6 +205,7 @@ if __name__ == '__main__':
     clparam_output_prefix = args.output_prefix
     clparam_channel_width = args.channel_width
     clparam_base_port = args.base_port
+    clparam_bind_ip = args.bind_ip
     
     clparam_enable_affinity = args.enable_affinity
     

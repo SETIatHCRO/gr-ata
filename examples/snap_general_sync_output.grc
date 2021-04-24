@@ -1,0 +1,351 @@
+options:
+  parameters:
+    author: ghostop14
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: snap_general_sync_output
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: '1'
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: run
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: ATA SNAP General Sync'd Output
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: ending_channel
+  id: variable
+  parameters:
+    comment: ''
+    value: starting_channel+num_channels-1
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [744, 12.0]
+    rotation: 0
+    state: true
+- name: num_channels
+  id: variable
+  parameters:
+    comment: ''
+    value: '256'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [400, 12.0]
+    rotation: 0
+    state: true
+- name: snap_vector_len
+  id: variable
+  parameters:
+    comment: ''
+    value: int((ending_channel-starting_channel+1)*2)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [872, 12.0]
+    rotation: 0
+    state: true
+- name: starting_channel
+  id: variable
+  parameters:
+    comment: ''
+    value: '1920'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [280, 12.0]
+    rotation: 0
+    state: true
+- name: ata_SNAPSynchronizerV3_0
+  id: ata_SNAPSynchronizerV3
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_channels: num_channels
+    num_inputs: '6'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [592, 368.0]
+    rotation: 0
+    state: true
+- name: ata_snap_source_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap/snap_2_ant_1f.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'False'
+    port: '10000'
+    repeat_file: 'False'
+    send_start_msg: 'False'
+    starting_channel: starting_channel
+    udp_ip: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 176.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_0
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap/snap_2_ant_1f.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'False'
+    port: '10001'
+    repeat_file: 'False'
+    send_start_msg: 'False'
+    starting_channel: starting_channel
+    udp_ip: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 392.0]
+    rotation: 0
+    state: enabled
+- name: ata_snap_source_0_1
+  id: ata_snap_source
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    data_source: '1'
+    ending_channel: ending_channel
+    file: /home/sonata/casa_pcap/snap_2_ant_1f.pcap
+    header: '1'
+    ipv6: 'False'
+    maxoutbuf: '0'
+    mcast_group: 224.1.1.10
+    minoutbuf: '0'
+    notifyMissed: 'True'
+    packed_output: 'False'
+    port: '10002'
+    repeat_file: 'False'
+    send_start_msg: 'False'
+    starting_channel: starting_channel
+    udp_ip: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 624.0]
+    rotation: 0
+    state: enabled
+- name: blocks_file_sink_0
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: source_10000.8bitiq_fft_256chan.x.iq
+    type: byte
+    unbuffered: 'False'
+    vlen: snap_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [984, 252.0]
+    rotation: 0
+    state: true
+- name: blocks_file_sink_0_0
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: source_10000.8bitiq_fft_256chan.y.iq
+    type: byte
+    unbuffered: 'False'
+    vlen: snap_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [984, 364.0]
+    rotation: 0
+    state: true
+- name: blocks_file_sink_0_0_0
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: source_10001.8bitiq_fft_256chan.y.iq
+    type: byte
+    unbuffered: 'False'
+    vlen: snap_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [984, 564.0]
+    rotation: 0
+    state: true
+- name: blocks_file_sink_0_0_1
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: source_10002.8bitiq_fft_256chan.y.iq
+    type: byte
+    unbuffered: 'False'
+    vlen: snap_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [984, 772.0]
+    rotation: 0
+    state: true
+- name: blocks_file_sink_0_1
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: source_10001.8bitiq_fft_256chan.x.iq
+    type: byte
+    unbuffered: 'False'
+    vlen: snap_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [984, 468.0]
+    rotation: 0
+    state: true
+- name: blocks_file_sink_0_2
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: source_10002.8bitiq_fft_256chan.x.iq
+    type: byte
+    unbuffered: 'False'
+    vlen: snap_vector_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [984, 676.0]
+    rotation: 0
+    state: true
+- name: note_0
+  id: note
+  parameters:
+    alias: ''
+    comment: These should be configured
+    note: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [224, 28.0]
+    rotation: 0
+    state: true
+- name: note_0_0
+  id: note
+  parameters:
+    alias: ''
+    comment: These are calculated
+    note: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [672, 28.0]
+    rotation: 0
+    state: true
+- name: note_0_1
+  id: note
+  parameters:
+    alias: ''
+    comment: "The sync feedback disables tags (which impact performance) \nwhen they're\
+      \ done being used for synchronization"
+    note: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [520, 244.0]
+    rotation: 0
+    state: true
+
+connections:
+- [ata_SNAPSynchronizerV3_0, '0', blocks_file_sink_0, '0']
+- [ata_SNAPSynchronizerV3_0, '1', blocks_file_sink_0_0, '0']
+- [ata_SNAPSynchronizerV3_0, '2', blocks_file_sink_0_1, '0']
+- [ata_SNAPSynchronizerV3_0, '3', blocks_file_sink_0_0_0, '0']
+- [ata_SNAPSynchronizerV3_0, '4', blocks_file_sink_0_2, '0']
+- [ata_SNAPSynchronizerV3_0, '5', blocks_file_sink_0_0_1, '0']
+- [ata_SNAPSynchronizerV3_0, sync, ata_snap_source_0, sync]
+- [ata_SNAPSynchronizerV3_0, sync, ata_snap_source_0_0, sync]
+- [ata_SNAPSynchronizerV3_0, sync, ata_snap_source_0_1, sync]
+- [ata_snap_source_0, '0', ata_SNAPSynchronizerV3_0, '0']
+- [ata_snap_source_0, '1', ata_SNAPSynchronizerV3_0, '1']
+- [ata_snap_source_0_0, '0', ata_SNAPSynchronizerV3_0, '2']
+- [ata_snap_source_0_0, '1', ata_SNAPSynchronizerV3_0, '3']
+- [ata_snap_source_0_1, '0', ata_SNAPSynchronizerV3_0, '4']
+- [ata_snap_source_0_1, '1', ata_SNAPSynchronizerV3_0, '5']
+
+metadata:
+  file_format: 1

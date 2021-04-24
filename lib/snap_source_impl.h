@@ -27,13 +27,15 @@
 #include <boost/circular_buffer.hpp>
 #include <ata/snap_source.h>
 #include <pcap/pcap.h>
-
-// #define NUMA_AWARE
+#include <sys/socket.h>
 
 namespace gr {
 namespace ata {
 
 #define SNAPFORMAT_2_0_0
+
+#define MMSG_LENGTH 32
+#define MMSG_TIMEOUT 1
 
 const int VP_DATA_STRIDE=256*16*2;
 
@@ -253,10 +255,18 @@ protected:
 	boost::asio::io_service d_io_service;
 	boost::asio::ip::udp::endpoint d_endpoint;
 	boost::asio::ip::udp::socket *d_udpsocket = NULL;
+	std::string d_udp_ip;
 
 	// These local net buffers are only used in non-threaded mode in queue_data.
 	unsigned char *local_net_buffer = NULL;
 	long local_net_buffer_size=0;
+
+	// multimessage receive (mmsg)
+	struct mmsghdr msgs[MMSG_LENGTH];
+	struct iovec iovecs[MMSG_LENGTH];
+	unsigned char bufs[MMSG_LENGTH][9000];
+	struct timespec timeout;
+	int mmsg_sleep_time = 0;
 
 	// Separate receive thread
 	boost::thread *proc_thread=NULL;
@@ -265,6 +275,8 @@ protected:
 	gr::thread::mutex d_net_mutex;
 	unsigned int d_cpu;
 	unsigned int d_cpu_node;
+	bool work_called = false;
+	// std::chrono::time_point<std::chrono::steady_clock> start_time, end_time;
 
 	// Actual thread function
 	virtual void runThread();
@@ -325,19 +337,17 @@ protected:
 	std::deque<data_vector<float>> xy_imag_vector_queue;
 #endif
 
-#ifdef NUMA_AWARE
-	void num_binding();
-#endif
-
 	void openPCAP();
 	void closePCAP();
+
+	int mmsg_receive();
 
 	void copy_volt_data_to_vector_buffer(snap_header& hdr);
 	void queue_voltage_data(snap_header& hdr);
 
-	void get_voltage_async_header(snap_header& hdr) {
+	void get_voltage_header(snap_header& hdr, unsigned char *pBuff) {
 		struct voltage_header *v_hdr;
-		v_hdr = (struct voltage_header *)async_buffer;
+		v_hdr = (struct voltage_header *)pBuff;
 		hdr.antenna_id = be16toh(v_hdr->feng_id);
 		hdr.channel_id = be16toh(v_hdr->chan);
 		hdr.firmware_version = v_hdr->version; // no need to network->host order, only a byte
@@ -345,9 +355,9 @@ protected:
 		hdr.type = v_hdr->type;
 	}
 
-	bool voltage_async_synchronize() {
+	bool voltage_synchronize(unsigned char *pBuff) {
 		// We're not synchronized on the first packet yet, so we're looking for it.
-		struct voltage_header *v_hdr  = (struct voltage_header *)async_buffer;
+		struct voltage_header *v_hdr  = (struct voltage_header *)pBuff;
 		uint16_t channel_id = be16toh(v_hdr->chan);
 
 		if ( channel_id == d_starting_channel ) {
@@ -357,7 +367,7 @@ protected:
 			// will need to do it.
 			d_found_start_channel = true;
 
-			get_voltage_async_header(async_volt_sync_hdr);
+			get_voltage_header(async_volt_sync_hdr,pBuff);
 
 			std::stringstream msg_stream;
 			if (d_use_pcap) {
@@ -379,9 +389,9 @@ protected:
 		}
 	}
 
-	bool spect_async_synchronize() {
+	bool spect_synchronize(unsigned char *pBuff) {
 		// We're not synchronized on the first packet yet, so we're looking for it.
-		uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+		uint64_t *header_as_uint64 = (uint64_t *)pBuff;
 		uint64_t header = be64toh(*header_as_uint64);
 		uint16_t channel_id = ((header >> 8) & 0x07) * 512; // Id cycles 0-7.  Channel is 512*val;
 
@@ -392,7 +402,7 @@ protected:
 			// will need to do it.
 			d_found_start_channel = true;
 
-			get_spect_async_header(async_spect_sync_hdr);
+			get_spect_header(async_spect_sync_hdr, pBuff);
 
 			std::stringstream msg_stream;
 			if (d_use_pcap) {
@@ -414,8 +424,8 @@ protected:
 		}
 	}
 
-	void get_spect_async_header(snap_header& hdr) {
-		uint64_t *header_as_uint64 = (uint64_t *)async_buffer;
+	void get_spect_header(snap_header& hdr, unsigned char *pBuff) {
+		uint64_t *header_as_uint64 = (uint64_t *)pBuff;
 
 		// Convert from network format to host format.
 		uint64_t header = be64toh(*header_as_uint64);
@@ -488,7 +498,17 @@ protected:
 		d_localqueue->pop_front();
 	};
 
-	void start_receive();
+	void start_receive() {
+		if (stop_thread)
+			return;
+
+		d_udpsocket->async_receive_from(
+				boost::asio::buffer(async_buffer,d_udp_recv_buf_size), d_endpoint,
+				boost::bind(&snap_source_impl::handle_receive, this,
+						boost::asio::placeholders::error,
+						boost::asio::placeholders::bytes_transferred));
+	};
+
 	void handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred);
 
 	int work_volt_mode(int noutput_items, gr_vector_const_void_star &input_items,
@@ -502,7 +522,7 @@ public:
 			bool notifyMissed, bool sourceZeros, bool ipv6,
 			int starting_channel, int ending_channel, int data_size,
 			int data_source, std::string file="", bool repeat_file=false, bool packed_output=false,
-			std::string mcast_group="", bool send_start_msg=false);
+			std::string mcast_group="", bool send_start_msg=false, std::string udp_ip="");
 
 	~snap_source_impl();
 
