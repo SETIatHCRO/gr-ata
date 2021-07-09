@@ -74,21 +74,10 @@ class control(gr.basic_block):
             ping_success = "1 packets transmitted, 1 received"
 
             if ping_success in ping_output:
-                try:
-                    alarm = ac.get_alarm()
-
-                    if alarm['user'] == username:
-                        self.is_user = True
-                        print("You are the primary user. You have full permissions.")
-
-                    else:
-                        self.is_user = False
-                        raise Exception("Another user, {0}, has the array locked out. \n"
-                                        "You do not have permission to observe.".format(alarm['user']))
-                except KeyError:
-                    self.is_user = False
-                    raise Exception("The array is not locked out under your username.\n"
-                                    "You do not have permission to observe.")
+                # TODO: reserve antennas here by moving them to the 'atagr'
+                # group. However this is not trivial, because we do not know
+                # in this block the antennas that we will use.
+                self.is_user = True
 
                 self.message_port_register_in(pmt.intern("command"))
                 self.set_msg_handler(pmt.intern("command"), self.handle_msg)
