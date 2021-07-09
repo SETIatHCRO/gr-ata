@@ -11,17 +11,17 @@ parameters:
 - id: ant1
   label: Switch 1 Antennas
   dtype: string
-  options: [none, 1a, 1h, 1c, 1d, 1e, 1f, 1g, 1k, 2a, 2b, 2c, 2d, 2e, 2f, 2g, 2h]
+  options: [none, 1a, 1c, 2a, 2b, 2e, 2c, 3e, 3j, 3l, 4g, 4j, 4l, 5b, 5e, 5g, 5h]
   
 - id: ant2
   label: Switch 2 Antennas
   dtype: string
-  options: [none, 2j, 2k, 2l, 3c, 3e, 3j, 3l, 4g]
+  options: [none, 1f, 1h, 1k, 2j, 2h, 2m, 3c, 5c]
   
 - id: ant3 
   label: Switch 3 Antennas
   dtype: string
-  options: [none, 4j, 4k, 4l, 5b, 5c, 5e, 5g, 5h]
+  options: [none]
   
 #- id: db1
 #  label: Atten. for Switch 1 (dB)
