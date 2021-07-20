@@ -262,9 +262,12 @@ class control(gr.basic_block):
             designated by the given ID from the ATA catalog. '''
 
         now = datetime.now()
-        src_ra, src_dec = ac.get_source_ra_dec(src_id)
 
-        if self.pos.isUp('radec', now, src_ra, src_dec):
+        # TODO: check if the source is up.
+        # A former version of gr-ata checked this, but the method it used
+        # does not work any longer.
+        source_is_up = True
+        if source_is_up:
             ac.create_ephems2(src_id, az_off, el_off)
             if not offsource:
                 ac.point_ants2(src_id, 'on', ant_list)
